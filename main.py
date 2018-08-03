@@ -39,7 +39,7 @@ while True:
     a = np.random.randint(0, env.action_space.n)
     sp, r, t, _ = env.step(a)
     episode_reward += r
-    env.render()
+    #env.render()
     buffer.append(s, a, r, sp, t)
     if t:
         s = env.reset()
