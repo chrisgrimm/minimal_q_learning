@@ -34,10 +34,14 @@ epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
+i = 0
 while True:
     # take random action
     a = np.random.randint(0, env.action_space.n)
     sp, r, t, _ = env.step(a)
+    if r == 1:
+        partitioned_r = reward_net.get_partitioned_reward([s], [a])[0]
+        print(r, partitioned_r)
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
@@ -53,18 +57,22 @@ while True:
 
     if buffer.length() >= batch_size:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
-        q_losses = reward_net.train_Q_networks()
+        for j in range(1):
+            q_losses = reward_net.train_Q_networks()
         reward_loss = reward_net.train_R_function(dummy_env)
         LOG.add_line('q_loss0', q_losses[0])
         LOG.add_line('q_loss1', q_losses[1])
         LOG.add_line('reward_loss', reward_loss)
-        #print(f'Q_1_loss: {q_losses[0]}\t Q_2_loss: {q_losses[1]}\t Reward Loss: {reward_loss}')
+        print(f'({i}) Q_1_loss: {q_losses[0]}\t Q_2_loss: {q_losses[1]}\t Reward Loss: {reward_loss}')
+
 
         all_states = dummy_env.get_all_states()
         #values = reward_net.get_state_values(all_states)
         actions = reward_net.get_state_actions(all_states)
         visualize_actions(actions)
         #loss = agent.train_batch(s_sample, a_sample, r_sample, sp_sample, t_sample)
+
+    i += 1
 
 
 

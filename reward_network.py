@@ -10,7 +10,7 @@ class RewardPartitionNetwork(object):
         self.obs_size = obs_size
         self.buffer = buffer
 
-        self.traj_len = 20
+        self.traj_len = 10
 
 
         self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}')
@@ -33,7 +33,8 @@ class RewardPartitionNetwork(object):
 
             self.a_onehot_trajs_pi1_then_pi2 = tf.one_hot(self.inp_a_trajs_pi1_then_pi2, self.num_actions) # [bs, traj_len, num_actions]
             self.reward_trajs_pi1_then_pi2 = self.partition_reward_traj(self.inp_s_trajs_pi1_then_pi2, self.a_onehot_trajs_pi1_then_pi2, name='reward_partition', reuse=True) #[bs, num_partitions, traj_len]
-            Q2_pi1 = self.get_values(self.reward_trajs_pi1_then_pi2)[1] # [num_partitions]
+            self.R2_pi1 = self.reward_trajs_pi1_then_pi2[:, 1, 0]
+            Q2_pi1 = self.get_values(self.reward_trajs_pi1_then_pi2)[:,1] # [num_partitions]
 
             ################
             # pi1_then_pi1
@@ -43,7 +44,8 @@ class RewardPartitionNetwork(object):
             self.reward_trajs_pi1_then_pi1 = self.partition_reward_traj(self.inp_s_trajs_pi1_then_pi1,
                                                                         self.a_onehot_trajs_pi1_then_pi1,
                                                                         name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            Q1_pi1 = self.get_values(self.reward_trajs_pi1_then_pi1)[0]  # [num_partitions]
+            self.R1_pi1 = self.reward_trajs_pi1_then_pi1[:, 0, 0]
+            Q1_pi1 = self.get_values(self.reward_trajs_pi1_then_pi1)[:,0]  # [num_partitions]
 
             #################
             # pi2_then_pi1
@@ -53,7 +55,9 @@ class RewardPartitionNetwork(object):
             self.reward_trajs_pi2_then_pi1 = self.partition_reward_traj(self.inp_s_trajs_pi2_then_pi1,
                                                                         self.a_onehot_trajs_pi2_then_pi1,
                                                                         name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            Q1_pi2 = self.get_values(self.reward_trajs_pi2_then_pi1)[0]  # [num_partitions]
+            self.R1_pi2 = self.reward_trajs_pi1_then_pi1[:, 1, 0]
+
+            Q1_pi2 = self.get_values(self.reward_trajs_pi2_then_pi1)[:,0]  # [num_partitions]
 
             #################
             # pi2_then_pi2
@@ -63,20 +67,22 @@ class RewardPartitionNetwork(object):
             self.reward_trajs_pi2_then_pi2 = self.partition_reward_traj(self.inp_s_trajs_pi2_then_pi2,
                                                                         self.a_onehot_trajs_pi2_then_pi2,
                                                                         name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            Q2_pi2 = self.get_values(self.reward_trajs_pi2_then_pi2)[1]  # [num_partitions]
+            self.R2_pi2 = self.reward_trajs_pi1_then_pi1[:, 1, 1]
+
+            Q2_pi2 = self.get_values(self.reward_trajs_pi2_then_pi2)[:,1]  # [num_partitions]
 
 
 
 
 
-
+            print('R1', self.R1_pi2, Q1_pi2)
             partition_constraint = tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
-            Q_constraint = tf.reduce_mean(tf.square(Q1_pi2 - Q1_pi1) + tf.square(Q2_pi1 - Q2_pi2))
-            self.loss = Q_constraint + partition_constraint
+            Q_constraint = tf.reduce_mean(tf.square(Q1_pi2  - Q1_pi1) + tf.square(Q2_pi1 - Q2_pi2))
+            self.loss = 100*Q_constraint + partition_constraint
 
             reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
             print(reward_params)
-            self.train_op = tf.train.AdamOptimizer().minimize(self.loss, var_list=reward_params)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
 
         all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
         self.sess = tf.Session()
@@ -170,9 +176,9 @@ class RewardPartitionNetwork(object):
     def partitioned_reward_tf(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             inp = tf.concat([s, a], axis=1)
-            fc1 = tf.layers.dense(inp, 32, activation=tf.nn.relu, name='fc1')
-            fc2 = tf.layers.dense(fc1, 32, activation=tf.nn.relu, name='fc2')
-            rewards = tf.layers.dense(fc2, len(self.Q_networks), name='rewards')
+            fc1 = tf.layers.dense(inp, 128, activation=tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, activation=tf.nn.relu, name='fc2')
+            rewards = tf.layers.dense(fc2, len(self.Q_networks), activation=tf.nn.softplus, name='rewards')
         return rewards
 
     def partition_reward_traj(self, s_traj, a_traj, name, reuse=None):
@@ -204,5 +210,7 @@ class RewardPartitionNetwork(object):
         print(rs_traj)
         gamma = 0.99
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
-        return tf.reduce_sum(rs_traj * gamma_sequence, axis=2) # [bs, num_partitions]
+        out = tf.reduce_sum(rs_traj * gamma_sequence, axis=1) # [bs, num_partitions]
+        print('out', out)
+        return out
 

@@ -132,7 +132,7 @@ class BlockPushingDomain(object):
         [agent_x, agent_y] = obs[:2]
         agent_x = int(agent_x * self.grid_size)
         agent_y = int(agent_y * self.grid_size)
-        reward = 0.0 if (agent_x == (self.grid_size-1)) or (agent_y == 0) else -1.0
+        reward = 1.0 if (agent_x == (self.grid_size-1)) or (agent_y == 0) else 0.0
         #R1 = 0.0  if agent_x == (self.grid_size-1) else
         #R2 = 0.0 if agent_y == 0 else -1.0
         return reward
