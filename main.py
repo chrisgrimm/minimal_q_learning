@@ -62,7 +62,8 @@ while True:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
-        reward_loss = reward_net.train_R_function(dummy_env)
+        for j in range(3):
+            reward_loss = reward_net.train_R_function(dummy_env)
         LOG.add_line('q_loss0', q_losses[0])
         LOG.add_line('q_loss1', q_losses[1])
         LOG.add_line('reward_loss', reward_loss)
