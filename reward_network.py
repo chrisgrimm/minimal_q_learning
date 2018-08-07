@@ -76,7 +76,7 @@ class RewardPartitionNetwork(object):
 
 
             partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
-            Q_constraint = tf.reduce_mean(tf.square(Q1_pi2  - Q1_pi1) + tf.square(Q2_pi1 - Q2_pi2) + tf.square(value1_on_policy2) + tf.square(value2_on_policy1))
+            Q_constraint = tf.reduce_mean(0*tf.square(Q1_pi2  - Q1_pi1) + 0*tf.square(Q2_pi1 - Q2_pi2) + tf.square(value1_on_policy2) + tf.square(value2_on_policy1) - 0*(Q1_pi1 + Q2_pi2))
             self.loss = Q_constraint + partition_constraint
 
             reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
@@ -175,8 +175,8 @@ class RewardPartitionNetwork(object):
     def partitioned_reward_tf(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             inp = tf.concat([s, a], axis=1)
-            fc1 = tf.layers.dense(inp, 32, activation=tf.nn.relu, name='fc1')
-            fc2 = tf.layers.dense(fc1, 32, activation=tf.nn.relu, name='fc2')
+            fc1 = tf.layers.dense(inp, 64, activation=tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 64, activation=tf.nn.relu, name='fc2')
             rewards = tf.layers.dense(fc2, len(self.Q_networks), activation=tf.nn.sigmoid, name='rewards')
         return rewards
 

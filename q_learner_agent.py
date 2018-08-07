@@ -46,8 +46,8 @@ class QLearnerAgent(object):
 
     def qa_network(self, obs, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            fc1 = tf.layers.dense(obs, 128, tf.nn.leaky_relu, name='fc1')
-            fc2 = tf.layers.dense(fc1, 128, tf.nn.leaky_relu, name='fc2')
+            fc1 = tf.layers.dense(obs, 128, tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
             qa = tf.layers.dense(fc2, self.num_actions, name='qa')
             return qa, fc2
 
