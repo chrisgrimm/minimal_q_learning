@@ -4,7 +4,7 @@ from q_learner_agent import QLearnerAgent
 from replay_buffer import ReplayBuffer
 from envs.block_pushing_domain import BlockPushingDomain
 from reward_network import RewardPartitionNetwork
-from visualization import visualize_actions
+from visualization import visualize_actions, get_state_max_rewards
 import argparse
 from utils import LOG, build_directory_structure
 
@@ -35,6 +35,9 @@ min_epsilon = 0.1
 num_epsilon_steps = 100000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
+
+
+
 while True:
     # take random action
     a = np.random.randint(0, env.action_space.n)
@@ -57,7 +60,7 @@ while True:
 
     if buffer.length() >= batch_size:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
-        for j in range(1):
+        for j in range(5):
             q_losses = reward_net.train_Q_networks()
         reward_loss = reward_net.train_R_function(dummy_env)
         LOG.add_line('q_loss0', q_losses[0])
@@ -67,6 +70,7 @@ while True:
 
 
         all_states = dummy_env.get_all_states()
+        get_state_max_rewards(all_states, reward_net)
         #values = reward_net.get_state_values(all_states)
         actions = reward_net.get_state_actions(all_states)
         visualize_actions(actions)

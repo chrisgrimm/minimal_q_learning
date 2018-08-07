@@ -29,7 +29,7 @@ class QLearnerAgent(object):
 
             y = self.inp_r + (1 - self.inp_t) * self.gamma * tf.reduce_max(qa_target, axis=1)
             self.loss = tf.reduce_mean(tf.square(tf.stop_gradient(y) - tf.reduce_sum(qa * inp_a_onehot, axis=1)))
-            self.train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss)
 
             # variable update operations
             soft_update_target = tf.group(*[tf.assign(target, tau*target + (1 - tau)*network)
@@ -46,8 +46,8 @@ class QLearnerAgent(object):
 
     def qa_network(self, obs, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            fc1 = tf.layers.dense(obs, 128, tf.nn.relu, name='fc1')
-            fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+            fc1 = tf.layers.dense(obs, 128, tf.nn.leaky_relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, tf.nn.leaky_relu, name='fc2')
             qa = tf.layers.dense(fc2, self.num_actions, name='qa')
             return qa, fc2
 
