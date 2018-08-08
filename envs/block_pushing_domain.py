@@ -1,6 +1,10 @@
 import numpy as np
 import cv2
 from gym.spaces import Discrete, Box
+from envs.blocks import ConstantImmoveableBlock, ConstantMoveableBlock, ConstantGoalBlock, RandomMoveableBlock, \
+    RandomGoalBlock, RandomImmoveableBlock, AgentBlock
+from envs.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
+
 
 
 class BlockPushingDomain(object):
@@ -12,6 +16,7 @@ class BlockPushingDomain(object):
         self.agent_color = (255, 0, 0)
         self.block_color = (0, 0, 0)
         self.bg_color = (255, 255, 255)
+        self.goal_color = (0, 255, 0)
 
         self.observation_mode = 'vector'
         assert self.observation_mode in ['vector', 'image', 'encoding']
@@ -20,16 +25,35 @@ class BlockPushingDomain(object):
 
         self.goal_configuration = []
         # object positions are top-left positions.
-        self.block_colors = [self.agent_color, self.block_color]
-        self.num_objects = len(self.block_colors)
+
+        self.blocks = (
+            [AgentBlock(self.agent_color), ConstantImmoveableBlock((self.grid_size-1, 0), self.block_color)] +
+            [ConstantGoalBlock((0, y), self.goal_color) for y in range(0, self.grid_size)] +
+            [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
+        )
+
+        self.obs_blocks = [block for block in self.blocks
+                           if (block.is_moveable() or block.get_initialization_type().get_unique_name() == 'random') \
+                               and (not block.is_goal())]
+        self.goal_blocks = [block for block in self.blocks
+                            if block.is_goal()]
+        # grab the agent's block.
+        agent_blocks = [(i, block) for i, block in enumerate(self.blocks)
+                        if block.get_initialization_type().get_unique_name() == 'agent']
+        assert len(agent_blocks) == 1
+        (self.agent_index, self.agent_block) = agent_blocks[0]
+
+        self.num_objects = len(self.blocks)
         self.top_right_position = (self.grid_size-1, 0)
-        self.agent_index = 0
-        self.obs_size = 2*self.num_objects
+        self.obs_size = 2*len(self.obs_blocks)
+        self.goal_size = 2*len(self.goal_blocks)
         self.max_timesteps = 1000
         self.timestep = 0
         self.action_space = Discrete(5)
-        self.observation_space = Box(-1, 1, shape=[2*self.obs_size])
+        self.observation_space = Box(-1, 1, shape=[self.obs_size + self.goal_size])
         self.reset()
+
+
 
     def get_all_states(self):
         states = []
@@ -59,24 +83,43 @@ class BlockPushingDomain(object):
                 positions.add(candidate)
         return list(positions)
 
-    def produce_image(self, object_positions):
+    def produce_image(self, blocks):
         image_size = self.grid_size * self.block_size
         canvas = np.zeros(shape=[image_size, image_size, 3])
         canvas[:, :] = self.bg_color
-        for pos, color in zip(object_positions, self.block_colors):
+        for block in sorted(blocks, key=lambda x: x.get_draw_priority()):
+            pos = block.get_position()
+            color = block.get_color()
             x_pos, y_pos = self.block_size * pos[0], self.block_size * pos[1]
             canvas[y_pos:y_pos+self.block_size, x_pos:x_pos+self.block_size] = color
         return canvas
+
+    def extract_obs_part_vector(self, obs):
+        return obs[:2*len(self.obs_blocks)]
+
+    def extract_goal_part_vector(self, obs):
+        return obs[-2*len(self.goal_blocks):]
+
+    def extract_agent_vector(self, obs):
+        return obs[2*self.agent_index:2*self.agent_index+2]
+
+
 
     def produce_vector(self, object_positions):
         return np.concatenate(object_positions, axis=0)
 
 
+
     def get_observation(self, object_positions=None):
-        object_positions = self.object_positions if object_positions is None else object_positions
+        if object_positions is None:
+            object_positions = (
+                [block.get_position() for block in self.obs_blocks] +
+                [block.get_position() for block in self.goal_blocks]
+            )
 
         if self.observation_mode == 'image':
-            image = self.produce_image(object_positions)
+            raise Exception('This is not properly implemented yet.')
+            image = self.produce_image()
             goal_image = self.produce_image(self.goal_configuration)
             return np.concatenate([image, goal_image], axis=2)
         elif self.observation_mode == 'encoding':
@@ -84,7 +127,7 @@ class BlockPushingDomain(object):
         elif self.observation_mode == 'vector':
             vector = self.produce_vector(object_positions)
             #goal_vector = self.produce_vector(self.goal_configuration)
-            return np.concatenate([vector, np.zeros_like(vector)], axis=0) / self.grid_size
+            return vector / self.grid_size
             #return vector
 
     def action_converter(self, raw_action):
@@ -94,50 +137,74 @@ class BlockPushingDomain(object):
         pos_x, pos_y = pos
         return not ((0 <= pos_x) and (pos_x < self.grid_size) and (0 <= pos_y) and (pos_y < self.grid_size))
 
-    def can_move(self, pos, delta, index, all_objects, update_set):
+    # def can_move(self, pos, delta, index, all_objects, update_set):
+    #     new_pos = tuple(np.array(pos) + np.array(delta))
+    #     # return the index
+    #     if self.out_of_bounds(new_pos):
+    #         return False
+    #     can_move = True
+    #     for obj_index, obj_pos in enumerate(all_objects):
+    #         if index == obj_index:
+    #             continue
+    #         # recursively handle collisions, assumes only 1 collision is possible for each considered object.
+    #         #print(new_pos, obj_pos)
+    #         if new_pos == obj_pos:
+    #             updated_all_objects = all_objects[:]
+    #             updated_all_objects[index] = new_pos
+    #             can_move = self.can_move(obj_pos, delta, obj_index, updated_all_objects, update_set)
+    #             if not can_move:
+    #                 break
+    #     if can_move:
+    #         update_set.add((index, new_pos))
+    #     return can_move
+
+    def can_move2(self, block, delta, block_index, all_blocks, update_set):
+        # should not ever call can_move on a non-physical block.
+        assert block.is_physical()
+
+        pos = block.get_position()
         new_pos = tuple(np.array(pos) + np.array(delta))
-        # return the index
-        if self.out_of_bounds(new_pos):
+        if self.out_of_bounds(new_pos) or (not block.is_moveable()):
             return False
         can_move = True
-        for obj_index, obj_pos in enumerate(all_objects):
-            if index == obj_index:
+        for other_block_index, other_block in enumerate(all_blocks):
+            if (block_index == other_block_index) or (not other_block.is_physical()):
                 continue
-            # recursively handle collisions, assumes only 1 collision is possible for each considered object.
-            #print(new_pos, obj_pos)
-            if new_pos == obj_pos:
-                updated_all_objects = all_objects[:]
-                updated_all_objects[index] = new_pos
-                can_move = self.can_move(obj_pos, delta, obj_index, updated_all_objects, update_set)
+            if new_pos == other_block.get_position():
+                updated_all_blocks = [b.copy() for b in all_blocks]
+                print(block_index, updated_all_blocks[block_index])
+                updated_all_blocks[block_index].set_position(new_pos)
+                can_move = self.can_move2(other_block, delta, other_block_index, updated_all_blocks, update_set)
                 if not can_move:
                     break
         if can_move:
-            update_set.add((index, new_pos))
+            update_set.add((block_index, new_pos))
         return can_move
+
+
 
 
     def perform_action(self, action):
         self.timestep += 1
         delta = self.action_mapping[action]
-        agent_pos = self.object_positions[self.agent_index]
         update_set = set()
-        can_move = self.can_move(agent_pos, delta, self.agent_index, self.object_positions, update_set)
+        can_move = self.can_move2(self.agent_block, delta, self.agent_index, self.blocks, update_set)
         if can_move:
-            for index, pos in update_set:
-                self.object_positions[index] = pos
+            for index, new_pos in update_set:
+                self.blocks[index].set_position(new_pos)
 
 
-    def get_reward(self, obs, goal=None):
 
-        [agent_x, agent_y] = obs[:2]
-        agent_x = int(agent_x * self.grid_size)
-        agent_y = int(agent_y * self.grid_size)
-        # top-right reward
-        #reward = 1.0 if (agent_x == (self.grid_size-1)) or (agent_y == 0) else 0.0
-        # left-right reward
-        reward = 1.0 if (agent_x == 0) or (agent_x == (self.grid_size-1)) else 0.0
-        #R1 = 0.0  if agent_x == (self.grid_size-1) else
-        #R2 = 0.0 if agent_y == 0 else -1.0
+
+
+    def get_reward(self, obs):
+        goal_part = self.extract_goal_part_vector(obs)
+        print(goal_part)
+        assert len(goal_part) % 2 == 0
+        reward_zone = [tuple(goal_part[2*i:2*i+2]) for i in range(len(goal_part)//2)]
+        [agent_x, agent_y] = self.extract_agent_vector(obs)
+        in_reward_zone = (agent_x, agent_y) in reward_zone
+        reward = 1.0 if in_reward_zone else 0.0
         return reward
         #assert self.observation_mode in ['vector', 'encoding']
         #return 10.0 if self.get_terminal(obs, goal) else -0.1
@@ -146,12 +213,6 @@ class BlockPushingDomain(object):
 
     def get_terminal(self, obs, goal=None):
         return self.timestep >= self.max_timesteps
-        # assert self.observation_mode in ['vector', 'encoding']
-        # obs_part = obs[:self.obs_size]
-        # goal_part = obs[self.obs_size:] if goal is None else goal
-        # at_goal = np.max(np.abs(obs_part - goal_part)) < 0.001
-        # return at_goal
-        #raise NotImplemented
 
     def step(self, raw_action):
         old_obs = self.get_observation()
@@ -165,16 +226,19 @@ class BlockPushingDomain(object):
         return new_obs, reward, terminal, {}
 
     def render(self):
-        image = self.produce_image(self.object_positions)
+        image = self.produce_image(self.blocks)
         cv2.imshow('game', image)
         cv2.waitKey(1)
 
 
     def reset(self):
-        self.object_positions = self.get_nonintersecting_positions(self.num_objects - 1, existing_positions=set([self.top_right_position])) + [self.top_right_position]
+        initialized_positions = set()
+        initialized_positions = ConstantInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
+        initialized_positions = RandomInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
+        initialized_positions = AgentInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
+
         self.timestep = 0
         return self.get_observation()
-        #self.goal_configuration = self.get_nonintersecting_positions(self.num_objects)
 
 
 def onehot(i, n):
