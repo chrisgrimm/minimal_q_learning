@@ -9,7 +9,8 @@ class InitializationType(object):
         all_blocks_of_type = [block for block in all_blocks
                               if block.get_initialization_type().get_unique_name() == self.get_unique_name()]
         self._initialize(all_blocks_of_type, env_parameters)
-        initialized_positions = set([block.get_position() for block in all_blocks_of_type])
+        initialized_positions = set([block.get_position() for block in all_blocks_of_type
+                                     if block.is_physical()])
         return initialized_positions
 
     def _initialize(self, all_blocks_of_type, env_parameters):

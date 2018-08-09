@@ -117,7 +117,9 @@ class RandomMoveableBlock(MoveableBlock, Block):
         self.position = tuple(pos)
 
     def copy(self):
-        return RandomMoveableBlock(self.color)
+        block = RandomMoveableBlock(self.color)
+        block.position = self.position
+        return block
 
     def get_initialization_type(self):
         return RandomInitialization()
@@ -159,7 +161,9 @@ class RandomImmoveableBlock(ImmoveableBlock, Block):
         raise Exception('Cannot set position of Constant Block')
 
     def copy(self):
-        return RandomImmoveableBlock(self.color)
+        block = RandomImmoveableBlock(self.color)
+        block.position = self.position
+        return block
 
     def get_initialization_type(self):
         return RandomInitialization()
@@ -179,7 +183,9 @@ class AgentBlock(MoveableBlock, Block):
         self.position = tuple(pos)
 
     def copy(self):
-        return AgentBlock(self.color)
+        block = AgentBlock(self.color)
+        block.position = self.position
+        return block
 
     def get_initialization_type(self):
         return AgentInitialization()
@@ -221,7 +227,9 @@ class RandomGoalBlock(GoalBlock, Block):
         raise Exception('Cannot set position of Goal Block')
 
     def copy(self):
-        return RandomGoalBlock(self.position, self.color)
+        block = RandomGoalBlock(self.color)
+        block.position = self.position
+        return block
 
     def get_initialization_type(self):
         return ConstantInitialization()

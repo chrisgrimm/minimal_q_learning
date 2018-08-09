@@ -199,7 +199,17 @@ class RewardPartitionNetwork(object):
         return [np.max(self.Q_networks[i].get_Q(s), axis=1) for i in range(self.num_partitions)]
 
     def get_state_actions(self, s):
-        return [self.Q_networks[i].get_action(s) for i in range(self.num_partitions)]
+        processed_s = []
+        none_indices = []
+        for i in range(len(s)):
+            if s[i] is None:
+                processed_s.append(np.zeros([self.obs_size]))
+                none_indices.append(i)
+            else:
+                processed_s.append(s[i])
+
+        return [self.Q_networks[i].get_action(processed_s) if i not in none_indices else None
+                for i in range(self.num_partitions)]
 
     def get_state_rewards(self, s):
         return self.get_partitioned_reward([s]*5, list(range(5)))

@@ -31,17 +31,8 @@ class BlockPushingDomain(object):
             [ConstantGoalBlock((0, y), self.goal_color) for y in range(0, self.grid_size)] +
             [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
         )
-
-        self.obs_blocks = [block for block in self.blocks
-                           if (block.is_moveable() or block.get_initialization_type().get_unique_name() == 'random') \
-                               and (not block.is_goal())]
-        self.goal_blocks = [block for block in self.blocks
-                            if block.is_goal()]
-        # grab the agent's block.
-        agent_blocks = [(i, block) for i, block in enumerate(self.blocks)
-                        if block.get_initialization_type().get_unique_name() == 'agent']
-        assert len(agent_blocks) == 1
-        (self.agent_index, self.agent_block) = agent_blocks[0]
+        # any time a change is made to blocks, there needs to be a corresponding call to update the block indices.
+        self.obs_blocks, self.goal_blocks, self.agent_index, self.agent_block = self.update_block_indices()
 
         self.num_objects = len(self.blocks)
         self.top_right_position = (self.grid_size-1, 0)
@@ -53,6 +44,23 @@ class BlockPushingDomain(object):
         self.observation_space = Box(-1, 1, shape=[self.obs_size + self.goal_size])
         self.reset()
 
+    def is_obs_block(self, block):
+        return (block.is_moveable() or block.get_initialization_type().get_unique_name() == 'random') and (not block.is_goal())
+
+    def is_goal_block(self, block):
+        return block.is_goal()
+
+    def is_agent_block(self, block):
+        return block.get_initialization_type().get_unique_name() == 'agent'
+
+
+    def update_block_indices(self):
+        obs_blocks = [block for block in self.blocks if self.is_obs_block(block)]
+        goal_blocks = [block for block in self.blocks if self.is_goal_block(block)]
+        agent_blocks = [(i, block) for i, block in enumerate(self.blocks) if self.is_agent_block(block)]
+        assert len(agent_blocks) == 1
+        (agent_index, agent_block) = agent_blocks[0]
+        return obs_blocks, goal_blocks, agent_index, agent_block
 
 
     def get_all_states(self):
@@ -60,20 +68,38 @@ class BlockPushingDomain(object):
         for y in range(self.grid_size):
             for x in range(self.grid_size):
                 if (x, y) == self.top_right_position:
-                    states.append(self.get_observation([(0,0), self.top_right_position]))
+                    states.append(None)
                 else:
-                    states.append(self.get_observation([(x, y), self.top_right_position]))
+                    cloned_blocks = self.clone_blocks_with_new_agent_position((x,y))
+                    positions_obs = [block.get_position() for block in cloned_blocks if self.is_obs_block(block)]
+                    positions_goal = [block.get_position() for block in cloned_blocks if self.is_goal_block(block)]
+                    states.append(self.get_observation(object_positions=positions_obs + positions_goal))
         return states
 
+    def clone_blocks_with_new_agent_position(self, new_agent_position):
+        new_blocks = []
+        for block in self.blocks:
+            new_block = block.copy()
+            if new_block.get_initialization_type().get_unique_name() == 'agent':
+                new_block.position = tuple(new_agent_position)
+            elif new_block.get_position() == new_agent_position and new_block.is_physical():
+                raise Exception('Cannot put agent in occupied position')
+            new_blocks.append(new_block)
+        return new_blocks
 
     def get_current_state(self):
-        return {'object_positions': self.object_positions[:],
-                'timestep': self.timestep}
+        return {
+            'blocks': [block.copy() for block in self.blocks],
+            'timestep': self.timestep
+        }
+
 
     def restore_state(self, state):
-        self.object_positions = state['object_positions'][:]
+        self.blocks = [block.copy() for block in state['blocks']]
         self.timestep = state['timestep']
+        self.obs_blocks, self.goal_blocks, self.agent_index, self.agent_block = self.update_block_indices()
         return self.get_observation()
+
 
     def get_nonintersecting_positions(self, num_positions, existing_positions=set()):
         positions = set()
@@ -94,21 +120,21 @@ class BlockPushingDomain(object):
             canvas[y_pos:y_pos+self.block_size, x_pos:x_pos+self.block_size] = color
         return canvas
 
+
     def extract_obs_part_vector(self, obs):
         return obs[:2*len(self.obs_blocks)]
 
+
     def extract_goal_part_vector(self, obs):
         return obs[-2*len(self.goal_blocks):]
+
 
     def extract_agent_vector(self, obs):
         return obs[2*self.agent_index:2*self.agent_index+2]
 
 
-
     def produce_vector(self, object_positions):
         return np.concatenate(object_positions, axis=0)
-
-
 
     def get_observation(self, object_positions=None):
         if object_positions is None:
@@ -116,7 +142,6 @@ class BlockPushingDomain(object):
                 [block.get_position() for block in self.obs_blocks] +
                 [block.get_position() for block in self.goal_blocks]
             )
-
         if self.observation_mode == 'image':
             raise Exception('This is not properly implemented yet.')
             image = self.produce_image()
@@ -137,28 +162,7 @@ class BlockPushingDomain(object):
         pos_x, pos_y = pos
         return not ((0 <= pos_x) and (pos_x < self.grid_size) and (0 <= pos_y) and (pos_y < self.grid_size))
 
-    # def can_move(self, pos, delta, index, all_objects, update_set):
-    #     new_pos = tuple(np.array(pos) + np.array(delta))
-    #     # return the index
-    #     if self.out_of_bounds(new_pos):
-    #         return False
-    #     can_move = True
-    #     for obj_index, obj_pos in enumerate(all_objects):
-    #         if index == obj_index:
-    #             continue
-    #         # recursively handle collisions, assumes only 1 collision is possible for each considered object.
-    #         #print(new_pos, obj_pos)
-    #         if new_pos == obj_pos:
-    #             updated_all_objects = all_objects[:]
-    #             updated_all_objects[index] = new_pos
-    #             can_move = self.can_move(obj_pos, delta, obj_index, updated_all_objects, update_set)
-    #             if not can_move:
-    #                 break
-    #     if can_move:
-    #         update_set.add((index, new_pos))
-    #     return can_move
-
-    def can_move2(self, block, delta, block_index, all_blocks, update_set):
+    def can_move(self, block, delta, block_index, all_blocks, update_set):
         # should not ever call can_move on a non-physical block.
         assert block.is_physical()
 
@@ -172,9 +176,8 @@ class BlockPushingDomain(object):
                 continue
             if new_pos == other_block.get_position():
                 updated_all_blocks = [b.copy() for b in all_blocks]
-                print(block_index, updated_all_blocks[block_index])
                 updated_all_blocks[block_index].set_position(new_pos)
-                can_move = self.can_move2(other_block, delta, other_block_index, updated_all_blocks, update_set)
+                can_move = self.can_move(other_block, delta, other_block_index, updated_all_blocks, update_set)
                 if not can_move:
                     break
         if can_move:
@@ -188,7 +191,7 @@ class BlockPushingDomain(object):
         self.timestep += 1
         delta = self.action_mapping[action]
         update_set = set()
-        can_move = self.can_move2(self.agent_block, delta, self.agent_index, self.blocks, update_set)
+        can_move = self.can_move(self.agent_block, delta, self.agent_index, self.blocks, update_set)
         if can_move:
             for index, new_pos in update_set:
                 self.blocks[index].set_position(new_pos)
@@ -199,7 +202,6 @@ class BlockPushingDomain(object):
 
     def get_reward(self, obs):
         goal_part = self.extract_goal_part_vector(obs)
-        print(goal_part)
         assert len(goal_part) % 2 == 0
         reward_zone = [tuple(goal_part[2*i:2*i+2]) for i in range(len(goal_part)//2)]
         [agent_x, agent_y] = self.extract_agent_vector(obs)
@@ -233,9 +235,15 @@ class BlockPushingDomain(object):
 
     def reset(self):
         initialized_positions = set()
-        initialized_positions = ConstantInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
-        initialized_positions = RandomInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
-        initialized_positions = AgentInitialization().initialize(self.blocks, {'grid_size': self.grid_size, 'initialized_positions': initialized_positions})
+        initialized_positions = initialized_positions.union(
+            ConstantInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
+                                                              'initialized_positions': initialized_positions}))
+        initialized_positions = initialized_positions.union(
+            RandomInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
+                                                            'initialized_positions': initialized_positions}))
+        initialized_positions = initialized_positions.union(
+            AgentInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
+                                                           'initialized_positions': initialized_positions}))
 
         self.timestep = 0
         return self.get_observation()
@@ -249,6 +257,9 @@ def onehot(i, n):
 
 action_mapping = {0: (0, 1), 1: (0, -1), 2: (1, 0), 3: (-1, 0), 4: (0, 0)}
 
+def block_info(block):
+    return (block.get_position(), block.get_initialization_type().get_unique_name())
+
 if __name__ == '__main__':
     env = BlockPushingDomain()
     s = env.reset()
@@ -258,10 +269,20 @@ if __name__ == '__main__':
                   's': onehot(0, 5),
                   'd': onehot(2, 5),
                   ' ': onehot(4, 5)}
+    state = None
     while True:
         action_key = input('Action: ')
         if action_key == 'r':
             env.reset()
+            env.render()
+            continue
+        if action_key == 'save':
+            state = env.get_current_state()
+            print([block_info(block) for block in state['blocks']])
+            continue
+        if action_key == 'restore':
+            env.restore_state(state)
+            print([block_info(block) for block in env.blocks])
             env.render()
             continue
         if action_key not in action_map:
