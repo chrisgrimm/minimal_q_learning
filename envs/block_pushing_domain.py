@@ -26,11 +26,28 @@ class BlockPushingDomain(object):
         self.goal_configuration = []
         # object positions are top-left positions.
 
+        #### left-right domain
+        #self.blocks = (
+        #    [AgentBlock(self.agent_color), ConstantImmoveableBlock((self.grid_size-1, 0), self.block_color)] +
+        #    [ConstantGoalBlock((0, y), self.goal_color) for y in range(0, self.grid_size)] +
+        #    [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
+        #)
+
+        #### random-goal domain
+        #self.blocks = (
+        #    [AgentBlock(self.agent_color), RandomGoalBlock(self.goal_color)]
+        #)
         self.blocks = (
-            [AgentBlock(self.agent_color), ConstantImmoveableBlock((self.grid_size-1, 0), self.block_color)] +
-            [ConstantGoalBlock((0, y), self.goal_color) for y in range(0, self.grid_size)] +
-            [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
+            [AgentBlock(self.agent_color), ConstantGoalBlock((2,2), self.goal_color)]
         )
+
+        #self.blocks = (
+        #    [AgentBlock(self.agent_color), ConstantMoveableBlock((2,2), self.block_color),
+        #     ConstantMoveableBlock((2,3), self.block_color),
+        #     ConstantImmoveableBlock((2,1), self.goal_color)]
+        #)
+
+
         # any time a change is made to blocks, there needs to be a corresponding call to update the block indices.
         self.obs_blocks, self.goal_blocks, self.agent_index, self.agent_block = self.update_block_indices()
 
@@ -38,7 +55,7 @@ class BlockPushingDomain(object):
         self.top_right_position = (self.grid_size-1, 0)
         self.obs_size = 2*len(self.obs_blocks)
         self.goal_size = 2*len(self.goal_blocks)
-        self.max_timesteps = 1000
+        self.max_timesteps = 100
         self.timestep = 0
         self.action_space = Discrete(5)
         self.observation_space = Box(-1, 1, shape=[self.obs_size + self.goal_size])

@@ -23,7 +23,8 @@ dummy_env = BlockPushingDomain()
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net')
+goal_buffer = ReplayBuffer(100000)
+reward_net = RewardPartitionNetwork(buffer, goal_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net')
 
 batch_size = 32
 s = env.reset()
@@ -45,6 +46,7 @@ while True:
     if r == 1:
         partitioned_r = reward_net.get_partitioned_reward([s], [a])[0]
         print(r, partitioned_r)
+        goal_buffer.append(s, a, r, sp, t)
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
@@ -58,7 +60,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size:
+    if buffer.length() >= batch_size and goal_buffer.length() >= batch_size:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
