@@ -4,27 +4,38 @@ import numpy as np
 
 class QLearnerAgent(object):
 
-    def __init__(self, obs_size, num_actions, name, reuse=None):
+    def __init__(self, obs_size, num_actions, name, reuse=None, visual=False):
         with tf.variable_scope(name, reuse=reuse):
             print(obs_size, num_actions)
             self.obs_size = obs_size
             self.num_actions = num_actions
             self.gamma = 0.99
             self.use_top_level=False
+            self.visual = visual
             tau = 0.99
+            self.state_shape = [None, obs_size] if not visual else [None, 32, 32, 3]
 
-            self.inp_s = tf.placeholder(tf.float32, [None, obs_size], name='inp_s')
+            if self.visual:
+                self.inp_s = tf.placeholder(tf.uint8, self.state_shape, name='inp_s')
+                self.inp_s_converted = tf.image.convert_image_dtype(self.inp_s, dtype=tf.float32)
+                self.inp_sp = tf.placeholder(tf.uint8, self.state_shape, name='inp_sp')
+                self.inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
+            else:
+                self.inp_s = tf.placeholder(tf.float32, self.state_shape, name='inp_s')
+                self.inp_s_converted = self.inp_s
+                self.inp_sp = tf.placeholder(tf.float32, self.state_shape, name='inp_sp')
+                self.inp_sp_converted = self.inp_sp
+
             self.inp_a = tf.placeholder(tf.int32, [None], name='inp_a')
             inp_a_onehot = tf.one_hot(self.inp_a, self.num_actions)
             self.inp_r = tf.placeholder(tf.float32, [None], name='inp_r')
             self.inp_t = tf.placeholder(tf.float32, [None], name='inp_t')
-            self.inp_sp = tf.placeholder(tf.float32, [None, obs_size], name='inp_sp')
 
-            self.qa, self.q_encoding = qa, q_encoding = self.qa_network(self.inp_s, 'qa_network')
+            self.qa, self.q_encoding = qa, q_encoding = self.qa_network(self.inp_s_converted, 'qa_network')
             qa_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/qa_network/')
             print('qa_vars', qa_vars)
 
-            qa_target, _ = self.qa_network(self.inp_sp, 'qa_target')
+            qa_target, _ = self.qa_network(self.inp_sp_converted, 'qa_target')
             qa_target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/qa_target/')
 
             y = self.inp_r + (1 - self.inp_t) * self.gamma * tf.reduce_max(qa_target, axis=1)
@@ -50,11 +61,28 @@ class QLearnerAgent(object):
         self.sess.run(self.hard_update_target)
 
     def qa_network(self, obs, name, reuse=None):
+        if self.visual:
+            return self.qa_network_visual(obs, name, reuse)
+        else:
+            return self.qa_network_vector(obs, name, reuse)
+
+    def qa_network_vector(self, obs, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             fc1 = tf.layers.dense(obs, 128, tf.nn.relu, name='fc1')
             fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
             qa = tf.layers.dense(fc2, self.num_actions, name='qa')
             return qa, fc2
+
+    def qa_network_visual(self, obs, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            # obs : [bs, 32, 32 ,3]
+            x = obs
+            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1') # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2') # [bs, 8, 8, 32]
+            x = tf.layers.dense(tf.reshape(x, [-1, 8*8*32]), 128, activation=tf.nn.relu, name='fc1')
+            qa = tf.layers.dense(x, self.num_actions, name='qa')
+            return qa, x
+
 
     def encode_q(self, obs):
         [encoding] = self.sess.run([self.q_encoding], feed_dict={self.inp_s: obs})

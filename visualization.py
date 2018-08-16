@@ -37,7 +37,9 @@ def visualize_actions(action_set):
 
 def produce_two_goal_visualization(network, env):
     state_pairs = env.get_all_agent_positions()
-    state_image = cv2.resize(env.produce_image(env.blocks), (400, 400), interpolation=cv2.INTER_NEAREST)
+    current_object_positions = env.produce_object_positions_from_blocks()
+    state_image = env.produce_image(current_object_positions, env.render_mode_image_size)
+    state_image = cv2.resize(state_image, (400, 400), interpolation=cv2.INTER_NEAREST)
     data = [[] for _ in range(network.num_partitions)]
     for (x,y), state in state_pairs:
         state_reward = network.get_reward(state)

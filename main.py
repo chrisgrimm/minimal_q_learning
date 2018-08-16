@@ -17,15 +17,16 @@ args = parser.parse_args()
 build_directory_structure('.', {'runs': {args.name: {}}})
 LOG.setup(f'./runs/{args.name}')
 
-
-env = BlockPushingDomain()
-dummy_env = BlockPushingDomain()
+visual = True
+observation_mode = 'image' if visual else 'vector'
+env = BlockPushingDomain(observation_mode=observation_mode)
+dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net')
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net', visual=visual)
 
 batch_size = 32
 s = env.reset()
