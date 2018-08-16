@@ -4,7 +4,7 @@ from q_learner_agent import QLearnerAgent
 from replay_buffer import ReplayBuffer
 from envs.block_pushing_domain import BlockPushingDomain
 from reward_network import RewardPartitionNetwork
-from visualization import visualize_actions, get_state_max_rewards
+from visualization import visualize_actions, get_state_max_rewards, produce_two_goal_visualization
 import argparse
 from utils import LOG, build_directory_structure
 
@@ -23,8 +23,9 @@ dummy_env = BlockPushingDomain()
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
-goal_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, goal_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net')
+
+reward_buffer = ReplayBuffer(100000)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net')
 
 batch_size = 32
 s = env.reset()
@@ -43,10 +44,10 @@ while True:
     # take random action
     a = np.random.randint(0, env.action_space.n)
     sp, r, t, _ = env.step(a)
-    if r == 1:
-        partitioned_r = reward_net.get_partitioned_reward([s], [a])[0]
+    if r > 0:
+        partitioned_r = reward_net.get_partitioned_reward([s])[0]
+        reward_buffer.append(s, a, r, sp, t)
         print(r, partitioned_r)
-        goal_buffer.append(s, a, r, sp, t)
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
@@ -60,7 +61,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and goal_buffer.length() >= batch_size:
+    if buffer.length() >= batch_size and reward_buffer.length() >= batch_size:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
@@ -71,12 +72,13 @@ while True:
         LOG.add_line('reward_loss', reward_loss)
         print(f'({i}) Q_1_loss: {q_losses[0]}\t Q_2_loss: {q_losses[1]}\t Reward Loss: {reward_loss}')
 
-
-        all_states = dummy_env.get_all_states()
-        get_state_max_rewards(all_states, reward_net)
+        #state_pairs = dummy_env.get_all_agent_positions()
+        produce_two_goal_visualization(reward_net, dummy_env)
+        #all_states = dummy_env.get_all_states()
+        #get_state_max_rewards(all_states, reward_net)
         #values = reward_net.get_state_values(all_states)
-        actions = reward_net.get_state_actions(all_states)
-        visualize_actions(actions)
+        #actions = reward_net.get_state_actions(all_states)
+        #visualize_actions(actions)
         #loss = agent.train_batch(s_sample, a_sample, r_sample, sp_sample, t_sample)
 
     i += 1

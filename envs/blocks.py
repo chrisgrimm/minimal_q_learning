@@ -75,6 +75,9 @@ class GoalBlock(Block):
     def get_draw_priority(self):
         return 0
 
+    def get_reward(self):
+        raise NotImplementedError
+
 
 
 
@@ -192,9 +195,10 @@ class AgentBlock(MoveableBlock, Block):
 
 class ConstantGoalBlock(GoalBlock, Block):
 
-    def __init__(self, position, color):
+    def __init__(self, position, color, reward=1.0):
         self.position = tuple(position)
         self.color = tuple(color)
+        self.reward = reward
 
     def get_color(self):
         return self.color
@@ -203,7 +207,7 @@ class ConstantGoalBlock(GoalBlock, Block):
         return self.position
 
     def set_position(self, pos):
-        raise Exception('Cannot set position of constant block.')
+        raise Exception('Cannot set position of constant block')
 
     def copy(self):
         return ConstantGoalBlock(self.position, self.color)
@@ -211,11 +215,15 @@ class ConstantGoalBlock(GoalBlock, Block):
     def get_initialization_type(self):
         return ConstantInitialization()
 
+    def get_reward(self):
+        return self.reward
+
 class RandomGoalBlock(GoalBlock, Block):
 
-    def __init__(self, color):
+    def __init__(self, color, reward=1.0):
         self.position = (0,0)
         self.color = tuple(color)
+        self.reward = reward
 
     def get_color(self):
         return self.color
@@ -233,6 +241,9 @@ class RandomGoalBlock(GoalBlock, Block):
 
     def get_initialization_type(self):
         return RandomInitialization()
+
+    def get_reward(self):
+        return self.reward
 
 
 

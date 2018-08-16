@@ -29,7 +29,12 @@ class QLearnerAgent(object):
 
             y = self.inp_r + (1 - self.inp_t) * self.gamma * tf.reduce_max(qa_target, axis=1)
             self.loss = tf.reduce_mean(tf.square(tf.stop_gradient(y) - tf.reduce_sum(qa * inp_a_onehot, axis=1)))
-            self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss)
+            optimizer = tf.train.AdamOptimizer(learning_rate=0.0002)
+            gvs = optimizer.compute_gradients(self.loss)
+            for grad, var in gvs:
+                print(grad, var)
+            capped_gvs = [(None if grad is None else tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+            self.train_op = optimizer.apply_gradients(capped_gvs)
 
             # variable update operations
             soft_update_target = tf.group(*[tf.assign(target, tau*target + (1 - tau)*network)

@@ -13,40 +13,39 @@ class BlockPushingDomain(object):
         self.grid_size = 5
         self.block_size = 4
 
-        self.agent_color = (255, 0, 0)
+        self.agent_color = (0, 0, 0)
         self.block_color = (0, 0, 0)
         self.bg_color = (255, 255, 255)
-        self.goal_color = (0, 255, 0)
+        self.goal_color1 = (0, 255, 0)
+        self.goal_color2 = (0, 0, 255)
 
         self.observation_mode = 'vector'
         assert self.observation_mode in ['vector', 'image', 'encoding']
-
-        self.action_mapping = {0: (0, 1), 1: (0, -1), 2: (1, 0), 3: (-1, 0), 4: (0, 0)}
+        self.DOWN, self.UP, self.RIGHT, self.LEFT, self.NOOP = 0, 1, 2, 3, 4
+        self.action_mapping = {self.DOWN: (0, 1), self.UP: (0, -1),
+                               self.RIGHT: (1, 0), self.LEFT: (-1, 0), self.NOOP: (0, 0)}
 
         self.goal_configuration = []
         # object positions are top-left positions.
 
-        #### left-right domain
+
         #self.blocks = (
         #    [AgentBlock(self.agent_color), ConstantImmoveableBlock((self.grid_size-1, 0), self.block_color)] +
         #    [ConstantGoalBlock((0, y), self.goal_color) for y in range(0, self.grid_size)] +
         #    [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
         #)
 
-        #### random-goal domain
-        #self.blocks = (
-        #    [AgentBlock(self.agent_color), RandomGoalBlock(self.goal_color)]
-        #)
+        # self.blocks = (
+        #     [AgentBlock(self.agent_color),
+        #      RandomGoalBlock(self.goal_color1, reward=1.0),
+        #      RandomGoalBlock(self.goal_color2, reward=1.0)]
+        # )
+
         self.blocks = (
-            [AgentBlock(self.agent_color), ConstantGoalBlock((2,2), self.goal_color)]
+            [AgentBlock(self.agent_color),
+             ConstantGoalBlock((0,0), self.goal_color1, reward=1.0),
+             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0)]
         )
-
-        #self.blocks = (
-        #    [AgentBlock(self.agent_color), ConstantMoveableBlock((2,2), self.block_color),
-        #     ConstantMoveableBlock((2,3), self.block_color),
-        #     ConstantImmoveableBlock((2,1), self.goal_color)]
-        #)
-
 
         # any time a change is made to blocks, there needs to be a corresponding call to update the block indices.
         self.obs_blocks, self.goal_blocks, self.agent_index, self.agent_block = self.update_block_indices()
@@ -55,7 +54,7 @@ class BlockPushingDomain(object):
         self.top_right_position = (self.grid_size-1, 0)
         self.obs_size = 2*len(self.obs_blocks)
         self.goal_size = 2*len(self.goal_blocks)
-        self.max_timesteps = 100
+        self.max_timesteps = 30
         self.timestep = 0
         self.action_space = Discrete(5)
         self.observation_space = Box(-1, 1, shape=[self.obs_size + self.goal_size])
@@ -78,6 +77,23 @@ class BlockPushingDomain(object):
         assert len(agent_blocks) == 1
         (agent_index, agent_block) = agent_blocks[0]
         return obs_blocks, goal_blocks, agent_index, agent_block
+
+
+    def get_all_agent_positions(self):
+        non_agent_non_goal_blocks = [block for block in self.blocks
+                                     if not (self.is_agent_block(block) or self.is_goal_block(block))]
+        state_pairs = []
+        for y in range(self.grid_size):
+            for x in range(self.grid_size):
+                valid_position = not any([(x,y) == block.get_position() for block in non_agent_non_goal_blocks])
+                if valid_position:
+                    cloned_blocks = self.clone_blocks_with_new_agent_position((x, y))
+                    positions_obs = [block.get_position() for block in cloned_blocks if self.is_obs_block(block)]
+                    positions_goal = [block.get_position() for block in cloned_blocks if self.is_goal_block(block)]
+                    state = self.get_observation(object_positions=positions_obs + positions_goal)
+                    state_pairs.append(((x,y), state))
+        return state_pairs
+
 
 
     def get_all_states(self):
@@ -222,9 +238,16 @@ class BlockPushingDomain(object):
         assert len(goal_part) % 2 == 0
         reward_zone = [tuple(goal_part[2*i:2*i+2]) for i in range(len(goal_part)//2)]
         [agent_x, agent_y] = self.extract_agent_vector(obs)
-        in_reward_zone = (agent_x, agent_y) in reward_zone
-        reward = 1.0 if in_reward_zone else 0.0
+        reward = 0
+        for i, (x, y) in enumerate(reward_zone):
+            if (agent_x, agent_y) == (x, y):
+                reward = self.goal_blocks[i].get_reward()
+                break
         return reward
+
+        #in_reward_zone = (agent_x, agent_y) in reward_zone
+        #reward = 1.0 if in_reward_zone else 0.0
+        #return reward
         #assert self.observation_mode in ['vector', 'encoding']
         #return 10.0 if self.get_terminal(obs, goal) else -0.1
         #raise NotImplemented
