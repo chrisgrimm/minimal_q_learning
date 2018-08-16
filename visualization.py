@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from utils import horz_stack_images
 
 
 def visualize_values(value_set):
@@ -32,6 +33,39 @@ def visualize_actions(action_set):
             grid_string += '\n'
         print(f'grid {i}:')
         print(grid_string)
+
+
+def produce_two_goal_visualization(network, env):
+    state_pairs = env.get_all_agent_positions()
+    state_image = cv2.resize(env.produce_image(env.blocks), (400, 400), interpolation=cv2.INTER_NEAREST)
+    data = [[] for _ in range(network.num_partitions)]
+    for (x,y), state in state_pairs:
+        state_reward = network.get_reward(state)
+        for i in range(network.num_partitions):
+            data[i].append(((x,y), state_reward[i]))
+    images = []
+    images.append(state_image)
+    for partition_state_pairs in data:
+        image = produce_reward_image(partition_state_pairs)
+        images.append(image)
+    stacked = horz_stack_images(*images)
+
+    cv2.imwrite('reward_vis.png', stacked)
+
+
+def produce_reward_image(partition_state_pairs):
+    canvas = np.zeros(shape=(5,5), dtype=np.float32)
+    for (x,y), reward in partition_state_pairs:
+        canvas[y, x] = reward
+    color_map = cv2.applyColorMap((255*np.clip(np.array(canvas), 0, 1)).astype(np.uint8), cv2.COLORMAP_JET)
+    color_map = cv2.resize(color_map, (400, 400), interpolation=cv2.INTER_NEAREST)
+    return color_map
+
+
+
+
+
+
 
 
 def apply_color_scheme(state_rewards, blank_state_indices, blank_color=(0,0,0)):
