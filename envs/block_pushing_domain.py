@@ -1,17 +1,19 @@
 import numpy as np
 import cv2
+import os
 from gym.spaces import Discrete, Box
 from envs.blocks import ConstantImmoveableBlock, ConstantMoveableBlock, ConstantGoalBlock, RandomMoveableBlock, \
-    RandomGoalBlock, RandomImmoveableBlock, AgentBlock
+    RandomGoalBlock, RandomImmoveableBlock, AgentBlock, BackgroundBlock
 from envs.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
 
+BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 
 
 class BlockPushingDomain(object):
 
     def __init__(self, observation_mode='vector'):
         self.grid_size = 5
-        self.block_size = 4
+        self.block_size = 96
         self.visual_mode_image_size = 32
         self.render_mode_image_size = self.grid_size * self.block_size
 
@@ -43,11 +45,23 @@ class BlockPushingDomain(object):
         #      RandomGoalBlock(self.goal_color1, reward=1.0),
         #      RandomGoalBlock(self.goal_color2, reward=1.0)]
         # )
+        # X(0,1,2), X(2,1,0), X(2,0,1), X(1,0,2), X(1,2,0), (0,2,1)
+        RGB_ordering = [0,1,2]
+        print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
+        background_texture = cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png'))[:, :, RGB_ordering]
+        agent_texture = cv2.imread(os.path.join(BASE_DIR, 'agent_sprite.png'))[:, :, RGB_ordering]
+        goal1_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_red.png'))[:, :, RGB_ordering]
+        goal2_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_green.png'))[:, :, RGB_ordering]
+        print('bg_shape', background_texture.shape)
+        background_color = (255, 0, 0)
+        background_blocks = [BackgroundBlock((x,y), background_color, background_texture)
+                             for x in range(self.grid_size) for y in range(self.grid_size)]
 
         self.blocks = (
-            [AgentBlock(self.agent_color),
-             ConstantGoalBlock((0,0), self.goal_color1, reward=1.0),
-             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0)]
+            [AgentBlock(self.agent_color, texture=agent_texture),
+             ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
+             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture)] +
+            background_blocks
         )
 
         # any time a change is made to blocks, there needs to be a corresponding call to update the block indices.
@@ -176,14 +190,20 @@ class BlockPushingDomain(object):
 
     def produce_image(self, object_positions, image_size):
         blocks = self.clone_blocks_from_object_positions(object_positions)
-        canvas = np.zeros(shape=[image_size, image_size, 3])
+        canvas = np.zeros(shape=[self.grid_size*self.block_size, self.grid_size*self.block_size, 3], dtype=np.uint8)
         canvas[:, :] = self.bg_color
+        #print(canvas.shape)
         for block in sorted(blocks, key=lambda x: x.get_draw_priority()):
             pos = block.get_position()
-            color = block.get_color()
+            if block.is_textured():
+                color_data = block.get_texture()
+                color_data = cv2.resize(color_data, (self.block_size, self.block_size), interpolation=cv2.INTER_NEAREST)
+            else:
+                color_data = block.get_color()
             x_pos, y_pos = self.block_size * pos[0], self.block_size * pos[1]
-            canvas[y_pos:y_pos+self.block_size, x_pos:x_pos+self.block_size] = color
-            canvas = cv2.resize(canvas, (image_size, image_size), interpolation=cv2.INTER_NEAREST)
+            #print('debug', x_pos, y_pos, self.block_size, color_data.shape, canvas.shape)
+            canvas[y_pos:y_pos+self.block_size, x_pos:x_pos+self.block_size] = color_data
+        canvas = cv2.resize(canvas, (image_size, image_size), interpolation=cv2.INTER_NEAREST)
         return canvas
 
 
