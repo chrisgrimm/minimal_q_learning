@@ -30,6 +30,8 @@ class BlockPushingDomain(object):
         self.action_mapping = {self.DOWN: (0, 1), self.UP: (0, -1),
                                self.RIGHT: (1, 0), self.LEFT: (-1, 0), self.NOOP: (0, 0)}
 
+        self.texture_cache = dict()
+
         self.goal_configuration = []
         # object positions are top-left positions.
 
@@ -47,12 +49,12 @@ class BlockPushingDomain(object):
         # )
         # X(0,1,2), X(2,1,0), X(2,0,1), X(1,0,2), X(1,2,0), (0,2,1)
         RGB_ordering = [0,1,2]
-        print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
+        #print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
         background_texture = cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png'))[:, :, RGB_ordering]
         agent_texture = cv2.imread(os.path.join(BASE_DIR, 'agent_sprite.png'))[:, :, RGB_ordering]
         goal1_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_red.png'))[:, :, RGB_ordering]
         goal2_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_green.png'))[:, :, RGB_ordering]
-        print('bg_shape', background_texture.shape)
+        #print('bg_shape', background_texture.shape)
         background_color = (255, 0, 0)
         background_blocks = [BackgroundBlock((x,y), background_color, background_texture)
                              for x in range(self.grid_size) for y in range(self.grid_size)]
@@ -125,12 +127,13 @@ class BlockPushingDomain(object):
 
 
     def get_all_agent_positions(self):
-        non_agent_non_goal_blocks = [block for block in self.blocks
-                                     if not (self.is_agent_block(block) or self.is_goal_block(block))]
+        # get all the blocks that could be in the way of an agent.
+        non_agent_physical_blocks = [block for block in self.blocks
+                                     if (not self.is_agent_block(block)) and block.is_physical()]
         state_pairs = []
         for y in range(self.grid_size):
             for x in range(self.grid_size):
-                valid_position = not any([(x,y) == block.get_position() for block in non_agent_non_goal_blocks])
+                valid_position = not any([(x,y) == block.get_position() for block in non_agent_physical_blocks])
                 if valid_position:
                     cloned_blocks = self.clone_blocks_with_new_agent_position((x, y))
                     positions = self.produce_object_positions_from_blocks(blocks=cloned_blocks)
@@ -192,19 +195,26 @@ class BlockPushingDomain(object):
         blocks = self.clone_blocks_from_object_positions(object_positions)
         canvas = np.zeros(shape=[self.grid_size*self.block_size, self.grid_size*self.block_size, 3], dtype=np.uint8)
         canvas[:, :] = self.bg_color
-        #print(canvas.shape)
         for block in sorted(blocks, key=lambda x: x.get_draw_priority()):
             pos = block.get_position()
             if block.is_textured():
-                color_data = block.get_texture()
-                color_data = cv2.resize(color_data, (self.block_size, self.block_size), interpolation=cv2.INTER_NEAREST)
+                color_data = self.get_texture_using_cache(block)
             else:
                 color_data = block.get_color()
             x_pos, y_pos = self.block_size * pos[0], self.block_size * pos[1]
-            #print('debug', x_pos, y_pos, self.block_size, color_data.shape, canvas.shape)
             canvas[y_pos:y_pos+self.block_size, x_pos:x_pos+self.block_size] = color_data
         canvas = cv2.resize(canvas, (image_size, image_size), interpolation=cv2.INTER_NEAREST)
         return canvas
+
+    def get_texture_using_cache(self, block):
+        if block.id in self.texture_cache:
+            return self.texture_cache[block.id]
+        else:
+            color_data = block.get_texture()
+            color_data = cv2.resize(color_data, (self.block_size, self.block_size), interpolation=cv2.INTER_NEAREST)
+            self.texture_cache[block.id] = color_data
+            return color_data
+
 
 
     def extract_obs_part_vector(self, obs):
@@ -369,6 +379,7 @@ if __name__ == '__main__':
         action = action_map[action_key]
         print(action)
         s, reward, terminal, _ = env.step(np.argmax(action))
+        cv2.imwrite('./test.png', s)
         print(s.shape)
         env.render()
         print(f'reward {reward}, terminal {terminal}')

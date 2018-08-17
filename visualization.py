@@ -42,6 +42,8 @@ def produce_two_goal_visualization(network, env):
     state_image = cv2.resize(state_image, (400, 400), interpolation=cv2.INTER_NEAREST)
     data = [[] for _ in range(network.num_partitions)]
     for (x,y), state in state_pairs:
+        #print('state', state)
+        #print(cv2.imwrite(f'./temp/{x}_{y}.png', state))
         state_reward = network.get_reward(state)
         for i in range(network.num_partitions):
             data[i].append(((x,y), state_reward[i]))

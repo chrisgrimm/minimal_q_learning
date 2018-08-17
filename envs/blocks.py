@@ -1,6 +1,14 @@
 from envs.initialization_types import ConstantInitialization, RandomInitialization, AgentInitialization
 import numpy as np
 
+def block_id_generator():
+    id = 0
+    while True:
+        yield id
+        id += 1
+
+BLOCK_ID_GEN = block_id_generator()
+
 class Block(object):
 
     def get_color(self):
@@ -90,10 +98,11 @@ class GoalBlock(Block):
 
 class ConstantMoveableBlock(MoveableBlock, Block):
 
-    def __init__(self, position, color, texture=None):
+    def __init__(self, position, color, texture=None, id=None):
         self.position = tuple(position)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
 
     def get_color(self):
         return self.color
@@ -115,7 +124,7 @@ class ConstantMoveableBlock(MoveableBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        return ConstantMoveableBlock(self.position, self.color, texture=texture)
+        return ConstantMoveableBlock(self.position, self.color, texture=texture, id=self.id)
 
     def get_initialization_type(self):
         return ConstantInitialization()
@@ -124,10 +133,12 @@ class ConstantMoveableBlock(MoveableBlock, Block):
 
 class RandomMoveableBlock(MoveableBlock, Block):
 
-    def __init__(self, color, texture=None):
+    def __init__(self, color, texture=None, id=None):
         self.position = (0,0)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -149,7 +160,7 @@ class RandomMoveableBlock(MoveableBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        block = RandomMoveableBlock(self.color, texture=texture)
+        block = RandomMoveableBlock(self.color, texture=texture, id=self.id)
         block.position = self.position
         return block
 
@@ -158,10 +169,12 @@ class RandomMoveableBlock(MoveableBlock, Block):
 
 class ConstantImmoveableBlock(ImmoveableBlock, Block):
 
-    def __init__(self, position, color, texture=None):
+    def __init__(self, position, color, texture=None, id=None):
         self.position = tuple(position)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -183,17 +196,19 @@ class ConstantImmoveableBlock(ImmoveableBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        return ConstantImmoveableBlock(self.position, self.color, texture=texture)
+        return ConstantImmoveableBlock(self.position, self.color, texture=texture, id=self.id)
 
     def get_initialization_type(self):
         return ConstantInitialization()
 
 class RandomImmoveableBlock(ImmoveableBlock, Block):
 
-    def __init__(self, color, texture=None):
+    def __init__(self, color, texture=None, id=None):
         self.position = (0,0)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -215,7 +230,7 @@ class RandomImmoveableBlock(ImmoveableBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        block = RandomImmoveableBlock(self.color, texture=texture)
+        block = RandomImmoveableBlock(self.color, texture=texture, id=self.id)
         block.position = self.position
         return block
 
@@ -223,10 +238,12 @@ class RandomImmoveableBlock(ImmoveableBlock, Block):
         return RandomInitialization()
 
 class AgentBlock(MoveableBlock, Block):
-    def __init__(self, color, texture=None):
+    def __init__(self, color, texture=None, id=None):
         self.position = (0,0)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -248,7 +265,7 @@ class AgentBlock(MoveableBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        block = AgentBlock(self.color, texture=texture)
+        block = AgentBlock(self.color, texture=texture, id=self.id)
         block.position = self.position
         return block
 
@@ -257,11 +274,13 @@ class AgentBlock(MoveableBlock, Block):
 
 class ConstantGoalBlock(GoalBlock, Block):
 
-    def __init__(self, position, color, reward=1.0, texture=None):
+    def __init__(self, position, color, reward=1.0, texture=None, id=None):
         self.position = tuple(position)
         self.color = tuple(color)
         self.reward = reward
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -283,7 +302,7 @@ class ConstantGoalBlock(GoalBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        return ConstantGoalBlock(self.position, self.color, texture=texture)
+        return ConstantGoalBlock(self.position, self.color, texture=texture, id=self.id)
 
     def get_initialization_type(self):
         return ConstantInitialization()
@@ -293,11 +312,13 @@ class ConstantGoalBlock(GoalBlock, Block):
 
 class RandomGoalBlock(GoalBlock, Block):
 
-    def __init__(self, color, reward=1.0, texture=None):
+    def __init__(self, color, reward=1.0, texture=None, id=None):
         self.position = (0,0)
         self.color = tuple(color)
         self.reward = reward
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -319,7 +340,7 @@ class RandomGoalBlock(GoalBlock, Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        block = RandomGoalBlock(self.color, texture=texture)
+        block = RandomGoalBlock(self.color, texture=texture, id=self.id)
         block.position = self.position
         return block
 
@@ -332,10 +353,12 @@ class RandomGoalBlock(GoalBlock, Block):
 
 class BackgroundBlock(Block):
 
-    def __init__(self, position, color, texture=None):
+    def __init__(self, position, color, texture=None, id=None):
         self.position = tuple(position)
         self.color = tuple(color)
         self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
 
     def get_color(self):
         return self.color
@@ -357,7 +380,7 @@ class BackgroundBlock(Block):
 
     def copy(self):
         texture = None if self.texture is None else np.copy(self.texture)
-        block = BackgroundBlock(self.position, self.color, texture=texture)
+        block = BackgroundBlock(self.position, self.color, texture=texture, id=self.id)
         return block
 
     def get_initialization_type(self):
