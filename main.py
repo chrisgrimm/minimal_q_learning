@@ -1,14 +1,21 @@
-import gym
 from random import choice
 import numpy as np
-from q_learner_agent import QLearnerAgent
 from replay_buffer import ReplayBuffer
-from envs.block_pushing_domain import BlockPushingDomain
+from envs.block_world.block_pushing_domain import BlockPushingDomain
 from reward_network import RewardPartitionNetwork
-from visualization import visualize_actions, get_state_max_rewards, produce_two_goal_visualization
+from visualization import produce_two_goal_visualization
 import argparse
 from utils import LOG, build_directory_structure
+import argparse
+from random import choice
 
+import numpy as np
+
+from envs.block_world.block_pushing_domain import BlockPushingDomain
+from replay_buffer import ReplayBuffer
+from reward_network import RewardPartitionNetwork
+from utils import LOG, build_directory_structure
+from visualization import produce_two_goal_visualization
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)

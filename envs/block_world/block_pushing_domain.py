@@ -1,10 +1,11 @@
-import numpy as np
-import cv2
 import os
-from gym.spaces import Discrete, Box
-from envs.blocks import ConstantImmoveableBlock, ConstantMoveableBlock, ConstantGoalBlock, RandomMoveableBlock, \
-    RandomGoalBlock, RandomImmoveableBlock, AgentBlock, BackgroundBlock
+
+import cv2
+import numpy as np
 from envs.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
+from gym.spaces import Discrete, Box
+
+from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock
 
 BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 

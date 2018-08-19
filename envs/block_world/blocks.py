@@ -1,5 +1,7 @@
-from envs.initialization_types import ConstantInitialization, RandomInitialization, AgentInitialization
 import numpy as np
+
+from envs.block_world.initialization_types import ConstantInitialization, RandomInitialization, AgentInitialization
+
 
 def block_id_generator():
     id = 0
