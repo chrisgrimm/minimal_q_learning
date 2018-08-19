@@ -1,4 +1,5 @@
 import gym
+from random import choice
 import numpy as np
 from q_learner_agent import QLearnerAgent
 from replay_buffer import ReplayBuffer
@@ -12,7 +13,7 @@ from utils import LOG, build_directory_structure
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
 args = parser.parse_args()
-
+num_partitions = 2
 
 build_directory_structure('.', {'runs': {args.name: {}}})
 LOG.setup(f'./runs/{args.name}')
@@ -26,7 +27,7 @@ dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, 2, env.observation_space.shape[0], env.action_space.n, 'reward_net', visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', visual=visual)
 
 batch_size = 32
 s = env.reset()
@@ -39,11 +40,25 @@ num_epsilon_steps = 100000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
 
+# indices of current policy
+policy_indices = list(range(num_partitions)) + [-1]
+current_policy = choice(policy_indices)
+
+def get_action(s):
+    global current_policy
+    is_random = np.random.uniform(0, 1) < 0.1
+    if current_policy == -1 or is_random:
+        action = np.random.randint(0, env.action_space.n)
+    else:
+        action = reward_net.get_state_actions([s])[current_policy][0]
+    return action
 
 
 while True:
     # take random action
-    a = np.random.randint(0, env.action_space.n)
+
+    #a = np.random.randint(0, env.action_space.n)
+    a = get_action(s)
     sp, r, t, _ = env.step(a)
     if r > 0:
         partitioned_r = reward_net.get_partitioned_reward([s])[0]
@@ -54,6 +69,7 @@ while True:
     buffer.append(s, a, r, sp, t)
     if t:
         s = env.reset()
+        current_policy = choice(policy_indices)
         print(f'Episode Reward: {episode_reward}')
         print(f'Epsilon {epsilon}')
         episode_reward = 0

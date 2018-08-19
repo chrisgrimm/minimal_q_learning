@@ -13,7 +13,7 @@ class BlockPushingDomain(object):
 
     def __init__(self, observation_mode='vector'):
         self.grid_size = 5
-        self.block_size = 96
+        self.block_size = 8
         self.visual_mode_image_size = 32
         self.render_mode_image_size = self.grid_size * self.block_size
 
@@ -50,10 +50,10 @@ class BlockPushingDomain(object):
         # X(0,1,2), X(2,1,0), X(2,0,1), X(1,0,2), X(1,2,0), (0,2,1)
         RGB_ordering = [0,1,2]
         #print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
-        background_texture = cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png'))[:, :, RGB_ordering]
-        agent_texture = cv2.imread(os.path.join(BASE_DIR, 'agent_sprite.png'))[:, :, RGB_ordering]
-        goal1_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_red.png'))[:, :, RGB_ordering]
-        goal2_texture = cv2.imread(os.path.join(BASE_DIR, 'reward_square_green.png'))[:, :, RGB_ordering]
+        background_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'blue_wall.png'))[:, :, RGB_ordering]
+        agent_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'agent_sprite.png'))[:, :, RGB_ordering]
+        goal1_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'reward_square_red.png'))[:, :, RGB_ordering]
+        goal2_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'reward_square_green.png'))[:, :, RGB_ordering]
         #print('bg_shape', background_texture.shape)
         background_color = (255, 0, 0)
         background_blocks = [BackgroundBlock((x,y), background_color, background_texture)
