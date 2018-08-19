@@ -84,19 +84,18 @@ while True:
             q_losses = reward_net.train_Q_networks()
         for j in range(3):
             reward_loss = reward_net.train_R_function(dummy_env)
-        LOG.add_line('q_loss0', q_losses[0])
-        LOG.add_line('q_loss1', q_losses[1])
+        # tensorboard logging.
+        for j in range(num_partitions):
+            LOG.add_line(f'q_loss{j}', q_losses[j])
         LOG.add_line('reward_loss', reward_loss)
-        print(f'({i}) Q_1_loss: {q_losses[0]}\t Q_2_loss: {q_losses[1]}\t Reward Loss: {reward_loss}')
 
-        #state_pairs = dummy_env.get_all_agent_positions()
+        log_string = f'({i}) ' + \
+                     ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
+                     f'Reward Loss: {reward_loss}'
+        print(log_string)
+
         produce_two_goal_visualization(reward_net, dummy_env)
-        #all_states = dummy_env.get_all_states()
-        #get_state_max_rewards(all_states, reward_net)
-        #values = reward_net.get_state_values(all_states)
-        #actions = reward_net.get_state_actions(all_states)
-        #visualize_actions(actions)
-        #loss = agent.train_batch(s_sample, a_sample, r_sample, sp_sample, t_sample)
+
 
     i += 1
 

@@ -32,43 +32,84 @@ class RewardPartitionNetwork(object):
             partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, 'reward_partition')
             self.partitioned_reward = partitioned_reward
 
-            ################
-            # pi1_then_pi1
-            if self.visual:
-                self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.uint8, self.obs_shape_traj)
-                self.inp_sp_trajs_pi1_then_pi1_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi1_then_pi1, dtype=tf.float32)
-            else:
-                self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.float32, self.obs_shape_traj)
-                self.inp_sp_trajs_pi1_then_pi1_converted = self.inp_sp_trajs_pi1_then_pi1
 
-            self.reward_trajs_pi1_then_pi1 = self.partition_reward_traj(self.inp_sp_trajs_pi1_then_pi1_converted,
-                                                                        name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            pi1_then_pi1_values = self.get_values(self.reward_trajs_pi1_then_pi1)
-            value2_on_policy1 = pi1_then_pi1_values[:, 1]
+            # build the list of placeholders
+            self.list_inp_sp_traj = []
+            #self.list_inp_sp_traj_converted = []
+            #self.list_reward_trajs = []
+            self.list_trajectory_values = []
+            for i in range(self.num_partitions):
+                if self.visual:
+                    inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
+                    self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
+                    inp_sp_trajs_i_then_i_converted = tf.image.convert_image_dtype(inp_sp_trajs_i_then_i,
+                                                                                   dtype=tf.float32)
+                else:
+                    inp_sp_trajs_i_then_i = tf.placeholder(tf.float32, self.obs_shape_traj)
+                    self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
+                    inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
 
-
-
-            #################
-            # pi2_then_pi2
-            if self.visual:
-                self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.uint8, self.obs_shape_traj)
-                self.inp_sp_trajs_pi2_then_pi2_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi2_then_pi2, dtype=tf.float32)
-            else:
-                self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.float32, self.obs_shape_traj)
-                self.inp_sp_trajs_pi2_then_pi2_converted = self.inp_sp_trajs_pi2_then_pi2
-
-            self.reward_trajs_pi2_then_pi2 = self.partition_reward_traj(self.inp_sp_trajs_pi2_then_pi2_converted,
-                                                                        #self.a_onehot_trajs_pi2_then_pi2,
-                                                                        name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            pi2_then_pi2_values = self.get_values(self.reward_trajs_pi2_then_pi2)
-            value1_on_policy2 = pi2_then_pi2_values[:, 0]
-
+                reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
+                                                                   name='reward_partition',
+                                                                   reuse=True)
+                i_trajectory_values = self.get_values(reward_trajs_i_then_i)
+                self.list_trajectory_values.append(i_trajectory_values)
 
             partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
-            Q_constraint = tf.reduce_mean(tf.square(value1_on_policy2) +
-                                          tf.square(value2_on_policy1)
-                                          )
-            self.loss = Q_constraint + partition_constraint
+
+            # build the value constraint
+            value_constraint = 0
+            for i in range(self.num_partitions):
+                for j in range(self.num_partitions):
+                    if i == j:
+                        continue
+                    value_constraint += tf.square(self.list_trajectory_values[i][:, j])
+            value_constraint = tf.reduce_mean(value_constraint, axis=0)
+
+
+
+
+
+
+
+            # ################
+            # # pi1_then_pi1
+            # if self.visual:
+            #     self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.uint8, self.obs_shape_traj)
+            #     self.inp_sp_trajs_pi1_then_pi1_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi1_then_pi1, dtype=tf.float32)
+            # else:
+            #     self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.float32, self.obs_shape_traj)
+            #     self.inp_sp_trajs_pi1_then_pi1_converted = self.inp_sp_trajs_pi1_then_pi1
+            #
+            # self.reward_trajs_pi1_then_pi1 = self.partition_reward_traj(self.inp_sp_trajs_pi1_then_pi1_converted,
+            #                                                             name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
+            # pi1_then_pi1_values = self.get_values(self.reward_trajs_pi1_then_pi1)
+            #
+            # value2_on_policy1 = pi1_then_pi1_values[:, 1]
+            #
+            #
+            #
+            # #################
+            # # pi2_then_pi2
+            # if self.visual:
+            #     self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.uint8, self.obs_shape_traj)
+            #     self.inp_sp_trajs_pi2_then_pi2_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi2_then_pi2, dtype=tf.float32)
+            # else:
+            #     self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.float32, self.obs_shape_traj)
+            #     self.inp_sp_trajs_pi2_then_pi2_converted = self.inp_sp_trajs_pi2_then_pi2
+            #
+            # self.reward_trajs_pi2_then_pi2 = self.partition_reward_traj(self.inp_sp_trajs_pi2_then_pi2_converted,
+            #                                                             #self.a_onehot_trajs_pi2_then_pi2,
+            #                                                             name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
+            # pi2_then_pi2_values = self.get_values(self.reward_trajs_pi2_then_pi2)
+            # value1_on_policy2 = pi2_then_pi2_values[:, 0]
+            #
+            #
+            # partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+            # Q_constraint = tf.reduce_mean(tf.square(value1_on_policy2) +
+            #                               tf.square(value2_on_policy1)
+            #                               )
+            self.loss = value_constraint + partition_constraint
 
             reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
             print(reward_params)
@@ -105,27 +146,27 @@ class RewardPartitionNetwork(object):
         sp_batch = sp_no_reward_batch + sp_reward_batch
 
         # collect  all the trajectories.
-        SP_pi1_then_pi1_batch = []
-        SP_pi2_then_pi2_batch = []
+        all_SP_traj_batches = [[] for _ in range(self.num_partitions)]
 
         for i in range(batch_size):
+            # initialize the environment randomly and collect the initial state. this allows us to perform the necessary
+            # resets to estimate values.
             dummy_env.reset()
             starting_state = dummy_env.get_current_state()
 
-            SP_pi1_then_pi1 = self.get_trajectory(dummy_env, starting_state, 0, self.traj_len)
-            SP_pi1_then_pi1_batch.append(SP_pi1_then_pi1)
+            for j in range(self.num_partitions):
+                SP_j_then_j = self.get_trajectory(dummy_env, starting_state, j, self.traj_len)
+                all_SP_traj_batches[j].append(SP_j_then_j)
 
-            SP_pi2_then_pi2 = self.get_trajectory(dummy_env, starting_state, 1, self.traj_len)
-            SP_pi2_then_pi2_batch.append(SP_pi2_then_pi2)
-
-
-        [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict={
+        feed_dict = {
             self.inp_sp: sp_batch,
-            self.inp_r: r_batch,
-            self.inp_sp_trajs_pi1_then_pi1: SP_pi1_then_pi1_batch,
-            self.inp_sp_trajs_pi2_then_pi2: SP_pi2_then_pi2_batch
-        })
+            self.inp_r: r_batch
+        }
 
+        for i in range(self.num_partitions):
+            feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
+
+        [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
         return loss
 
 
@@ -195,6 +236,8 @@ class RewardPartitionNetwork(object):
     def get_reward(self, sp):
         return self.get_partitioned_reward([sp])[0]
 
+
+    # returns vector V where V_i = value of trajectory under reward i.
     def get_values(self, rs_traj):
         # rs_traj : [bs, traj_len, num_partitions]
         print(rs_traj)
