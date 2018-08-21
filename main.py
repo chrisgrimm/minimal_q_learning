@@ -12,7 +12,7 @@ from random import choice
 import cv2
 
 import numpy as np
-
+from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
 from reward_network import RewardPartitionNetwork
@@ -40,7 +40,10 @@ if mode == 'ASSAULT':
     # visual mode must be on for Assault domain.
     assert visual
     env = SimpleAssault(initial_states_file='stored_states_64.pickle')
-    dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: SimpleAssault(initial_states_file='stored_states_64.pickle'),
+                                            SimpleAssault)
+    #dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
@@ -118,13 +121,13 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
+    if buffer.length() >= batch_size and reward_buffer.length() >= 100:
         pre_training = False
         s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(3):
-            reward_loss = reward_net.train_R_function(dummy_env)
+            reward_loss = reward_net.train_R_function(dummy_env_cluster)
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])

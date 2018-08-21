@@ -36,6 +36,7 @@ class RewardPartitionNetwork(object):
 
             # build the list of placeholders
             self.list_inp_sp_traj = []
+            self.list_inp_t_traj = []
             #self.list_inp_sp_traj_converted = []
             #self.list_reward_trajs = []
             self.list_trajectory_values = []
@@ -50,10 +51,13 @@ class RewardPartitionNetwork(object):
                     self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
                     inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
 
+                inp_t_trajs_i_then_i = tf.placeholder(tf.bool, [None, self.traj_len])
+                self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
+
                 reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
                                                                    name='reward_partition',
                                                                    reuse=True)
-                i_trajectory_values = self.get_values(reward_trajs_i_then_i)
+                i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                 self.list_trajectory_values.append(i_trajectory_values)
 
             partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
@@ -66,13 +70,6 @@ class RewardPartitionNetwork(object):
                         continue
                     value_constraint += tf.square(self.list_trajectory_values[i][:, j])
             value_constraint = tf.reduce_mean(value_constraint, axis=0)
-
-
-
-
-
-
-
 
             self.loss = value_constraint + partition_constraint
 
@@ -104,34 +101,41 @@ class RewardPartitionNetwork(object):
 
 
 
-    def train_R_function(self, dummy_env):
+    def train_R_function(self, dummy_env_cluster):
         batch_size = 32
 
-        _, _, r_no_reward_batch, sp_no_reward_batch, _ = self.buffer.sample(batch_size // 2)
+        _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
         _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
         r_batch = r_no_reward_batch + r_reward_batch
         sp_batch = sp_no_reward_batch + sp_reward_batch
 
         # collect  all the trajectories.
-        all_SP_traj_batches = [[] for _ in range(self.num_partitions)]
+        all_SP_traj_batches = []
+        all_T_traj_batches = []
 
-        for i in range(batch_size):
             # initialize the environment randomly and collect the initial state. this allows us to perform the necessary
             # resets to estimate values.
-            dummy_env.reset()
-            starting_state = dummy_env.get_current_state()
-
-            for j in range(self.num_partitions):
-                SP_j_then_j = self.get_trajectory(dummy_env, starting_state, j, self.traj_len)
-                all_SP_traj_batches[j].append(SP_j_then_j)
+        #dummy_env_cluster('reset', args=[])
+        #starting_state = dummy_env.get_current_state()
+        #starting_states = dummy_env_cluster('get_current_state', args=[])
 
         feed_dict = {
             self.inp_sp: sp_batch,
             self.inp_r: r_batch
         }
 
-        for i in range(self.num_partitions):
-            feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
+        for j in range(self.num_partitions):
+            dummy_env_cluster('reset', args=[])
+            starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
+            SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
+            feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
+
+
+
+        # for i in range(self.num_partitions):
+        #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
+        #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
 
         [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
         return loss
@@ -139,14 +143,22 @@ class RewardPartitionNetwork(object):
 
 
     # grab sample trajectories from a starting state.
-    def get_trajectory(self, dummy_env, starting_state, policy, trajectory_length):
+    def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
         sp_traj = []
-        s0 = dummy_env.restore_state(starting_state)
+        t_traj = []
+        #s0 = dummy_env.restore_state(starting_state)
+        s0_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
-            a = self.Q_networks[policy].get_action([s0])[0]
-            s, _, _, _ = dummy_env.step(a)
-            sp_traj.append(s)
-        return sp_traj
+            #a = self.Q_networks[policy].get_action([s0])[0]
+            a_list = [[x] for x in self.Q_networks[policy].get_action(s0_list)]
+            #s, _, t, _ = dummy_env.step(a)
+            #(sp, r, t, info)
+            experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
+            sp_traj.append([s for (s, _, t, _) in experience_tuple_list])
+            t_traj.append([t for (s, _, t, _) in experience_tuple_list])
+        sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
+        t_traj = np.transpose(t_traj, [1, 0])
+        return sp_traj, t_traj
 
 
     def partitioned_reward_tf(self, sp, name, reuse=None):
@@ -206,13 +218,15 @@ class RewardPartitionNetwork(object):
 
 
     # returns vector V where V_i = value of trajectory under reward i.
-    def get_values(self, rs_traj):
+    def get_values(self, rs_traj, ts_traj):
         # rs_traj : [bs, traj_len, num_partitions]
+        # ts_traj : [bs, traj_len]
         print(rs_traj)
         gamma = 0.99
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
+        t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
         #prod_reward = 0.0
-        out = tf.reduce_sum(rs_traj * gamma_sequence, axis=1) # [bs, num_partitions]
+        out = tf.reduce_sum(rs_traj * gamma_sequence * t_sequence, axis=1) # [bs, num_partitions]
         print('out', out)
         return out
 
