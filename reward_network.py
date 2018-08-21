@@ -101,7 +101,7 @@ class RewardPartitionNetwork(object):
 
 
 
-    def train_R_function(self, dummy_env):
+    def train_R_function(self, dummy_env_cluster):
         batch_size = 32
 
         _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
@@ -110,28 +110,32 @@ class RewardPartitionNetwork(object):
         sp_batch = sp_no_reward_batch + sp_reward_batch
 
         # collect  all the trajectories.
-        all_SP_traj_batches = [[] for _ in range(self.num_partitions)]
-        all_T_traj_batches = [[] for _ in range(self.num_partitions)]
+        all_SP_traj_batches = []
+        all_T_traj_batches = []
 
-        for i in range(batch_size):
             # initialize the environment randomly and collect the initial state. this allows us to perform the necessary
             # resets to estimate values.
-            dummy_env.reset()
-            starting_state = dummy_env.get_current_state()
-
-            for j in range(self.num_partitions):
-                SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env, starting_state, j, self.traj_len)
-                all_SP_traj_batches[j].append(SP_j_then_j)
-                all_T_traj_batches[j].append(T_j_then_j)
+        #dummy_env_cluster('reset', args=[])
+        #starting_state = dummy_env.get_current_state()
+        #starting_states = dummy_env_cluster('get_current_state', args=[])
 
         feed_dict = {
             self.inp_sp: sp_batch,
             self.inp_r: r_batch
         }
 
-        for i in range(self.num_partitions):
-            feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
-            feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
+        for j in range(self.num_partitions):
+            dummy_env_cluster('reset', args=[])
+            starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
+            SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
+            feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
+
+
+
+        # for i in range(self.num_partitions):
+        #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
+        #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
 
         [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
         return loss
@@ -139,15 +143,21 @@ class RewardPartitionNetwork(object):
 
 
     # grab sample trajectories from a starting state.
-    def get_trajectory(self, dummy_env, starting_state, policy, trajectory_length):
+    def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
         sp_traj = []
         t_traj = []
-        s0 = dummy_env.restore_state(starting_state)
+        #s0 = dummy_env.restore_state(starting_state)
+        s0_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
-            a = self.Q_networks[policy].get_action([s0])[0]
-            s, _, t, _ = dummy_env.step(a)
-            sp_traj.append(s)
-            t_traj.append(t)
+            #a = self.Q_networks[policy].get_action([s0])[0]
+            a_list = [[x] for x in self.Q_networks[policy].get_action(s0_list)]
+            #s, _, t, _ = dummy_env.step(a)
+            #(sp, r, t, info)
+            experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
+            sp_traj.append([s for (s, _, t, _) in experience_tuple_list])
+            t_traj.append([t for (s, _, t, _) in experience_tuple_list])
+        sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
+        t_traj = np.transpose(t_traj, [1, 0])
         return sp_traj, t_traj
 
 
