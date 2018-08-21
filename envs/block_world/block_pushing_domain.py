@@ -48,7 +48,7 @@ class BlockPushingDomain(object):
         #      RandomGoalBlock(self.goal_color1, reward=1.0),
         #      RandomGoalBlock(self.goal_color2, reward=1.0)]
         # )
-        # X(0,1,2), X(2,1,0), X(2,0,1), X(1,0,2), X(1,2,0), (0,2,1)
+
         RGB_ordering = [0,1,2]
         #print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
         background_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'blue_wall.png'))[:, :, RGB_ordering]

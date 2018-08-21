@@ -9,6 +9,7 @@ import argparse
 from utils import LOG, build_directory_structure
 import argparse
 from random import choice
+import cv2
 
 import numpy as np
 
@@ -38,8 +39,8 @@ if mode == 'ASSAULT':
     visualization_func = produce_assault_ship_histogram_visualization
     # visual mode must be on for Assault domain.
     assert visual
-    env = SimpleAssault()
-    dummy_env = SimpleAssault()
+    env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
@@ -49,7 +50,9 @@ elif mode == 'SOKOBAN':
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
-build_directory_structure('.', {'runs': {args.name: {}}})
+build_directory_structure('.', {'runs': {
+    args.name: {
+        'images': {}}}})
 LOG.setup(f'./runs/{args.name}')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
@@ -92,9 +95,15 @@ while True:
     a = get_action(s)
     sp, r, t, _ = env.step(a)
     if r > 0:
-        partitioned_r = reward_net.get_partitioned_reward([s])[0]
+        partitioned_r = reward_net.get_partitioned_reward([sp])[0]
+        print(f'{reward_buffer.length()}/{1000}')
+
         reward_buffer.append(s, a, r, sp, t)
+        #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
+        #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
+        #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
         print(r, partitioned_r)
+
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
@@ -102,16 +111,16 @@ while True:
         s = env.reset()
         current_policy = choice(policy_indices)
         print(f'Episode Reward: {episode_reward}')
-        print(f'Epsilon {epsilon}')
+        #print(f'Epsilon {epsilon}')
         episode_reward = 0
     else:
         s = sp
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= batch_size:
+    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
         pre_training = False
-        #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
+        s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(3):
@@ -119,6 +128,7 @@ while True:
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
+
         LOG.add_line('reward_loss', reward_loss)
 
         log_string = f'({i}) ' + \
@@ -127,7 +137,7 @@ while True:
         print(log_string)
 
         if i % 100 == 0:
-            visualization_func(reward_net, dummy_env)
+            visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
 
 

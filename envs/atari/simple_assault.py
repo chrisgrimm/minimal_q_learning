@@ -20,7 +20,8 @@ class SimpleAssault(object):
             with open(os.path.join(BASE_DIR, initial_states_file), 'rb') as f:
                 self.stored_states = pickle.load(f)
         self.action_space = self.env.action_space
-        self.observation_space = Box(0, 255, shape=[32, 32, 3])
+        self.image_size = 64
+        self.observation_space = Box(0, 255, shape=[self.image_size, self.image_size, 3])
 
     def get_current_state(self):
         state = self.env.env.clone_full_state()
@@ -36,7 +37,7 @@ class SimpleAssault(object):
 
     def get_raw_obs(self):
         obs = self.env.env._get_obs()
-        return cv2.resize(obs, (32, 32))
+        return cv2.resize(obs, (self.image_size, self.image_size))
 
     def get_obs(self):
         return np.concatenate([np.copy(x) for x in self.frame_buffer], axis=2) # [32 x 32 x 3*frame_buffer_len]
@@ -57,7 +58,7 @@ class SimpleAssault(object):
 
     def reset(self):
         if not self.use_initial_states:
-            self.frame_buffer = [np.zeros(shape=[32, 32, 3]) for _ in range(self.frame_buffer_len)]
+            self.frame_buffer = [np.zeros(shape=[self.image_size, self.image_size, 3]) for _ in range(self.frame_buffer_len)]
             self.step_num = 0
             self.env.reset()
             self.frame_buffer = self.frame_buffer[1:] + [self.get_raw_obs()]
@@ -145,7 +146,7 @@ if __name__ == '__main__':
         global all_states
         new_state = env.get_current_state()
         all_states.append(new_state)
-        with open('stored_states.pickle', 'wb') as f:
+        with open('stored_states_64.pickle', 'wb') as f:
             pickle.dump(all_states, f)
 
     def onehot(i, n):
@@ -153,14 +154,14 @@ if __name__ == '__main__':
         a[i] = 1
         return a
 
-    env = SimpleAssault()
+    env = SimpleAssault(initial_states_file=None)
     ram_tracker = RAMTracker(env.env.env.ale.getRAMSize())
     n = env.env.action_space.n
 
-    action_mapping = {'w': onehot(2, n),
-                      'a': onehot(4, n),
-                      'd': onehot(3, n),
-                      '': onehot(0, n),
+    action_mapping = {'w': 2,
+                      'a': 4,
+                      'd': 3,
+                      '': 0,
                       'save': save,
                       'restore': restore,
                       'store': store_state,
@@ -178,7 +179,7 @@ if __name__ == '__main__':
             continue
         s, r, t, _ = env.step(action)
         print(s.shape, s[:, :, -3:].shape)
-        #cv2.imshow('game', np.concatenate([s[:, :, 0:3], s[:, :, 3:6], s[:, :, 6:9]], axis=1))
+        cv2.imshow('game', np.concatenate([s[:, :, 0:3], s[:, :, 3:6], s[:, :, 6:9]], axis=1))
 
         ram = env.env.env.ale.getRAM()
         print(ram[54:57])

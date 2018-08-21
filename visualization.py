@@ -35,7 +35,7 @@ def visualize_actions(action_set):
         print(grid_string)
 
 
-def produce_two_goal_visualization(network, env):
+def produce_two_goal_visualization(network, env, name):
     state_pairs = env.get_all_agent_positions()
     current_object_positions = env.produce_object_positions_from_blocks()
     state_image = env.produce_image(current_object_positions, env.render_mode_image_size)
@@ -54,11 +54,11 @@ def produce_two_goal_visualization(network, env):
         images.append(image)
     stacked = horz_stack_images(*images)
 
-    cv2.imwrite('reward_vis.png', stacked)
+    cv2.imwrite(name, stacked)
 
 # run each policy like 10 times. track the ships that it targets
-def produce_assault_ship_histogram_visualization(network, env):
-    num_episodes_per_policy = 10
+def produce_assault_ship_histogram_visualization(network, env, name):
+    num_episodes_per_policy = 100
     all_hist_arrays = []
     for i in range(network.num_partitions):
         ship1 = ship2 = ship3 = miss = 0
@@ -88,7 +88,7 @@ def produce_assault_ship_histogram_visualization(network, env):
     print(all_hist_arrays.shape, all_hist_arrays.dtype)
     color_map = cv2.applyColorMap(all_hist_arrays, cv2.COLORMAP_JET)
     color_map = cv2.resize(color_map, (200*4, 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
-    cv2.imwrite('policy_vis.png', color_map)
+    cv2.imwrite(name, color_map)
 
 
 def produce_reward_image(partition_state_pairs):

@@ -14,8 +14,8 @@ class RewardPartitionNetwork(object):
         self.visual = visual
         self.traj_len = 10
         self.num_visual_channels = num_visual_channels
-        self.obs_shape = [None, self.obs_size] if not self.visual else [None, 32, 32, self.num_visual_channels]
-        self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 32, 32, self.num_visual_channels]
+        self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
+        self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
 
         self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual)
@@ -73,43 +73,7 @@ class RewardPartitionNetwork(object):
 
 
 
-            # ################
-            # # pi1_then_pi1
-            # if self.visual:
-            #     self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.uint8, self.obs_shape_traj)
-            #     self.inp_sp_trajs_pi1_then_pi1_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi1_then_pi1, dtype=tf.float32)
-            # else:
-            #     self.inp_sp_trajs_pi1_then_pi1 = tf.placeholder(tf.float32, self.obs_shape_traj)
-            #     self.inp_sp_trajs_pi1_then_pi1_converted = self.inp_sp_trajs_pi1_then_pi1
-            #
-            # self.reward_trajs_pi1_then_pi1 = self.partition_reward_traj(self.inp_sp_trajs_pi1_then_pi1_converted,
-            #                                                             name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            # pi1_then_pi1_values = self.get_values(self.reward_trajs_pi1_then_pi1)
-            #
-            # value2_on_policy1 = pi1_then_pi1_values[:, 1]
-            #
-            #
-            #
-            # #################
-            # # pi2_then_pi2
-            # if self.visual:
-            #     self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.uint8, self.obs_shape_traj)
-            #     self.inp_sp_trajs_pi2_then_pi2_converted = tf.image.convert_image_dtype(self.inp_sp_trajs_pi2_then_pi2, dtype=tf.float32)
-            # else:
-            #     self.inp_sp_trajs_pi2_then_pi2 = tf.placeholder(tf.float32, self.obs_shape_traj)
-            #     self.inp_sp_trajs_pi2_then_pi2_converted = self.inp_sp_trajs_pi2_then_pi2
-            #
-            # self.reward_trajs_pi2_then_pi2 = self.partition_reward_traj(self.inp_sp_trajs_pi2_then_pi2_converted,
-            #                                                             #self.a_onehot_trajs_pi2_then_pi2,
-            #                                                             name='reward_partition', reuse=True)  # [bs, traj_len, num_partitions]
-            # pi2_then_pi2_values = self.get_values(self.reward_trajs_pi2_then_pi2)
-            # value1_on_policy2 = pi2_then_pi2_values[:, 0]
-            #
-            #
-            # partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
-            # Q_constraint = tf.reduce_mean(tf.square(value1_on_policy2) +
-            #                               tf.square(value2_on_policy1)
-            #                               )
+
             self.loss = value_constraint + partition_constraint
 
             reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
@@ -117,7 +81,9 @@ class RewardPartitionNetwork(object):
             self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
 
         all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
-        self.sess = tf.Session()
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        self.sess = sess = tf.Session(config=config)
         self.sess.run(tf.variables_initializer(all_variables))
 
 
@@ -203,6 +169,7 @@ class RewardPartitionNetwork(object):
         with tf.variable_scope(name, reuse=reuse):
             # sp : [bs, 32, 32 ,3]
             x = sp
+            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')

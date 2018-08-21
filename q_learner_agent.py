@@ -13,7 +13,7 @@ class QLearnerAgent(object):
             self.use_top_level=False
             self.visual = visual
             tau = 0.99
-            self.state_shape = [None, obs_size] if not visual else [None, 32, 32, num_visual_channels]
+            self.state_shape = [None, obs_size] if not visual else [None, 64, 64, num_visual_channels]
 
             if self.visual:
                 self.inp_s = tf.placeholder(tf.uint8, self.state_shape, name='inp_s')
@@ -55,7 +55,9 @@ class QLearnerAgent(object):
                                             for network, target in zip(qa_vars, qa_target_vars)])
             self.hard_update_target = hard_update_target
 
-            self.sess = tf.Session()
+            config = tf.ConfigProto(allow_soft_placement=True)
+            config.gpu_options.allow_growth = True
+            self.sess = sess = tf.Session(config=config)
         all_vars = tf.get_collection(tf.GraphKeys.VARIABLES, scope=name+'/')
         self.sess.run(tf.variables_initializer(all_vars))
         self.sess.run(self.hard_update_target)
@@ -77,6 +79,7 @@ class QLearnerAgent(object):
         with tf.variable_scope(name, reuse=reuse):
             # obs : [bs, 32, 32 ,3]
             x = obs
+            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1') # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2') # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8*8*32]), 128, activation=tf.nn.relu, name='fc1')
