@@ -58,7 +58,7 @@ def produce_two_goal_visualization(network, env, name):
 
 # run each policy like 10 times. track the ships that it targets
 def produce_assault_ship_histogram_visualization(network, env, name):
-    num_episodes_per_policy = 100
+    num_episodes_per_policy = 10
     all_hist_arrays = []
     for i in range(network.num_partitions):
         ship1 = ship2 = ship3 = miss = 0
