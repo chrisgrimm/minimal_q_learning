@@ -2,8 +2,9 @@ from random import choice
 import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
+from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
 import argparse
 from utils import LOG, build_directory_structure
 import argparse
@@ -15,26 +16,47 @@ from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
 from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
-from visualization import produce_two_goal_visualization
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
 args = parser.parse_args()
-num_partitions = 2
+
+mode_options = ['SOKOBAN', 'ASSAULT']
+mode = 'ASSAULT'
+visual = True
+
+assert mode in mode_options
+
+
+
+observation_mode = 'image' if visual else 'vector'
+
+
+if mode == 'ASSAULT':
+    num_partitions = 3
+    num_visual_channels = 9
+    visualization_func = produce_assault_ship_histogram_visualization
+    # visual mode must be on for Assault domain.
+    assert visual
+    env = SimpleAssault()
+    dummy_env = SimpleAssault()
+elif mode == 'SOKOBAN':
+    num_partitions = 2
+    num_visual_channels = 3
+    visualization_func = produce_two_goal_visualization
+    env = BlockPushingDomain(observation_mode=observation_mode)
+    dummy_env = BlockPushingDomain(observation_mode=observation_mode)
+else:
+    raise Exception(f'mode must be in {mode_options}.')
 
 build_directory_structure('.', {'runs': {args.name: {}}})
 LOG.setup(f'./runs/{args.name}')
-
-visual = True
-observation_mode = 'image' if visual else 'vector'
-env = BlockPushingDomain(observation_mode=observation_mode)
-dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', num_visual_channels=num_visual_channels, visual=visual)
 
 batch_size = 32
 s = env.reset()
@@ -52,14 +74,16 @@ policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
 def get_action(s):
+    global pre_training
     global current_policy
     is_random = np.random.uniform(0, 1) < 0.1
-    if current_policy == -1 or is_random:
+    if current_policy == -1 or is_random or pre_training:
         action = np.random.randint(0, env.action_space.n)
     else:
         action = reward_net.get_state_actions([s])[current_policy][0]
     return action
 
+pre_training = True
 
 while True:
     # take random action
@@ -86,6 +110,7 @@ while True:
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
     if buffer.length() >= batch_size and reward_buffer.length() >= batch_size:
+        pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
@@ -101,7 +126,9 @@ while True:
                      f'Reward Loss: {reward_loss}'
         print(log_string)
 
-        produce_two_goal_visualization(reward_net, dummy_env)
+        if i % 100 == 0:
+            visualization_func(reward_net, dummy_env)
+
 
 
     i += 1

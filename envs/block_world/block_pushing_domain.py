@@ -2,7 +2,7 @@ import os
 
 import cv2
 import numpy as np
-from envs.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
+from envs.block_world.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
 from gym.spaces import Discrete, Box
 
 from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock

@@ -4,7 +4,7 @@ from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, reuse=None):
+    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, reuse=None):
 
         self.num_partitions = num_partitions
         self.num_actions = num_actions
@@ -13,11 +13,12 @@ class RewardPartitionNetwork(object):
         self.reward_buffer = reward_buffer
         self.visual = visual
         self.traj_len = 10
-        self.obs_shape = [None, self.obs_size] if not self.visual else [None, 32, 32, 3]
-        self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 32, 32, 3]
+        self.num_visual_channels = num_visual_channels
+        self.obs_shape = [None, self.obs_size] if not self.visual else [None, 32, 32, self.num_visual_channels]
+        self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 32, 32, self.num_visual_channels]
 
 
-        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', visual=visual)
+        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual)
                            for i in range(num_partitions)]
 
         with tf.variable_scope(name, reuse=reuse):

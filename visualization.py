@@ -56,6 +56,40 @@ def produce_two_goal_visualization(network, env):
 
     cv2.imwrite('reward_vis.png', stacked)
 
+# run each policy like 10 times. track the ships that it targets
+def produce_assault_ship_histogram_visualization(network, env):
+    num_episodes_per_policy = 10
+    all_hist_arrays = []
+    for i in range(network.num_partitions):
+        ship1 = ship2 = ship3 = miss = 0
+        for j in range(num_episodes_per_policy):
+            s = env.reset()
+            while True:
+                a = network.get_state_actions([s])[i][0]
+                s, r, t, _ = env.step(a)
+                if t:
+                    # if there are two dead ships, something is wrong.
+                    ships_alive = env.determine_ship_states()
+                    assert sum(1 if not ship_alive else 0 for ship_alive in ships_alive) <= 1
+                    if all(ships_alive):
+                        miss += 1
+                    elif not ships_alive[0]:
+                        ship1 += 1
+                    elif not ships_alive[1]:
+                        ship2 += 1
+                    elif not ships_alive[2]:
+                        ship3 += 1
+                    break
+        # make a histogram for each policy
+        hist_array = np.array([[ship1, ship2, ship3, miss]], dtype=np.float32) / (ship1 + ship2 + ship3 + miss)
+        all_hist_arrays.append(hist_array)
+    all_hist_arrays = np.concatenate(all_hist_arrays, axis=0)
+    all_hist_arrays = (255*all_hist_arrays).astype(np.uint8)
+    print(all_hist_arrays.shape, all_hist_arrays.dtype)
+    color_map = cv2.applyColorMap(all_hist_arrays, cv2.COLORMAP_JET)
+    color_map = cv2.resize(color_map, (200*4, 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
+    cv2.imwrite('policy_vis.png', color_map)
+
 
 def produce_reward_image(partition_state_pairs):
     canvas = np.zeros(shape=(5,5), dtype=np.float32)

@@ -4,7 +4,7 @@ import numpy as np
 
 class QLearnerAgent(object):
 
-    def __init__(self, obs_size, num_actions, name, reuse=None, visual=False):
+    def __init__(self, obs_size, num_actions, name, reuse=None, visual=False, num_visual_channels=3):
         with tf.variable_scope(name, reuse=reuse):
             print(obs_size, num_actions)
             self.obs_size = obs_size
@@ -13,7 +13,7 @@ class QLearnerAgent(object):
             self.use_top_level=False
             self.visual = visual
             tau = 0.99
-            self.state_shape = [None, obs_size] if not visual else [None, 32, 32, 3]
+            self.state_shape = [None, obs_size] if not visual else [None, 32, 32, num_visual_channels]
 
             if self.visual:
                 self.inp_s = tf.placeholder(tf.uint8, self.state_shape, name='inp_s')
