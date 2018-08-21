@@ -28,7 +28,6 @@ class ThreadedEnvironment(object):
         [parent_connection.send(('__kill__', [])) for (parent_connection, child_connection) in self.env_array_pipes]
 
 
-
     def __call__(self, attribute, args=None, sharded_args=None):
         if (args is None) and (sharded_args is None):
             raise Exception('args and sharded_args cannot both be None.')
@@ -56,7 +55,6 @@ class ThreadedEnvironment(object):
         return response
 
 
-
     def build_environment_thread(self, i, env_constructor, connection):
         def process_function(connection):
             env = env_constructor(i)
@@ -75,7 +73,6 @@ class ThreadedEnvironment(object):
                         connection.send(result)
                     except Exception as e:
                         connection.send(e)
-
 
         return Process(target=process_function, args=(connection,))
 

@@ -43,7 +43,7 @@ if mode == 'ASSAULT':
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: SimpleAssault(initial_states_file='stored_states_64.pickle'),
                                             SimpleAssault)
-    #dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
