@@ -15,7 +15,7 @@ class BlockPushingDomain(object):
     def __init__(self, observation_mode='vector'):
         self.grid_size = 5
         self.block_size = 8
-        self.visual_mode_image_size = 32
+        self.visual_mode_image_size = 64
         self.render_mode_image_size = self.grid_size * self.block_size
 
 

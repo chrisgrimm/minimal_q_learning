@@ -20,15 +20,12 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
+parser.add_argument('--visual', action='store_true')
 args = parser.parse_args()
 
-mode_options = ['SOKOBAN', 'ASSAULT']
-mode = 'ASSAULT'
-visual = True
-
-assert mode in mode_options
-
-
+mode = args.mode
+visual = args.visual
 
 observation_mode = 'image' if visual else 'vector'
 
@@ -49,6 +46,9 @@ elif mode == 'SOKOBAN':
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     env = BlockPushingDomain(observation_mode=observation_mode)
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: BlockPushingDomain(observation_mode=observation_mode),
+                                            BlockPushingDomain)
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 else:
     raise Exception(f'mode must be in {mode_options}.')
@@ -121,7 +121,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= 100:
+    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
         pre_training = False
         s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
