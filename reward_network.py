@@ -225,8 +225,10 @@ class RewardPartitionNetwork(object):
         gamma = 0.99
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
+        # after the first terminal state, sticky_t_sequence should always be 0.
+        sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
         #prod_reward = 0.0
-        out = tf.reduce_sum(rs_traj * gamma_sequence * t_sequence, axis=1) # [bs, num_partitions]
+        out = tf.reduce_sum(rs_traj * gamma_sequence * sticky_t_sequence, axis=1) # [bs, num_partitions]
         print('out', out)
         return out
 
