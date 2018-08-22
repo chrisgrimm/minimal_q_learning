@@ -69,7 +69,7 @@ class RewardPartitionNetwork(object):
                     if i == j:
                         continue
                     value_constraint += tf.square(self.list_trajectory_values[i][:, j])
-            value_constraint = 100*tf.reduce_mean(value_constraint, axis=0)
+            value_constraint = 1000*tf.reduce_mean(value_constraint, axis=0)
 
             self.loss = value_constraint + partition_constraint
 
