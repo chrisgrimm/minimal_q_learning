@@ -303,23 +303,30 @@ class BlockPushingDomain(object):
     def get_terminal(self, obs):
         at_goal_state = (self.get_reward(obs) == 1.0)
         game_over = (self.timestep >= self.max_timesteps)
-        return game_over or at_goal_state
-        #return game_over
+        #return game_over or at_goal_state
+        return game_over
 
     def step(self, raw_action):
         #old_obs = self.get_observation()
         action = raw_action
-        self.perform_action(action)
+        if not self.game_locked:
+            self.perform_action(action)
+        else:
+            self.timestep += 1
         # TODO : find a better way to handle rewards when we are dealing with images. Right now we just pass the
         # vectorized observation to the get_reward function.
         new_obs_vec = self.get_observation('vector')
         new_obs = self.get_observation(self.observation_mode)
         reward = self.get_reward(new_obs_vec)
+        if reward == 1.0:
+            self.game_locked = True
+
         terminal = self.get_terminal(new_obs_vec)
-        if terminal:
-            self.reset()
+
+        #if terminal:
+        #    self.reset()
         # TODO use old_obs for hindsight.
-        return new_obs, reward, False, {}
+        return new_obs, reward, terminal, {}
 
     def render(self):
         object_positions = self.produce_object_positions_from_blocks()
@@ -329,6 +336,7 @@ class BlockPushingDomain(object):
 
 
     def reset(self):
+        self.game_locked = False
         initialized_positions = set()
         initialized_positions = initialized_positions.union(
             ConstantInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
