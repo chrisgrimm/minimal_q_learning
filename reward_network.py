@@ -60,7 +60,7 @@ class RewardPartitionNetwork(object):
                 i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                 self.list_trajectory_values.append(i_trajectory_values)
 
-            partition_constraint = tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+            partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
             # build the value constraint
             value_constraint = 0
@@ -154,8 +154,8 @@ class RewardPartitionNetwork(object):
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
-            sp_traj.append([s for (s, _, t, _) in experience_tuple_list])
-            t_traj.append([t for (s, _, t, _) in experience_tuple_list])
+            sp_traj.append([sp for (sp, _, t, _) in experience_tuple_list])
+            t_traj.append([t for (sp, _, t, _) in experience_tuple_list])
         sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
         t_traj = np.transpose(t_traj, [1, 0])
         return sp_traj, t_traj
