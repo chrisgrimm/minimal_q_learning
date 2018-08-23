@@ -303,8 +303,8 @@ class BlockPushingDomain(object):
     def get_terminal(self, obs):
         at_goal_state = (self.get_reward(obs) == 1.0)
         game_over = (self.timestep >= self.max_timesteps)
-        #return game_over or at_goal_state
-        return game_over
+        return game_over or at_goal_state
+        #return game_over
 
     def step(self, raw_action):
         #old_obs = self.get_observation()
@@ -316,8 +316,10 @@ class BlockPushingDomain(object):
         new_obs = self.get_observation(self.observation_mode)
         reward = self.get_reward(new_obs_vec)
         terminal = self.get_terminal(new_obs_vec)
+        if terminal:
+            self.reset()
         # TODO use old_obs for hindsight.
-        return new_obs, reward, terminal, {}
+        return new_obs, reward, False, {}
 
     def render(self):
         object_positions = self.produce_object_positions_from_blocks()
