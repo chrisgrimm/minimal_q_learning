@@ -63,7 +63,8 @@ class BlockPushingDomain(object):
         self.blocks = (
             [AgentBlock(self.agent_color, texture=agent_texture),
              ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
-             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture)] +
+             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
+             ConstantGoalBlock((self.grid_size-1, 0), self.goal_color2, reward=1.0, texture=goal2_texture)] +
             background_blocks
         )
 
@@ -318,8 +319,8 @@ class BlockPushingDomain(object):
         new_obs_vec = self.get_observation('vector')
         new_obs = self.get_observation(self.observation_mode)
         reward = self.get_reward(new_obs_vec)
-        if reward == 1.0:
-            self.game_locked = True
+        #if reward == 1.0:
+        #    self.game_locked = True
 
         terminal = self.get_terminal(new_obs_vec)
 

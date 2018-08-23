@@ -42,7 +42,7 @@ if mode == 'ASSAULT':
                                             SimpleAssault)
     dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
-    num_partitions = 2
+    num_partitions = 3
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     env = BlockPushingDomain(observation_mode=observation_mode)
