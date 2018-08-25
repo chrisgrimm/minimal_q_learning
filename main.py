@@ -90,7 +90,8 @@ def get_action(s):
     return action
 
 pre_training = True
-
+current_episode_length = 0
+max_length_before_policy_switch = 30
 while True:
     # take random action
 
@@ -110,9 +111,13 @@ while True:
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
+    if current_episode_length >= max_length_before_policy_switch:
+        current_episode_length = 0
+        current_policy = choice(policy_indices)
     if t:
         s = env.reset()
         current_policy = choice(policy_indices)
+        current_episode_length = 0
         print(f'Episode Reward: {episode_reward}')
         #print(f'Epsilon {epsilon}')
         episode_reward = 0
@@ -145,6 +150,7 @@ while True:
 
 
     i += 1
+    current_episode_length += 1
 
 
 
