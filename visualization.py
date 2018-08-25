@@ -82,6 +82,7 @@ def produce_assault_ship_histogram_visualization(network, env, name):
                     elif not ships_alive[2]:
                         ship3 += 1
                     break
+                current_episode_length += 1
         # make a histogram for each policy
         hist_array = np.array([[ship1, ship2, ship3, miss]], dtype=np.float32) / (ship1 + ship2 + ship3 + miss)
         all_hist_arrays.append(hist_array)
