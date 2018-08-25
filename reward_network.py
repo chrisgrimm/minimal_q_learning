@@ -71,7 +71,7 @@ class RewardPartitionNetwork(object):
                     value_constraint += tf.square(self.list_trajectory_values[i][:, j])
             value_constraint = tf.reduce_mean(value_constraint, axis=0)
 
-            self.loss = 5*value_constraint + partition_constraint
+            self.loss = value_constraint + partition_constraint
 
             reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
             print(reward_params)
@@ -147,13 +147,14 @@ class RewardPartitionNetwork(object):
         sp_traj = []
         t_traj = []
         #s0 = dummy_env.restore_state(starting_state)
-        s0_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
+        s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
             #a = self.Q_networks[policy].get_action([s0])[0]
-            a_list = [[x] for x in self.Q_networks[policy].get_action(s0_list)]
+            a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
+            s_list = [sp for (sp, _, t, _) in experience_tuple_list]
             sp_traj.append([sp for (sp, _, t, _) in experience_tuple_list])
             t_traj.append([t for (sp, _, t, _) in experience_tuple_list])
         sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
@@ -226,9 +227,9 @@ class RewardPartitionNetwork(object):
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
         # after the first terminal state, sticky_t_sequence should always be 0.
-        #sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
+        sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
         #prod_reward = 0.0
-        out = tf.reduce_sum(rs_traj * gamma_sequence, axis=1) # [bs, num_partitions]
+        out = tf.reduce_sum(rs_traj * gamma_sequence * sticky_t_sequence, axis=1) # [bs, num_partitions]
         print('out', out)
         return out
 
