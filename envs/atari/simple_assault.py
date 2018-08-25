@@ -54,7 +54,10 @@ class SimpleAssault(object):
             r = 0
         if self.step_num >= self.episode_length:
             t = True
-        return self.get_obs(), r, t, {}
+        obs = self.get_obs()
+        if t:
+            self.reset()
+        return obs, r, False, {}
 
     def reset(self):
         if not self.use_initial_states:
