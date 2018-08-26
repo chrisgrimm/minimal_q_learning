@@ -56,8 +56,14 @@ class SimpleAssault(object):
             t = True
         obs = self.get_obs()
         if t:
+            info = {
+                'ship_status': self.determine_ship_states()
+            }
             self.reset()
-        return obs, r, False, {}
+        else:
+            info = {}
+
+        return obs, r, False, info
 
     def reset(self):
         if not self.use_initial_states:

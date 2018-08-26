@@ -68,11 +68,11 @@ def produce_assault_ship_histogram_visualization(network, env, name):
             max_episode_length = 30
             while True:
                 a = network.get_state_actions([s])[i][0]
-                s, r, t, _ = env.step(a)
-                if t or (current_episode_length >= max_episode_length):
+                s, r, t, info = env.step(a)
+                if info:
                     # if there are two dead ships, something is wrong.
-                    ships_alive = env.determine_ship_states()
-                    #assert sum(1 if not ship_alive else 0 for ship_alive in ships_alive) <= 1
+                    ships_alive = info['ship_status']
+                    assert sum(1 if not ship_alive else 0 for ship_alive in ships_alive) <= 1
                     if all(ships_alive):
                         miss += 1
                     elif not ships_alive[0]:
