@@ -134,7 +134,7 @@ while True:
             q_losses = reward_net.train_Q_networks()
         #for j in range(3):
         #    partition_loss, value_loss = reward_net.train_R_function(dummy_env_cluster)
-        for j in range(5):
+        for j in range(10):
             partition_loss = reward_net.train_R_function_partition()
         for j in range(1):
             value_loss = reward_net.train_R_function_value(dummy_env_cluster)
