@@ -22,7 +22,7 @@ class RewardPartitionNetwork(object):
         self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, use_gpu=use_gpu, visual=visual, gpu_num=gpu_num)
                            for i in range(num_partitions)]
 
-        with tf.device(f'/{"gpu:" if use_gpu else "cpu"}:{gpu_num}'):
+        with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 if self.visual:
                     self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
