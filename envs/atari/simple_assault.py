@@ -55,13 +55,12 @@ class SimpleAssault(object):
         if self.step_num >= self.episode_length:
             t = True
         obs = self.get_obs()
+        info = {
+            'ship_status': self.determine_ship_states(),
+            'internal_terminal': t
+        }
         if t:
-            info = {
-                'ship_status': self.determine_ship_states()
-            }
             self.reset()
-        else:
-            info = {}
 
         return obs, r, False, info
 
@@ -163,7 +162,7 @@ if __name__ == '__main__':
         a[i] = 1
         return a
 
-    env = SimpleAssault(initial_states_file=None)
+    env = SimpleAssault(initial_states_file='stored_states_64.pickle')
     ram_tracker = RAMTracker(env.env.env.ale.getRAMSize())
     n = env.env.action_space.n
 
@@ -186,12 +185,12 @@ if __name__ == '__main__':
                 continue
         except KeyError:
             continue
-        s, r, t, _ = env.step(action)
-        print(s.shape, s[:, :, -3:].shape)
-        cv2.imshow('game', np.concatenate([s[:, :, 0:3], s[:, :, 3:6], s[:, :, 6:9]], axis=1))
+        s, r, t, info = env.step(action)
+        cv2.imshow('game', cv2.resize(s[:, :, 6:9], (400,400)))
+        cv2.waitKey(1)
 
         ram = env.env.env.ale.getRAM()
-        print(ram[54:57])
+        print(f'R({r}) T({t}) RAM({info["ship_status"]})')
 
         if r == 0:
             pass
@@ -204,8 +203,9 @@ if __name__ == '__main__':
         #print(r, env.determine_ship_states())
 
         if t:
+            print(t)
             env.reset()
-        env.render()
+        #env.render()
 
 
 
