@@ -4,7 +4,7 @@ from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, reuse=None):
+    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, gpu_num=0, reuse=None):
 
         self.num_partitions = num_partitions
         self.num_actions = num_actions
@@ -18,70 +18,70 @@ class RewardPartitionNetwork(object):
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
 
-        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual)
+        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num)
                            for i in range(num_partitions)]
-
-        with tf.variable_scope(name, reuse=reuse):
-            if self.visual:
-                self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
-                self.inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
-            else:
-                self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
-                self.inp_sp_converted = self.inp_sp
-            self.inp_r = tf.placeholder(tf.float32, [None])
-            #print('OG partitioned reward', self.inp_s, inp_a_onehot)
-            partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, 'reward_partition')
-            self.partitioned_reward = partitioned_reward
-
-
-            # build the list of placeholders
-            self.list_inp_sp_traj = []
-            self.list_inp_t_traj = []
-            #self.list_inp_sp_traj_converted = []
-            #self.list_reward_trajs = []
-            self.list_trajectory_values = []
-            for i in range(self.num_partitions):
+        with tf.device(f'/gpu:{gpu_num}'):
+            with tf.variable_scope(name, reuse=reuse):
                 if self.visual:
-                    inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
-                    self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
-                    inp_sp_trajs_i_then_i_converted = tf.image.convert_image_dtype(inp_sp_trajs_i_then_i,
-                                                                                   dtype=tf.float32)
+                    self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
+                    self.inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
                 else:
-                    inp_sp_trajs_i_then_i = tf.placeholder(tf.float32, self.obs_shape_traj)
-                    self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
-                    inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
+                    self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
+                    self.inp_sp_converted = self.inp_sp
+                self.inp_r = tf.placeholder(tf.float32, [None])
+                #print('OG partitioned reward', self.inp_s, inp_a_onehot)
+                partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, 'reward_partition')
+                self.partitioned_reward = partitioned_reward
 
-                inp_t_trajs_i_then_i = tf.placeholder(tf.bool, [None, self.traj_len])
-                self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
 
-                reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
-                                                                   name='reward_partition',
-                                                                   reuse=True)
-                i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
-                self.list_trajectory_values.append(i_trajectory_values)
+                # build the list of placeholders
+                self.list_inp_sp_traj = []
+                self.list_inp_t_traj = []
+                #self.list_inp_sp_traj_converted = []
+                #self.list_reward_trajs = []
+                self.list_trajectory_values = []
+                for i in range(self.num_partitions):
+                    if self.visual:
+                        inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
+                        self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
+                        inp_sp_trajs_i_then_i_converted = tf.image.convert_image_dtype(inp_sp_trajs_i_then_i,
+                                                                                       dtype=tf.float32)
+                    else:
+                        inp_sp_trajs_i_then_i = tf.placeholder(tf.float32, self.obs_shape_traj)
+                        self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
+                        inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
 
-            partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                    inp_t_trajs_i_then_i = tf.placeholder(tf.bool, [None, self.traj_len])
+                    self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
 
-            # build the value constraint
-            value_constraint = 0
-            for i in range(self.num_partitions):
-                for j in range(self.num_partitions):
-                    if i == j:
-                        continue
-                    value_constraint += tf.square(self.list_trajectory_values[i][:, j])
-            value_constraint = tf.reduce_mean(value_constraint, axis=0)
+                    reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
+                                                                       name='reward_partition',
+                                                                       reuse=True)
+                    i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
+                    self.list_trajectory_values.append(i_trajectory_values)
 
-            self.loss = value_constraint + partition_constraint
+                partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
-            reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
-            print(reward_params)
-            self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
+                # build the value constraint
+                value_constraint = 0
+                for i in range(self.num_partitions):
+                    for j in range(self.num_partitions):
+                        if i == j:
+                            continue
+                        value_constraint += tf.square(self.list_trajectory_values[i][:, j])
+                value_constraint = tf.reduce_mean(value_constraint, axis=0)
 
-        all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
-        config = tf.ConfigProto(allow_soft_placement=True)
-        config.gpu_options.allow_growth = True
-        self.sess = sess = tf.Session(config=config)
-        self.sess.run(tf.variables_initializer(all_variables))
+                self.loss = value_constraint + partition_constraint
+
+                reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
+                print(reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
+
+            all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
+            config = tf.ConfigProto(allow_soft_placement=True)
+            config.gpu_options.allow_growth = True
+            self.sess = sess = tf.Session(config=config)
+            self.sess.run(tf.variables_initializer(all_variables))
 
 
     def train_Q_networks(self):
