@@ -12,7 +12,7 @@ class RewardPartitionNetwork(object):
         self.buffer = buffer
         self.reward_buffer = reward_buffer
         self.visual = visual
-        self.traj_len = 40
+        self.traj_len = 30
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
@@ -60,7 +60,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0
