@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
 parser.add_argument('--visual', action='store_true')
+parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
 
 mode = args.mode
@@ -64,7 +65,7 @@ buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
 #reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', num_visual_channels=num_visual_channels, visual=visual)
-dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels)
+dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 batch_size = 32
 s = env.reset()
 epsilon = 0.1
