@@ -40,7 +40,7 @@ class QLearnerAgent(object):
 
             y = self.inp_r + (1 - self.inp_t) * self.gamma * tf.reduce_max(qa_target, axis=1)
             self.loss = tf.reduce_mean(tf.square(tf.stop_gradient(y) - tf.reduce_sum(qa * inp_a_onehot, axis=1)))
-            optimizer = tf.train.AdamOptimizer(learning_rate=0.0002)
+            optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
             gvs = optimizer.compute_gradients(self.loss, var_list=qa_vars)
             for grad, var in gvs:
                 print(grad, var)
