@@ -15,7 +15,7 @@ class QLearnerAgent(object):
                 self.gamma = 0.99
                 self.use_top_level=False
                 self.visual = visual
-                tau = 0.998
+                tau = 0.99
                 self.state_shape = [None, obs_size] if not visual else [None, 64, 64, num_visual_channels]
 
                 if self.visual:
