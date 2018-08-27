@@ -128,7 +128,7 @@ while True:
 
     if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
         pre_training = False
-        s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
+        #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(3):
