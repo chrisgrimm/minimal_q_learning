@@ -4,8 +4,9 @@ from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, gpu_num=0, reuse=None):
-
+    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, use_gpu=False, num_visual_channels=3, gpu_num=0, reuse=None):
+        if not use_gpu:
+            gpu_num = 0
         self.num_partitions = num_partitions
         self.num_actions = num_actions
         self.obs_size = obs_size
@@ -18,9 +19,10 @@ class RewardPartitionNetwork(object):
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
 
-        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num)
+        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, use_gpu=use_gpu, visual=visual, gpu_num=gpu_num)
                            for i in range(num_partitions)]
-        with tf.device(f'/gpu:{gpu_num}'):
+
+        with tf.device(f'/{"gpu:" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 if self.visual:
                     self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
@@ -60,7 +62,9 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 6*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                self.partition_loss = partition_constraint
+
 
                 # build the value constraint
                 value_constraint = 0
@@ -70,12 +74,15 @@ class RewardPartitionNetwork(object):
                             continue
                         value_constraint += tf.square(self.list_trajectory_values[i][:, j])
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
+                self.value_loss = value_constraint
 
                 self.loss = value_constraint + partition_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
                 self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
+                self.train_op_value = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(value_constraint)
+                self.train_op_partition = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(partition_constraint)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)
@@ -99,46 +106,74 @@ class RewardPartitionNetwork(object):
             Q_losses.append(loss)
         return Q_losses
 
-
-
-    def train_R_function(self, dummy_env_cluster):
+    def train_R_function_partition(self):
         batch_size = 32
-
         _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
         _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
         r_batch = r_no_reward_batch + r_reward_batch
         sp_batch = sp_no_reward_batch + sp_reward_batch
-
-        # collect  all the trajectories.
-        all_SP_traj_batches = []
-        all_T_traj_batches = []
-
-            # initialize the environment randomly and collect the initial state. this allows us to perform the necessary
-            # resets to estimate values.
-        #dummy_env_cluster('reset', args=[])
-        #starting_state = dummy_env.get_current_state()
-        #starting_states = dummy_env_cluster('get_current_state', args=[])
-
         feed_dict = {
             self.inp_sp: sp_batch,
             self.inp_r: r_batch
         }
+        [_, loss] = self.sess.run([self.train_op_partition, self.partition_loss], feed_dict=feed_dict)
+        return loss
 
+    def train_R_function_value(self, dummy_env_cluster):
+        feed_dict = {}
         for j in range(self.num_partitions):
             dummy_env_cluster('reset', args=[])
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
             SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
-
-
-
-        # for i in range(self.num_partitions):
-        #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
-        #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-
-        [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
+        [_, loss] = self.sess.run([self.train_op_value, self.value_loss], feed_dict=feed_dict)
         return loss
+
+
+
+
+    def train_R_function(self, dummy_env_cluster):
+        #batch_size = 32
+
+        partition_loss = self.train_R_function_partition()
+        value_loss = self.train_R_function_value(dummy_env_cluster)
+        return partition_loss, value_loss
+        # _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
+        # _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
+        # r_batch = r_no_reward_batch + r_reward_batch
+        # sp_batch = sp_no_reward_batch + sp_reward_batch
+        #
+        # # collect  all the trajectories.
+        # all_SP_traj_batches = []
+        # all_T_traj_batches = []
+        #
+        #     # initialize the environment randomly and collect the initial state. this allows us to perform the necessary
+        #     # resets to estimate values.
+        # #dummy_env_cluster('reset', args=[])
+        # #starting_state = dummy_env.get_current_state()
+        # #starting_states = dummy_env_cluster('get_current_state', args=[])
+        #
+        # feed_dict = {
+        #     self.inp_sp: sp_batch,
+        #     self.inp_r: r_batch
+        # }
+        #
+        # for j in range(self.num_partitions):
+        #     dummy_env_cluster('reset', args=[])
+        #     starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
+        #     SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+        #     feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
+        #     feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
+        #
+        #
+        #
+        # # for i in range(self.num_partitions):
+        # #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
+        # #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
+        #
+        # [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
+        # return loss
 
 
 

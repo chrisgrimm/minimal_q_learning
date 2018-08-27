@@ -42,6 +42,7 @@ class SimpleAssault(object):
     def get_obs(self):
         return np.concatenate([np.copy(x) for x in self.frame_buffer], axis=2) # [32 x 32 x 3*frame_buffer_len]
 
+
     def step(self, a):
         self.step_num += 1
         _, r, t, _ = self.env.step(a)
@@ -63,6 +64,7 @@ class SimpleAssault(object):
             self.reset()
 
         return obs, r, False, info
+
 
     def reset(self):
         if not self.use_initial_states:
@@ -179,7 +181,8 @@ if __name__ == '__main__':
     while True:
         pre_ram = env.env.env.ale.getRAM()
         try:
-            action = action_mapping[input()]
+            #action = action_mapping[input()]
+            action = action_mapping[choice(['w', 'a', 'd', ''])]
             if callable(action):
                 action(env)
                 continue
