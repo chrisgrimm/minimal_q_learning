@@ -127,7 +127,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= 100:
+    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
