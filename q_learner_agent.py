@@ -81,9 +81,9 @@ class QLearnerAgent(object):
         with tf.variable_scope(name, reuse=reuse):
             # obs : [bs, 32, 32 ,3]
             x = obs
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1') # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2') # [bs, 8, 8, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1') # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2') # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8*8*32]), 256, activation=tf.nn.relu, name='fc1')
             qa = tf.layers.dense(x, self.num_actions, name='qa')
             return qa, x
