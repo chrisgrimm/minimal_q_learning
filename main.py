@@ -25,6 +25,7 @@ parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
 
+use_gpu = args.gpu_num >= 0
 mode = args.mode
 visual = args.visual
 
@@ -63,7 +64,7 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', gpu_num=args.gpu_num, num_visual_channels=num_visual_channels, visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', gpu_num=args.gpu_num, use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual)
 
 batch_size = 32
 s = env.reset()
@@ -100,7 +101,7 @@ while True:
     a = get_action(s)
     sp, r, t, _ = env.step(a)
     if r > 0:
-        partitioned_r = reward_net.get_partitioned_reward([sp])[0]
+        partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         print(f'{reward_buffer.length()}/{1000}')
 
         reward_buffer.append(s, a, r, sp, t)
@@ -133,16 +134,20 @@ while True:
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(3):
-            reward_loss = reward_net.train_R_function(dummy_env_cluster)
+            reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
 
         LOG.add_line('reward_loss', reward_loss)
+        LOG.add_line('max_value_constraint', max_value_constraint)
+        LOG.add_line('value_constraint', value_constraint)
+
 
         log_string = f'({i}) ' + \
                      ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {reward_loss}'
+                     f'Reward Loss: {reward_loss}' + \
+                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
         if i % 100 == 0:

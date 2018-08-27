@@ -4,8 +4,10 @@ import numpy as np
 
 class QLearnerAgent(object):
 
-    def __init__(self, obs_size, num_actions, name, reuse=None, visual=False, num_visual_channels=3, gpu_num=0):
-        with tf.device(f'/gpu:{gpu_num}'):
+    def __init__(self, obs_size, num_actions, name, reuse=None, visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False):
+        if not use_gpu:
+            gpu_num = 0
+        with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 print(obs_size, num_actions)
                 self.obs_size = obs_size

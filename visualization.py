@@ -41,10 +41,12 @@ def produce_two_goal_visualization(network, env, name):
     state_image = env.produce_image(current_object_positions, env.render_mode_image_size)
     state_image = cv2.resize(state_image, (400, 400), interpolation=cv2.INTER_NEAREST)
     data = [[] for _ in range(network.num_partitions)]
+    goal_positions = set([block.get_position() for block in env.blocks if env.is_goal_block(block)])
+
     for (x,y), state in state_pairs:
         #print('state', state)
         #print(cv2.imwrite(f'./temp/{x}_{y}.png', state))
-        state_reward = network.get_reward(state)
+        state_reward = network.get_reward(state, 1 if (x,y) in goal_positions else 0)
         for i in range(network.num_partitions):
             data[i].append(((x,y), state_reward[i]))
     images = []
