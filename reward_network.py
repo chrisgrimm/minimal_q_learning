@@ -70,8 +70,8 @@ class RewardPartitionNetwork(object):
 
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
-                    max_value_constraint += tf.square(self.list_trajectory_values[i][:, i])
-                max_value_constraint = 2*tf.reduce_mean(max_value_constraint, axis=0)
+                    max_value_constraint += self.list_trajectory_values[i][:, i]
+                max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
 
 
                 # build the value constraint
