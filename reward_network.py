@@ -204,7 +204,7 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
             soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softplus, name='qa')
-            soft = soft / tf.reduce_sum(soft, axis=1)
+            soft = soft / tf.reduce_sum(soft, axis=1, keep_dims=True)
             rewards = tf.reshape(r, [-1, 1]) * soft
         return rewards
 
