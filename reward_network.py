@@ -149,11 +149,17 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        for i in range(10):
-            [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
+        [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
         return loss, max_value_constraint, value_constraint
 
 
+
+    def get_action_stoch(self, policy, s_list, rand_prob=0.1):
+        U = np.random.uniform(0,1, size=len(s_list))
+        rand_a_list = np.random.randint(0, self.num_actions, size=len(s_list))
+        a_list = self.Q_networks[policy].get_action(s_list)
+        mix_rand_a_list = rand_a_list * (U < rand_prob).astype(np.float32) + a_list * (U >= rand_prob).astype(np.float32)
+        return mix_rand_a_list
 
     # grab sample trajectories from a starting state.
     def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
@@ -164,7 +170,7 @@ class RewardPartitionNetwork(object):
         s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
             #a = self.Q_networks[policy].get_action([s0])[0]
-            a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
+            a_list = [[x] for x in self.get_action_stoch(policy, s_list)]
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
