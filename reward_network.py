@@ -86,7 +86,7 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = value_constraint #- max_value_constraint
+                self.loss = value_constraint - max_value_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
@@ -149,8 +149,8 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-
-        [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
+        for i in range(10):
+            [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
         return loss, max_value_constraint, value_constraint
 
 
@@ -203,8 +203,7 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.sigmoid, name='qa')
-            #soft = soft / tf.reduce_sum(soft, axis=1, keep_dims=True)
+            soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
             rewards = tf.reshape(r, [-1, 1]) * soft
         return rewards
 
