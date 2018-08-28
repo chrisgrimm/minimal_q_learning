@@ -86,11 +86,11 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = value_constraint - max_value_constraint
+                self.loss = value_constraint #- max_value_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)
@@ -203,7 +203,8 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
+            soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softplus, name='qa')
+            soft = soft / tf.reduce_sum(soft, axis=1)
             rewards = tf.reshape(r, [-1, 1]) * soft
         return rewards
 
