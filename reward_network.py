@@ -4,8 +4,9 @@ from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, gpu_num=0, reuse=None):
-
+    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, use_gpu=False, gpu_num=0, reuse=None):
+        if not use_gpu:
+            gpu_num = 0
         self.num_partitions = num_partitions
         self.num_actions = num_actions
         self.obs_size = obs_size
@@ -19,9 +20,9 @@ class RewardPartitionNetwork(object):
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
 
-        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num)
+        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, use_gpu=use_gpu, gpu_num=gpu_num)
                            for i in range(num_partitions)]
-        with tf.device(f'/gpu:{gpu_num}'):
+        with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 if self.visual:
                     self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
@@ -61,7 +62,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 5 * self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0

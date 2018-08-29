@@ -21,7 +21,8 @@ class SimpleAssault(object):
                 self.stored_states = pickle.load(f)
         self.action_space = self.env.action_space
         self.image_size = 64
-        self.observation_space = Box(0, 255, shape=[self.image_size, self.image_size, 3])
+        self.observation_space = Box(0, 255, shape=[self.image_size, self.image_size, 3*self.frame_buffer_len])
+        self.obs_to_store = []
 
     def get_current_state(self):
         state = self.env.env.clone_full_state()
@@ -59,6 +60,16 @@ class SimpleAssault(object):
             'ship_status': self.determine_ship_states(),
             'internal_terminal': t
         }
+        # if r == 1:
+        #     inp = input('Store Obs?')
+        #     while inp not in ['y', 'n']:
+        #         print('Inp must be in [y,n]')
+        #         inp = input('Store Obs?')
+        #     should_store = inp == 'y'
+        #     if should_store:
+        #         self.obs_to_store.append(obs)
+        #         with open('stored_obs_64.pickle', 'wb') as f:
+        #             pickle.dump(self.obs_to_store, f)
         if t:
             self.reset()
 
@@ -137,6 +148,7 @@ class RAMTracker(object):
 
 if __name__ == '__main__':
     all_states = []
+    all_observations = []
     state = None
 
     def save(env):
@@ -157,6 +169,14 @@ if __name__ == '__main__':
         with open('stored_states_64.pickle', 'wb') as f:
             pickle.dump(all_states, f)
 
+    def collect_observation(env):
+        global all_observations
+        obs = env.get_obs()
+        all_observations.append(obs)
+        with open('stored_observations_64.pickle', 'wb') as f:
+            pickle.dump(all_observations)
+
+
     def onehot(i, n):
         a = np.zeros(shape=[n], dtype=np.uint8)
         a[i] = 1
@@ -173,7 +193,8 @@ if __name__ == '__main__':
                       'save': save,
                       'restore': restore,
                       'store': store_state,
-                      'reset': reset}
+                      'reset': reset,
+                      'store_obs': collect_observation,}
 
     s = env.reset()
     while True:
@@ -186,6 +207,7 @@ if __name__ == '__main__':
         except KeyError:
             continue
         s, r, t, info = env.step(action)
+
         cv2.imshow('game', cv2.resize(s[:, :, 6:9], (400,400)))
         cv2.waitKey(1)
 

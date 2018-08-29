@@ -4,10 +4,11 @@ from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization
 import argparse
 from utils import LOG, build_directory_structure
 import argparse
+import os
 from random import choice
 import cv2
 
@@ -25,6 +26,7 @@ parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
 
+use_gpu = args.gpu_num >= 0
 mode = args.mode
 visual = args.visual
 
@@ -34,7 +36,16 @@ observation_mode = 'image' if visual else 'vector'
 if mode == 'ASSAULT':
     num_partitions = 3
     num_visual_channels = 9
-    visualization_func = produce_assault_ship_histogram_visualization
+
+    def run_assault_visualizations(network, env, name):
+        [path, name] = os.path.split(name)
+        [name, name_extension] = name.split('.')
+        hist_full_name = os.path.join(path, name+'_hist')+'.'+name_extension
+        reward_full_name = os.path.join(path, name+'_reward')+'.'+name_extension
+        produce_assault_ship_histogram_visualization(network, env, hist_full_name)
+        produce_assault_reward_visualization(network, env, reward_full_name)
+
+    visualization_func = run_assault_visualizations
     # visual mode must be on for Assault domain.
     assert visual
     env = SimpleAssault(initial_states_file='stored_states_64.pickle')
@@ -63,7 +74,7 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', gpu_num=args.gpu_num, num_visual_channels=num_visual_channels, visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', use_gpu=use_gpu, gpu_num=args.gpu_num, num_visual_channels=num_visual_channels, visual=visual)
 
 batch_size = 32
 s = env.reset()
