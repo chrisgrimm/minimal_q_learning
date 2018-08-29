@@ -12,7 +12,7 @@ class SimpleAssault(object):
 
     def __init__(self, initial_states_file='stored_states.pickle'):
         self.env = gym.make('Assault-v0')
-        self.episode_length = 30
+        self.episode_length = 100
         self.frame_buffer_len = 3
         self.step_num = 0
         self.use_initial_states = initial_states_file is not None

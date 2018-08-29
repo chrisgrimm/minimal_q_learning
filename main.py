@@ -108,14 +108,12 @@ def get_action(s):
     return action
 
 pre_training = True
-current_episode_length = 0
-max_length_before_policy_switch = 30
 while True:
     # take random action
 
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
-    sp, r, t, _ = env.step(a)
+    sp, r, t, info = env.step(a)
     if r > 0:
         partitioned_r = reward_net.get_partitioned_reward([sp])[0]
         print(f'{reward_buffer.length()}/{1000}')
@@ -129,13 +127,11 @@ while True:
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
-    if current_episode_length >= max_length_before_policy_switch:
-        current_episode_length = 0
+    if info['internal_terminal']:
         current_policy = choice(policy_indices)
     if t:
         s = env.reset()
         current_policy = choice(policy_indices)
-        current_episode_length = 0
         print(f'Episode Reward: {episode_reward}')
         #print(f'Epsilon {epsilon}')
         episode_reward = 0
@@ -168,7 +164,6 @@ while True:
 
 
     i += 1
-    current_episode_length += 1
 
 
 

@@ -69,7 +69,6 @@ def produce_assault_ship_histogram_visualization(network, env, name):
         for j in range(num_episodes_per_policy):
             s = env.reset()
             current_episode_length = 0
-            max_episode_length = 30
             while True:
                 a = network.get_state_actions([s])[i][0]
                 s, r, t, info = env.step(a)
