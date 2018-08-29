@@ -13,6 +13,7 @@ class RewardPartitionNetwork(object):
         self.reward_buffer = reward_buffer
         self.visual = visual
         self.traj_len = 30
+        self.partition_mult = self.traj_len / 10.
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
@@ -60,7 +61,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0
@@ -182,10 +183,10 @@ class RewardPartitionNetwork(object):
         with tf.variable_scope(name, reuse=reuse):
             # sp : [bs, 32, 32 ,3]
             x = sp
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1')
             rewards = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.sigmoid, name='qa')
         return rewards
 
