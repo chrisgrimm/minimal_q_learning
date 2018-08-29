@@ -61,7 +61,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = 5 * self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0
@@ -71,7 +71,8 @@ class RewardPartitionNetwork(object):
                             continue
                         value_constraint += tf.square(self.list_trajectory_values[i][:, j])
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
-
+                self.value_constraint = value_constraint
+                self.partition_constraint = partition_constraint
                 self.loss = value_constraint + partition_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
@@ -138,8 +139,8 @@ class RewardPartitionNetwork(object):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
 
-        [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
-        return loss
+        [_, loss, partition_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.partition_constraint, self.value_constraint], feed_dict=feed_dict)
+        return loss, partition_constraint, value_constraint
 
 
 
