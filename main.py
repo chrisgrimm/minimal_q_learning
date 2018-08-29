@@ -127,7 +127,7 @@ while True:
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
-    if info['internal_terminal']:
+    if 'internal_terminal' in info and info['internal_terminal']:
         current_policy = choice(policy_indices)
     if t:
         s = env.reset()
