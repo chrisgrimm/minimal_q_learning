@@ -20,7 +20,7 @@ from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', type=str, required=True)
+parser.add_argument('--name', type=str, default='"$STY"')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
