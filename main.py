@@ -117,7 +117,6 @@ while True:
     if r > 0:
         partitioned_r = reward_net.get_partitioned_reward([sp])[0]
         print(f'{reward_buffer.length()}/{1000}')
-
         reward_buffer.append(s, a, r, sp, t)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)

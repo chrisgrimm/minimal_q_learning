@@ -100,9 +100,9 @@ def produce_assault_reward_visualization(network, env, name):
     with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
         obs_samples = pickle.load(f)
     all_partitioned_rewards = []
-    for sample in obs_samples:
-        partitioned_reward = np.reshape(network.get_reward(sample), [1, network.num_partitions])
-        all_partitioned_rewards.append(partitioned_reward)
+    for ship_i_examples in obs_samples:
+        average_reward = np.mean(network.get_partitioned_reward(ship_i_examples[:10]), axis=0)
+        all_partitioned_rewards.append(average_reward)
     all_partitioned_rewards = np.concatenate(all_partitioned_rewards, axis=0)
     all_partitioned_rewards = (255*all_partitioned_rewards).astype(np.uint8)
     all_partitioned_rewards = cv2.applyColorMap(all_partitioned_rewards, cv2.COLORMAP_JET)

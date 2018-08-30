@@ -148,7 +148,7 @@ class RAMTracker(object):
 
 if __name__ == '__main__':
     all_states = []
-    all_observations = []
+    all_observations = [[], [], []]
     state = None
 
     def save(env):
@@ -193,8 +193,7 @@ if __name__ == '__main__':
                       'save': save,
                       'restore': restore,
                       'store': store_state,
-                      'reset': reset,
-                      'store_obs': collect_observation,}
+                      'reset': reset}
 
     s = env.reset()
     while True:
@@ -207,6 +206,20 @@ if __name__ == '__main__':
         except KeyError:
             continue
         s, r, t, info = env.step(action)
+        if info['internal_terminal']:
+            ships = info['ship_status']
+            if all(ships):
+                continue
+            else:
+                ship_indices = np.argwhere(np.array(ships) == False)
+                assert len(ship_indices) == 1
+                ship_index = ship_indices[0,0]
+                print(ship_index, ships, ship_indices)
+                all_observations[ship_index].append(s)
+                with open('./stored_obs_64.pickle', 'wb') as f:
+                    pickle.dump(all_observations, f)
+                print(f'Stored obs for ship {ship_index}. Current counts {[len(x) for x in all_observations]}.')
+
 
         cv2.imshow('game', cv2.resize(s[:, :, 6:9], (400,400)))
         cv2.waitKey(1)

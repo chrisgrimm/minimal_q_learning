@@ -13,7 +13,7 @@ class RewardPartitionNetwork(object):
         self.buffer = buffer
         self.reward_buffer = reward_buffer
         self.visual = visual
-        self.traj_len = 10
+        self.traj_len = 30
         self.partition_mult = self.traj_len / 10.
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
