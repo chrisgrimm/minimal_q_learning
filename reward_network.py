@@ -39,6 +39,7 @@ class RewardPartitionNetwork(object):
                 # build the list of placeholders
                 self.list_inp_sp_traj = []
                 self.list_inp_t_traj = []
+                self.list_inp_any_r_traj = []
                 #self.list_inp_sp_traj_converted = []
                 #self.list_reward_trajs = []
                 self.list_trajectory_values = []
@@ -54,15 +55,17 @@ class RewardPartitionNetwork(object):
                         inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
 
                     inp_t_trajs_i_then_i = tf.placeholder(tf.bool, [None, self.traj_len])
+                    inp_any_r_trajs_i_then_i = tf.placeholder(tf.bool, [None])
                     self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
+                    self.list_inp_any_r_traj.append(inp_any_r_trajs_i_then_i)
 
                     reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
                                                                        name='reward_partition',
                                                                        reuse=True)
-                    i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
+                    i_trajectory_values = tf.reshape(tf.cast(inp_any_r_trajs_i_then_i, tf.float32), [-1, 1]) * self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 5 * self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0
@@ -79,6 +82,8 @@ class RewardPartitionNetwork(object):
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
                 self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
+                self.train_op_partition = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.partition_constraint, var_list=reward_params)
+                self.train_op_value = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.value_constraint, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)
@@ -103,8 +108,7 @@ class RewardPartitionNetwork(object):
         return Q_losses
 
 
-
-    def train_R_function(self, dummy_env_cluster):
+    def train_R_function(self, dummy_env_cluster, only_rewarding_trajectories=False):
         batch_size = 32
 
         _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
@@ -130,9 +134,12 @@ class RewardPartitionNetwork(object):
         for j in range(self.num_partitions):
             dummy_env_cluster('reset', args=[])
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
-            SP_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            SP_j_then_j, T_j_then_j, any_R_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            if not only_rewarding_trajectories:
+                any_R_j_then_j = [True for _ in range(batch_size)]
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
+            feed_dict[self.list_inp_any_r_traj[j]] = any_R_j_then_j
 
 
 
@@ -149,6 +156,7 @@ class RewardPartitionNetwork(object):
     def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
         sp_traj = []
         t_traj = []
+        r_traj = []
         #s0 = dummy_env.restore_state(starting_state)
         s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
@@ -158,11 +166,14 @@ class RewardPartitionNetwork(object):
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
             s_list = [sp for (sp, _, t, _) in experience_tuple_list]
+            r_traj.append([r for (_, r, _, _) in experience_tuple_list])
             sp_traj.append([sp for (sp, _, t, _) in experience_tuple_list])
             t_traj.append([t for (sp, _, t, _) in experience_tuple_list])
         sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
         t_traj = np.transpose(t_traj, [1, 0])
-        return sp_traj, t_traj
+        r_traj = np.transpose(r_traj, [1, 0])
+        any_r_traj = np.any(r_traj == 1, axis=1)
+        return sp_traj, t_traj, any_r_traj
 
 
     def partitioned_reward_tf(self, sp, name, reuse=None):
