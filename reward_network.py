@@ -65,7 +65,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = tf.reshape(tf.cast(inp_any_r_trajs_i_then_i, tf.float32), [-1, 1]) * self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = 5*self.partition_mult * 100 * tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
                 # build the value constraint
                 value_constraint = 0
