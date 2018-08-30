@@ -151,6 +151,8 @@ while True:
             LOG.add_line(f'q_loss{j}', q_losses[j])
 
         LOG.add_line('reward_loss', reward_loss)
+        LOG.add_line('partition_constraint', partition_constraint)
+        LOG.add_line('value_constraint', value_constraint)
 
         log_string = f'({i}) ' + \
                      ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
