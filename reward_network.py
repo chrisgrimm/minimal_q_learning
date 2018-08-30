@@ -23,6 +23,7 @@ class RewardPartitionNetwork(object):
                            for i in range(num_partitions)]
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
+                #self.inp_only_rewarding_trajectories = tf.placeholder(tf.bool)
                 if self.visual:
                     self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
                     self.inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
@@ -42,6 +43,7 @@ class RewardPartitionNetwork(object):
                 #self.list_inp_sp_traj_converted = []
                 #self.list_reward_trajs = []
                 self.list_trajectory_values = []
+                #self.list_any_r = []
                 for i in range(self.num_partitions):
                     if self.visual:
                         inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
@@ -58,6 +60,9 @@ class RewardPartitionNetwork(object):
                     self.list_inp_r_traj.append(inp_r_trajs_i_then_i)
                     self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
 
+                    any_rewards = tf.reduce_any(tf.equal(inp_r_trajs_i_then_i, 1), axis=1)
+                    #any_rewards = tf.cast(any_rewards, tf.float32)
+                    #self.list_any_r.append(any_rewards)
                     reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
                                                                        inp_r_trajs_i_then_i,
                                                                        name='reward_partition',
@@ -68,12 +73,12 @@ class RewardPartitionNetwork(object):
                 #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
 
-                #max_value_constraint = 0
-                #for i in range(self.num_partitions):
-                #    max_value_constraint += self.list_trajectory_values[i][:, i]
-                #max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
-                max_value_constraint = tf.reduce_mean(
-                    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
+                max_value_constraint = 0
+                for i in range(self.num_partitions):
+                    max_value_constraint += self.list_trajectory_values[i][:, i]
+                max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
+                #max_value_constraint = tf.reduce_mean(
+                #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
 
 
                 # build the value constraint
@@ -92,7 +97,7 @@ class RewardPartitionNetwork(object):
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)
@@ -207,9 +212,9 @@ class RewardPartitionNetwork(object):
             # sp : [bs, 32, 32 ,3]
             print('r', r)
             x = sp
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 3, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
             rewards = tf.reshape(r, [-1, 1]) * soft
