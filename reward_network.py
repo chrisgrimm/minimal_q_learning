@@ -87,7 +87,7 @@ class RewardPartitionNetwork(object):
                     for j in range(self.num_partitions):
                         if i == j:
                             continue
-                        value_constraint += tf.square(self.list_trajectory_values[i][:, j])
+                        value_constraint += self.list_trajectory_values[i][:, j]
                 value_constraint = tf.reduce_sum(value_constraint, axis=0)
 
                 self.max_value_constraint = max_value_constraint
