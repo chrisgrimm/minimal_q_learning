@@ -182,7 +182,9 @@ class RewardPartitionNetwork(object):
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
-            s_list = [[sp] for (sp, r, t, _) in experience_tuple_list]
+            # THIS IS NECESSARY, YOU DIPSHIT. the s_list needs to be updated so the actions make sense.
+            s_list = [sp for (sp, r, t, _) in experience_tuple_list]
+            
             r_traj.append([r for (sp, r, t, _) in experience_tuple_list])
             sp_traj.append([sp for (sp, r, t, _) in experience_tuple_list])
             t_traj.append([t for (sp, r, t, _) in experience_tuple_list])
