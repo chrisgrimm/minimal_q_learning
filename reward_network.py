@@ -97,7 +97,7 @@ class RewardPartitionNetwork(object):
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)
