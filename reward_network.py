@@ -178,7 +178,7 @@ class RewardPartitionNetwork(object):
         s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
             #a = self.Q_networks[policy].get_action([s0])[0]
-            a_list = [[x] for x in self.get_action_stoch(policy, s_list, rand_prob=0.1)]
+            a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
