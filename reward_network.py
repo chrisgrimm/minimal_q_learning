@@ -165,6 +165,7 @@ class RewardPartitionNetwork(object):
         U = np.random.uniform(0,1, size=len(s_list))
         rand_a_list = np.random.randint(0, self.num_actions, size=len(s_list))
         a_list = self.Q_networks[policy].get_action(s_list)
+        # TODO double check this line.
         mix_rand_a_list = rand_a_list * (U < rand_prob).astype(np.float32) + a_list * (U >= rand_prob).astype(np.float32)
         return mix_rand_a_list
 
@@ -217,7 +218,9 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
-            rewards = tf.reshape(r, [-1, 1]) * soft
+            error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
+
+            rewards = tf.reshape(r, [-1, 1]) * soft * error_control
         return rewards
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
@@ -227,6 +230,7 @@ class RewardPartitionNetwork(object):
             #a = a_traj[:, t, :]
             sp = sp_traj[:, t, :]
             r = r_traj[:, t]
+            print('r', r)
             Rs = self.partitioned_reward_tf(sp, r, name, reuse=(t > 0) or (reuse == True))
             Rs_traj.append(tf.reshape(Rs, [-1, 1, self.num_partitions])) # [bs, 1, n]
         return tf.concat(Rs_traj, axis=1) # [bs, traj, n]

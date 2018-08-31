@@ -133,7 +133,7 @@ while True:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
-        for j in range(3):
+        for j in range(1):
             reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
         # tensorboard logging.
         for j in range(num_partitions):
