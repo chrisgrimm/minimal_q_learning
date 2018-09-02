@@ -53,7 +53,7 @@ if mode == 'ASSAULT':
 
 
     def on_reward_print_func(r, sp, info, network):
-        partitioned_r = network.get_partitioned_reward([sp])[0]
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
         print(r, partitioned_r, info['ship_status'])
 
     visualization_func = produce_assault_ship_histogram_visualization
