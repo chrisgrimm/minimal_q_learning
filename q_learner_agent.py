@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 
 
 class QLearnerAgent(object):
@@ -63,8 +64,16 @@ class QLearnerAgent(object):
                 config.gpu_options.allow_growth = True
                 self.sess = sess = tf.Session(config=config)
             all_vars = tf.get_collection(tf.GraphKeys.VARIABLES, scope=name+'/')
+            self.saver = tf.train.Saver(var_list=all_vars)
             self.sess.run(tf.variables_initializer(all_vars))
             self.sess.run(self.hard_update_target)
+
+    def save(self, path, name):
+        self.saver.save(self.sess, os.path.join(path, name))
+
+    def restore(self, path, name):
+        self.saver.restore(self.sess, os.path.join(path, name))
+
 
     def qa_network(self, obs, name, reuse=None):
         if self.visual:

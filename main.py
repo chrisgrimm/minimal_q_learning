@@ -53,6 +53,11 @@ if mode == 'ASSAULT':
         produce_assault_ship_histogram_visualization(network, env, hist_full_name)
         produce_assault_reward_visualization(network, env, reward_full_name)
 
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp])[0]
+        print(r, partitioned_r, info['ship_status'])
+
+
     visualization_func = run_assault_visualizations
     # visual mode must be on for Assault domain.
     assert visual
@@ -65,6 +70,9 @@ elif mode == 'SOKOBAN':
     num_partitions = 3
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp])[0]
+        print(r, partitioned_r)
     env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
@@ -75,7 +83,10 @@ else:
 
 build_directory_structure('.', {'runs': {
     args.name: {
-        'images': {}}}})
+        'images': {},
+        'weights': {}
+    }
+}})
 LOG.setup(f'./runs/{args.name}')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
@@ -90,6 +101,7 @@ epsilon = 0.1
 episode_reward = 0
 print(env.action_space)
 epsilon = 1.0
+save_interval = 1000
 min_epsilon = 0.1
 num_epsilon_steps = 100000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -117,13 +129,12 @@ while True:
     a = get_action(s)
     sp, r, t, info = env.step(a)
     if r > 0:
-        partitioned_r = reward_net.get_partitioned_reward([sp])[0]
         print(f'{reward_buffer.length()}/{1000}')
         reward_buffer.append(s, a, r, sp, t)
+        on_reward_print_func(r, sp, info, reward_net)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
         #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
-        print(r, partitioned_r)
 
     episode_reward += r
     #env.render()
@@ -163,6 +174,12 @@ while True:
 
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
+
+        if i % save_interval == 0:
+            print('Saving...')
+            reward_net.save(f'./runs/{args.name}/weights/', 'reward_net')
+            print('Done!')
+
 
 
 

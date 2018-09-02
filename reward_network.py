@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
@@ -90,7 +91,20 @@ class RewardPartitionNetwork(object):
             config.gpu_options.allow_growth = True
             self.sess = sess = tf.Session(config=config)
             self.sess.run(tf.variables_initializer(all_variables))
+            self.saver = tf.train.Saver(var_list=all_variables)
 
+
+
+    def save(self, path, name):
+        self.saver.save(self.sess, os.path.join(path, name))
+        for i in range(self.num_partitions):
+            self.Q_networks[i].save(path, f'{name}__q_network{i}.ckpt')
+
+
+    def restore(self, path, name):
+        self.saver.restore(self.sess, os.path.join(path, name))
+        for i in range(self.num_partitions):
+            self.Q_networks[i].restore(path, f'{name}__q_network{i}.ckpt')
 
     def train_Q_networks(self):
         Q_losses = []
