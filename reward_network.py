@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
@@ -97,14 +98,25 @@ class RewardPartitionNetwork(object):
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
+
                 self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
+            self.saver = tf.train.Saver(var_list=all_variables)
             config = tf.ConfigProto(allow_soft_placement=True)
             config.gpu_options.allow_growth = True
             self.sess = sess = tf.Session(config=config)
             self.sess.run(tf.variables_initializer(all_variables))
 
+    def save(self, path, name):
+        self.saver.save(self.sess, os.path.join(path, name))
+        for i in range(self.num_partitions):
+            self.Q_networks[i].save(path, f'{name}__q_network{i}.ckpt')
+
+    def restore(self, path, name):
+        self.saver.restore(self.sess, os.path.join(path, name))
+        for i in range(self.num_partitions):
+            self.Q_networks[i].restore(path, f'{name}__q_network{i}.ckpt')
 
     def train_Q_networks(self):
         Q_losses = []
@@ -219,7 +231,7 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
+            soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
             rewards = tf.reshape(r, [-1, 1]) * soft #* error_control

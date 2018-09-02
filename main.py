@@ -4,8 +4,9 @@ from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization
 import argparse
+import os
 from utils import LOG, build_directory_structure
 import argparse
 from random import choice
@@ -19,7 +20,12 @@ from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', type=str, required=True)
+screen_name = None
+if 'STY' in os.environ:
+    screen_name = ''.join(os.environ['STY'].split('.')[1:])
+    parser.add_argument('--name', type=str, default=screen_name)
+else:
+    parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -35,6 +41,21 @@ observation_mode = 'image' if visual else 'vector'
 if mode == 'ASSAULT':
     num_partitions = 3
     num_visual_channels = 9
+
+
+    def run_assault_visualizations(network, env, name):
+        [path, name] = os.path.split(name)
+        [name, name_extension] = name.split('.')
+        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
+        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
+        produce_assault_ship_histogram_visualization(network, env, hist_full_name)
+        produce_assault_reward_visualization(network, env, reward_full_name)
+
+
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp])[0]
+        print(r, partitioned_r, info['ship_status'])
+
     visualization_func = produce_assault_ship_histogram_visualization
     # visual mode must be on for Assault domain.
     assert visual
@@ -47,6 +68,12 @@ elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
+
+
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(r, partitioned_r)
+
     env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
@@ -57,7 +84,10 @@ else:
 
 build_directory_structure('.', {'runs': {
     args.name: {
-        'images': {}}}})
+        'images': {},
+        'weights': {}
+    }
+}})
 LOG.setup(f'./runs/{args.name}')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
@@ -73,6 +103,7 @@ episode_reward = 0
 print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
+save_interval = 1000
 num_epsilon_steps = 100000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
@@ -92,34 +123,29 @@ def get_action(s):
     return action
 
 pre_training = True
-current_episode_length = 0
-max_length_before_policy_switch = 30
 while True:
     # take random action
 
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
-    sp, r, t, _ = env.step(a)
+    sp, r, t, info = env.step(a)
     if r > 0:
-        partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         print(f'{reward_buffer.length()}/{1000}')
 
         reward_buffer.append(s, a, r, sp, t)
+        on_reward_print_func(r, sp, info, reward_net)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
         #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
-        print(r, partitioned_r)
 
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
-    if current_episode_length >= max_length_before_policy_switch:
-        current_episode_length = 0
+    if 'internal_terminal' in info and info['internal_terminal']:
         current_policy = choice(policy_indices)
     if t:
         s = env.reset()
         current_policy = choice(policy_indices)
-        current_episode_length = 0
         print(f'Episode Reward: {episode_reward}')
         #print(f'Epsilon {epsilon}')
         episode_reward = 0
@@ -153,10 +179,13 @@ while True:
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
+        if i % save_interval == 0:
+            print('Saving...')
+            reward_net.save(f'./runs/{args.name}/weights/', 'reward_net')
+            print('Done!')
 
 
     i += 1
-    current_episode_length += 1
 
 
 

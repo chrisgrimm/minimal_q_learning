@@ -12,7 +12,7 @@ class SimpleAssault(object):
 
     def __init__(self, initial_states_file='stored_states.pickle'):
         self.env = gym.make('Assault-v0')
-        self.episode_length = 30
+        self.episode_length = 100
         self.frame_buffer_len = 3
         self.step_num = 0
         self.use_initial_states = initial_states_file is not None
@@ -21,7 +21,7 @@ class SimpleAssault(object):
                 self.stored_states = pickle.load(f)
         self.action_space = self.env.action_space
         self.image_size = 64
-        self.observation_space = Box(0, 255, shape=[self.image_size, self.image_size, 3])
+        self.observation_space = Box(0, 255, shape=[self.image_size, self.image_size, 3*self.frame_buffer_len])
 
     def get_current_state(self):
         state = self.env.env.clone_full_state()
