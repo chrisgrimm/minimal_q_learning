@@ -41,6 +41,7 @@ observation_mode = 'image' if visual else 'vector'
 if mode == 'ASSAULT':
     num_partitions = 2
     num_visual_channels = 9
+    traj_len = 30
 
 
     def run_assault_visualizations(network, env, name):
@@ -67,6 +68,7 @@ if mode == 'ASSAULT':
 elif mode == 'SOKOBAN':
     num_partitions = 3
     num_visual_channels = 3
+    traj_len = 10
     visualization_func = produce_two_goal_visualization
 
 
@@ -94,7 +96,7 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', gpu_num=args.gpu_num, use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', traj_len=traj_len, gpu_num=args.gpu_num, use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual)
 
 batch_size = 32
 s = env.reset()
