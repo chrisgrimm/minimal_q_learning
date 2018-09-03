@@ -19,7 +19,7 @@ class RewardPartitionNetwork(object):
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
         self.num_annealing_steps = 1000
-        self.epsilon = 1.0
+        #self.epsilon = 1.0
 
         self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
                            for i in range(num_partitions)]
@@ -169,7 +169,7 @@ class RewardPartitionNetwork(object):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
         [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
-        self.epsilon = max(self.epsilon - 1.0/self.num_annealing_steps, 1.0/self.num_annealing_steps)
+        #self.epsilon = max(self.epsilon - 1.0/self.num_annealing_steps, 1.0/self.num_annealing_steps)
 
         return loss, max_value_constraint, value_constraint
 
@@ -192,8 +192,8 @@ class RewardPartitionNetwork(object):
         s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
             #a = self.Q_networks[policy].get_action([s0])[0]
-            a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
-            a_list = [[x] for x in self.get_action_stoch(policy, s_list, rand_prob=self.epsilon)]
+            #a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
+            a_list = [[x] for x in self.get_action_stoch(policy, s_list, rand_prob=0.0)]
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
@@ -275,7 +275,7 @@ class RewardPartitionNetwork(object):
         # rs_traj : [bs, traj_len, num_partitions]
         # ts_traj : [bs, traj_len]
         print(rs_traj)
-        gamma = 0.99
+        gamma = 1.00
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
         # after the first terminal state, sticky_t_sequence should always be 0.
