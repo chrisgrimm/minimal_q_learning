@@ -95,7 +95,7 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = value_constraint - max_value_constraint
+                self.loss = 0*value_constraint - max_value_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
@@ -230,15 +230,15 @@ class RewardPartitionNetwork(object):
             # sp : [bs, 32, 32 ,3]
             print('r', r)
             x = sp
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.leaky_relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.leaky_relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.leaky_relu, name='c2')  # [bs, 8, 8, 32]
-            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.leaky_relu, name='fc1')
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1')
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
-            soft_noise = soft + tf.random_normal(tf.shape(soft), stddev=0.1)
+            #soft_noise = soft + tf.random_normal(tf.shape(soft), stddev=0.1)
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
-            rewards = tf.reshape(r, [-1, 1]) * soft_noise #* error_control
+            rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
         return rewards
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
