@@ -50,14 +50,14 @@ class SimpleAssault(object):
         self.frame_buffer = self.frame_buffer[1:] + [sp]
         if r > 0:
             # dont give reward for the last ship.
-            #r = 1
-            #t = True
-            if ship_status[2]:
-                r = 1
-                t = True
-            else:
-                r = 0
-                t = False
+            r = 1
+            t = True
+            # if ship_status[2]:
+            #     r = 1
+            #     t = True
+            # else:
+            #     r = 0
+            #     t = False
         else:
             r = 0
         if self.step_num >= self.episode_length:

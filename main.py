@@ -39,7 +39,7 @@ observation_mode = 'image' if visual else 'vector'
 
 
 if mode == 'ASSAULT':
-    num_partitions = 2
+    num_partitions = 3
     num_visual_channels = 9
 
 
