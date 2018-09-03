@@ -102,7 +102,7 @@ def produce_assault_reward_visualization(network, env, name):
         obs_samples = pickle.load(f)
     all_partitioned_rewards = []
     for ship_i_examples in obs_samples:
-        average_reward = np.mean(network.get_partitioned_reward(ship_i_examples[:10]), axis=0, keepdims=True)
+        average_reward = np.mean(network.get_partitioned_reward(ship_i_examples[:10], [1]*10), axis=0, keepdims=True)
         all_partitioned_rewards.append(average_reward)
     all_partitioned_rewards = np.concatenate(all_partitioned_rewards, axis=0)
     all_partitioned_rewards = (255*all_partitioned_rewards).astype(np.uint8)
