@@ -95,7 +95,7 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = value_constraint - 0*max_value_constraint
+                self.loss = value_constraint - max_value_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
@@ -155,10 +155,12 @@ class RewardPartitionNetwork(object):
         #starting_states = dummy_env_cluster('get_current_state', args=[])
 
         feed_dict = {}
+        dummy_env_cluster('reset', args=[])
+        starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
 
         for j in range(self.num_partitions):
-            dummy_env_cluster('reset', args=[])
-            starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
+            #dummy_env_cluster('reset', args=[])
+            #starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
             SP_j_then_j, R_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
