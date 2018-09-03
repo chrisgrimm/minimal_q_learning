@@ -75,9 +75,9 @@ class RewardPartitionNetwork(object):
                 #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
 
-                max_value_constraint = 0
+                max_value_constraint = 1
                 for i in range(self.num_partitions):
-                    max_value_constraint += self.list_trajectory_values[i][:, i]
+                    max_value_constraint *= self.list_trajectory_values[i][:, i]
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
@@ -278,6 +278,7 @@ class RewardPartitionNetwork(object):
         gamma = 1.00
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
+        # rewards should be 0'd out *after* terminal gets called. not on the same timestep
         t_sequence = tf.concat([tf.ones(shape=[tf.shape(t_sequence)[0], 1, 1]), t_sequence], axis=1)[:, :-1, :]
         # after the first terminal state, sticky_t_sequence should always be 0.
         sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
