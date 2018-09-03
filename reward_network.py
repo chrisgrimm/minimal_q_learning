@@ -278,6 +278,7 @@ class RewardPartitionNetwork(object):
         gamma = 1.00
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
+        t_sequence = tf.concat([tf.ones(shape=[tf.shape(t_sequence)[0], 1, 1]), t_sequence], axis=1)[:, :-1, :]
         # after the first terminal state, sticky_t_sequence should always be 0.
         sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
         #prod_reward = 0.0
