@@ -13,7 +13,7 @@ class QLearnerAgent(object):
                 print(obs_size, num_actions)
                 self.obs_size = obs_size
                 self.num_actions = num_actions
-                self.gamma = 0.99
+                self.gamma = 1.00
                 self.use_top_level=False
                 self.visual = visual
                 tau = 0.998
