@@ -230,7 +230,7 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1')
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), name='qa'))
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
