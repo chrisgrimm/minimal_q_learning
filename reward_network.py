@@ -99,8 +99,9 @@ class RewardPartitionNetwork(object):
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
-
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             self.saver = tf.train.Saver(var_list=all_variables)
@@ -230,10 +231,10 @@ class RewardPartitionNetwork(object):
             # sp : [bs, 32, 32 ,3]
             print('r', r)
             x = sp
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1')
+            x = tf.layers.batch_normalization(tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0'), training=True) # [bs, 32, 32, 32]
+            x = tf.layers.batch_normalization(tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1'), training=True)  # [bs, 16, 16, 32]
+            x = tf.layers.batch_normalization(tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2'), training=True)  # [bs, 8, 8, 32]
+            x = tf.layers.batch_normalization(tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1'), training=True)
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 

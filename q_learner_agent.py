@@ -116,7 +116,6 @@ class QLearnerAgent(object):
         return loss
 
     def get_action(self, s):
-
         [qa] = self.sess.run([self.qa], feed_dict={self.inp_s: s})
         a = np.argmax(qa, axis=1)
         return a
