@@ -134,7 +134,7 @@ while True:
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(1):
-            reward_loss, max_value_constraint, value_constraint, reward_constraint = reward_net.train_R_function(dummy_env_cluster)
+            reward_loss, max_value_constraint, value_constraint, reward_constraint = reward_net.train_R_function(dummy_env_cluster, (i < 200))
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
@@ -156,7 +156,7 @@ while True:
 
 
 
-    i += 1
+        i += 1
     current_episode_length += 1
 
 
