@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import os
+import pickle
 from utils import horz_stack_images
 
 
@@ -96,6 +98,19 @@ def produce_assault_ship_histogram_visualization(network, env, name):
     color_map = cv2.applyColorMap(all_hist_arrays, cv2.COLORMAP_JET)
     color_map = cv2.resize(color_map, (200*4, 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
     cv2.imwrite(name, color_map)
+
+def produce_assault_reward_visualization(network, env, name):
+    with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
+        obs_samples = pickle.load(f)
+    all_partitioned_rewards = []
+    for ship_i_examples in obs_samples:
+        average_reward = np.mean(network.get_partitioned_reward(ship_i_examples[:10], [1]*10), axis=0, keepdims=True)
+        all_partitioned_rewards.append(average_reward)
+    all_partitioned_rewards = np.concatenate(all_partitioned_rewards, axis=0)
+    all_partitioned_rewards = (255*all_partitioned_rewards).astype(np.uint8)
+    all_partitioned_rewards = cv2.applyColorMap(all_partitioned_rewards, cv2.COLORMAP_JET)
+    all_partitioned_rewards = cv2.resize(all_partitioned_rewards, (200*len(obs_samples), 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
+    cv2.imwrite(name, all_partitioned_rewards)
 
 
 def produce_reward_image(partition_state_pairs):

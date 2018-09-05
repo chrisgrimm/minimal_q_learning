@@ -4,12 +4,13 @@ from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization
 import argparse
 from utils import LOG, build_directory_structure
 import argparse
 from random import choice
 import cv2
+import os
 
 import numpy as np
 from envs.atari.threaded_environment import ThreadedEnvironment
@@ -35,6 +36,21 @@ observation_mode = 'image' if visual else 'vector'
 if mode == 'ASSAULT':
     num_partitions = 3
     num_visual_channels = 9
+
+
+    def run_assault_visualizations(network, env, name):
+        [path, name] = os.path.split(name)
+        [name, name_extension] = name.split('.')
+        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
+        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
+        produce_assault_ship_histogram_visualization(network, env, hist_full_name)
+        produce_assault_reward_visualization(network, env, reward_full_name)
+
+
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(r, partitioned_r, info['ship_status'])
+
     visualization_func = produce_assault_ship_histogram_visualization
     # visual mode must be on for Assault domain.
     assert visual
@@ -99,16 +115,17 @@ while True:
 
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
-    sp, r, t, _ = env.step(a)
+    sp, r, t, info = env.step(a)
     if r > 0:
-        partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
-        print(f'{reward_buffer.length()}/{1000}')
+        #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
+        #print(f'{reward_buffer.length()}/{1000}')
 
         reward_buffer.append(s, a, r, sp, t)
+        on_reward_print_func(r, sp, info, reward_net)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
         #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
-        print(r, partitioned_r)
+        #print(r, partitioned_r)
 
     episode_reward += r
     #env.render()
