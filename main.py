@@ -173,11 +173,11 @@ while True:
             LOG.add_line('value_constraint', value_constraint)
 
 
-        log_string = f'({i}) ' + \
-                     ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {reward_loss}' + \
-                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
-        print(log_string)
+            log_string = f'({i}) ' + \
+                         ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
+                         f'Reward Loss: {reward_loss}' + \
+                         f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+            print(log_string)
 
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
