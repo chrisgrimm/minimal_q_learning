@@ -162,7 +162,7 @@ while True:
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(1):
-            reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
+            reward_loss, max_value_constraint, value_constraint, partition_constraint = reward_net.train_R_function(dummy_env_cluster)
     # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
@@ -170,12 +170,13 @@ while True:
         LOG.add_line('reward_loss', reward_loss)
         LOG.add_line('max_value_constraint', max_value_constraint)
         LOG.add_line('value_constraint', value_constraint)
+        LOG.add_line('partition_constraint', partition_constraint)
 
 
         log_string = f'({i}) ' + \
                      ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
                      f'Reward Loss: {reward_loss}' + \
-                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint}, PartConst: {partition_constraint})'
         print(log_string)
 
         if i % 100 == 0:
