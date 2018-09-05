@@ -159,7 +159,7 @@ class RewardPartitionNetwork(object):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
         [_, loss, max_value_constraint, value_constraint, reward_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.reward_constraint], feed_dict=feed_dict)
-        return loss, max_value_constraint, value_constraint
+        return loss, max_value_constraint, value_constraint, reward_constraint
 
 
 
