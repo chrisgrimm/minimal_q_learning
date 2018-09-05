@@ -51,7 +51,7 @@ if mode == 'ASSAULT':
         partitioned_r = network.get_partitioned_reward([sp], [r])[0]
         print(r, partitioned_r, info['ship_status'])
 
-    visualization_func = produce_assault_ship_histogram_visualization
+    visualization_func = run_assault_visualizations
     # visual mode must be on for Assault domain.
     assert visual
     env = SimpleAssault(initial_states_file='stored_states_64.pickle')
