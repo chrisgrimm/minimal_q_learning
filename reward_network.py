@@ -34,7 +34,8 @@ class RewardPartitionNetwork(object):
                     self.inp_sp_converted = self.inp_sp
                 self.inp_r = tf.placeholder(tf.float32, [None])
                 #print('OG partitioned reward', self.inp_s, inp_a_onehot)
-                partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
+
+                partitioned_reward, predicted_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
                 self.partitioned_reward = partitioned_reward
 
 
@@ -72,7 +73,7 @@ class RewardPartitionNetwork(object):
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
-                partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
+                partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - predicted_reward))
                 self.partition_constraint = partition_constraint
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
@@ -238,13 +239,13 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 256, activation=tf.nn.relu, name='fc1')
-            actual_reward = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='reward')
+            predicted_reward = tf.reshape(tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='reward'), [-1])
             soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
             #soft_noise = soft + tf.random_normal(tf.shape(soft), stddev=0.1)
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
             rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
-        return rewards, actual_reward
+        return rewards, predicted_reward_reward
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
         Rs_traj = []
