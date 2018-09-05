@@ -245,7 +245,7 @@ class RewardPartitionNetwork(object):
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
             rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
-        return rewards, predicted_reward_reward
+        return rewards, predicted_reward
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
         Rs_traj = []
