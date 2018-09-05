@@ -234,7 +234,7 @@ class RewardPartitionNetwork(object):
             sp = sp_traj[:, t, :]
             r = r_traj[:, t]
             print('r', r)
-            Rs, _ = self.partitioned_reward_tf(sp, r, name, reuse=(t > 0) or (reuse == True))
+            Rs = self.partitioned_reward_tf(sp, r, name, reuse=(t > 0) or (reuse == True))
             Rs_traj.append(tf.reshape(Rs, [-1, 1, self.num_partitions])) # [bs, 1, n]
         return tf.concat(Rs_traj, axis=1) # [bs, traj, n]
 
