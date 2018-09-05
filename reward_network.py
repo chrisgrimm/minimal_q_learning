@@ -98,12 +98,12 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = value_constraint - max_value_constraint + partition_constraint
+                self.loss = 0*value_constraint - max_value_constraint + partition_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
 
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.00001).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             self.saver = tf.train.Saver(var_list=all_variables)
