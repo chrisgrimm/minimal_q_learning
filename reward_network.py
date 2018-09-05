@@ -30,13 +30,11 @@ class RewardPartitionNetwork(object):
                 else:
                     self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
                     self.inp_sp_converted = self.inp_sp
-                self.inp_reward_only = tf.placeholder(tf.bool)
                 self.inp_r = tf.placeholder(tf.float32, [None])
                 #print('OG partitioned reward', self.inp_s, inp_a_onehot)
-                partitioned_reward, predicted_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
+                partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
                 self.partitioned_reward = partitioned_reward
 
-                self.reward_constraint = tf.reduce_mean(tf.square(self.inp_r - predicted_reward))
 
 
                 # build the list of placeholders
@@ -95,7 +93,7 @@ class RewardPartitionNetwork(object):
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                self.loss = (1 - tf.cast(self.inp_reward_only, tf.float32)) * (value_constraint - 10*max_value_constraint) + 100 * self.reward_constraint
+                self.loss = (value_constraint - 10*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
@@ -125,7 +123,7 @@ class RewardPartitionNetwork(object):
 
 
 
-    def train_R_function(self, dummy_env_cluster, reward_only=False):
+    def train_R_function(self, dummy_env_cluster):
         batch_size = 32
 
         _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
@@ -143,7 +141,7 @@ class RewardPartitionNetwork(object):
         #starting_state = dummy_env.get_current_state()
         #starting_states = dummy_env_cluster('get_current_state', args=[])
 
-        feed_dict = {self.inp_r: r_batch, self.inp_sp: sp_batch, self.inp_reward_only: reward_only}
+        feed_dict = {self.inp_r: r_batch, self.inp_sp: sp_batch}
 
         for j in range(self.num_partitions):
             dummy_env_cluster('reset', args=[])
@@ -158,8 +156,8 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        [_, loss, max_value_constraint, value_constraint, reward_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.reward_constraint], feed_dict=feed_dict)
-        return loss, max_value_constraint, value_constraint, reward_constraint
+        [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
+        return loss, max_value_constraint, value_constraint
 
 
 
@@ -223,11 +221,10 @@ class RewardPartitionNetwork(object):
             x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
             x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
             soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
-            actual_reward = tf.reshape(tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='reward'), [-1])
             #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
 
             rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
-        return rewards, actual_reward
+        return rewards
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
         Rs_traj = []
