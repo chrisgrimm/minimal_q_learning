@@ -98,7 +98,7 @@ class RewardPartitionNetwork(object):
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
 
-                self.loss = 10*value_constraint - max_value_constraint
+                self.loss = value_constraint - max_value_constraint
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
