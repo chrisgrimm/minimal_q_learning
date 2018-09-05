@@ -74,26 +74,33 @@ class RewardPartitionNetwork(object):
                 #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
 
+                avg_values = tf.identity(
+                    [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
+                value_weighting = tf.stop_gradient(tf.nn.softmax(-avg_values))  # [num_partitions]
+
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
-                    max_value_constraint += self.list_trajectory_values[i][:, i]
+                    max_value_constraint += value_weighting[i] * self.list_trajectory_values[i][:, i]
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
 
 
-                # build the value constraint
+                #build the value constraint
                 value_constraint = 0
                 for i in range(self.num_partitions):
-                    for j in range(self.num_partitions):
-                        if i == j:
-                            continue
-                        value_constraint += self.list_trajectory_values[i][:, j]
+                   for j in range(self.num_partitions):
+                       if i == j:
+                           continue
+
+                       value_constraint += self.list_trajectory_values[i][:, j]
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
+
+
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                self.loss = (value_constraint - 20*max_value_constraint)
+                self.loss = (value_constraint - 10*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
