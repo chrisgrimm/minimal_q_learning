@@ -89,7 +89,7 @@ class RewardPartitionNetwork(object):
                     for j in range(self.num_partitions):
                         if i == j:
                             continue
-                        
+
                         directionality = tf.stop_gradient(tf.cast(tf.greater_equal(self.list_trajectory_values[j][:, j], self.list_trajectory_values[i][:, i]), tf.float32))
 
                         value_constraint += directionality * self.list_trajectory_values[i][:, j]
@@ -103,7 +103,7 @@ class RewardPartitionNetwork(object):
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
 
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=0.00001).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             self.saver = tf.train.Saver(var_list=all_variables)
