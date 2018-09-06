@@ -12,7 +12,6 @@ from random import choice
 import cv2
 import os
 
-import numpy as np
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
@@ -20,7 +19,16 @@ from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', type=str, required=True)
+screen_name = None
+if 'STY' in os.environ:
+    screen_name = ''.join(os.environ['STY'].split('.')[1:])
+    parser.add_argument('--name', type=str, default=screen_name)
+else:
+    parser.add_argument('--name', type=str, required=True)
+
+parser.add_argument('--traj-len', type=int, required=True)
+parser.add_argument('--max-value-mult', type=float, required=True)
+parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -80,7 +88,10 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', gpu_num=args.gpu_num, use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual)
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0],
+                                    env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
+                                    use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
+                                    max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle)
 
 batch_size = 32
 s = env.reset()

@@ -4,7 +4,9 @@ from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, reuse=None):
+    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
+                 max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
+                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, reuse=None):
         if not use_gpu:
             gpu_num = 0
         self.num_partitions = num_partitions
@@ -13,7 +15,11 @@ class RewardPartitionNetwork(object):
         self.buffer = buffer
         self.reward_buffer = reward_buffer
         self.visual = visual
-        self.traj_len = 30
+        self.traj_len = traj_len
+        self.max_value_mult = max_value_mult
+        self.use_dynamic_weighting_max_value = use_dynamic_weighting_max_value
+        self.use_dynamic_weighting_disentangle_value = use_dynamic_weighting_disentangle_value
+
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
@@ -74,33 +80,50 @@ class RewardPartitionNetwork(object):
                 #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
 
-                avg_values = tf.identity(
-                    [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
-                value_weighting = tf.stop_gradient(tf.nn.softmax(-avg_values))  # [num_partitions]
+                if self.use_dynamic_weighting_max_value:
+                    avg_max_values = tf.identity(
+                        [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
+                    max_value_weighting = tf.stop_gradient(tf.nn.softmax(-avg_max_values))  # [num_partitions]
+                else:
+                    max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
+
 
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
-                    max_value_constraint += value_weighting[i] * self.list_trajectory_values[i][:, i]
+                    max_value_constraint += max_value_weighting[i] * self.list_trajectory_values[i][:, i]
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
 
 
+                if self.use_dynamic_weighting_disentangle_value:
+                    ordered = []
+                    for i in range(self.num_partitions):
+                        for j in range(self.num_partitions):
+                            if i == j:
+                                continue
+                            ordered.append(tf.reduce_mean(self.list_trajectory_values[i][:, j], axis=0))
+                    dist_value_weighting = tf.stop_gradient(tf.nn.softmax(-tf.identity(ordered)))
+                else:
+                    dist_value_weighting = tf.ones(shape=[self.num_partitions**2 - self.num_partitions], dtype=tf.float32)
+
                 #build the value constraint
+                index = 0
                 value_constraint = 0
                 for i in range(self.num_partitions):
                    for j in range(self.num_partitions):
                        if i == j:
                            continue
+                       value_constraint += (dist_value_weighting[index] * self.list_trajectory_values[i][:, j])
+                       index += 1
 
-                       value_constraint += self.list_trajectory_values[i][:, j]
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
 
 
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                self.loss = (value_constraint - 10*max_value_constraint)
+                self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
