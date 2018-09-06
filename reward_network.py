@@ -156,10 +156,10 @@ class RewardPartitionNetwork(object):
     def train_R_function(self, dummy_env_cluster):
         batch_size = 32
 
-        _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
-        _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
-        r_batch = r_no_reward_batch + r_reward_batch
-        sp_batch = sp_no_reward_batch + sp_reward_batch
+        # _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
+        # _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
+        # r_batch = r_no_reward_batch + r_reward_batch
+        # sp_batch = sp_no_reward_batch + sp_reward_batch
 
         # collect  all the trajectories.
         #all_SP_traj_batches = []
@@ -171,7 +171,7 @@ class RewardPartitionNetwork(object):
         #starting_state = dummy_env.get_current_state()
         #starting_states = dummy_env_cluster('get_current_state', args=[])
 
-        feed_dict = {self.inp_r: r_batch, self.inp_sp: sp_batch}
+        feed_dict = {}
 
         for j in range(self.num_partitions):
             dummy_env_cluster('reset', args=[])
