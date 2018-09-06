@@ -6,7 +6,7 @@ class RewardPartitionNetwork(object):
 
     def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
-                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, reuse=None):
+                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None):
         if not use_gpu:
             gpu_num = 0
         self.num_partitions = num_partitions
@@ -128,7 +128,7 @@ class RewardPartitionNetwork(object):
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 print(reward_params)
-                self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss, var_list=reward_params)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             config = tf.ConfigProto(allow_soft_placement=True)

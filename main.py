@@ -31,6 +31,7 @@ parser.add_argument('--max-value-mult', type=float, required=True)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
 parser.add_argument('--visual', action='store_true')
+parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
 
@@ -91,7 +92,8 @@ reward_buffer = ReplayBuffer(100000)
 reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0],
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
-                                    max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle)
+                                    max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
+                                    lr=args.learning_rate)
 
 batch_size = 32
 s = env.reset()
