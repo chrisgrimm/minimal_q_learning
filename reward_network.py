@@ -103,7 +103,8 @@ class RewardPartitionNetwork(object):
                             if i == j:
                                 continue
                             ordered.append(tf.reduce_mean(self.list_trajectory_values[i][:, j], axis=0))
-                    dist_value_weighting = tf.stop_gradient(tf.nn.softmax(-tf.identity(ordered)))
+                    # No negative in front of this term because we want it to be small.
+                    dist_value_weighting = tf.stop_gradient(tf.nn.softmax(tf.identity(ordered)))
                 else:
                     dist_value_weighting = tf.ones(shape=[self.num_partitions**2 - self.num_partitions], dtype=tf.float32)
 
