@@ -6,7 +6,7 @@ class RewardPartitionNetwork(object):
 
     def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
-                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None):
+                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False):
         if not use_gpu:
             gpu_num = 0
         self.num_partitions = num_partitions
@@ -19,14 +19,26 @@ class RewardPartitionNetwork(object):
         self.max_value_mult = max_value_mult
         self.use_dynamic_weighting_max_value = use_dynamic_weighting_max_value
         self.use_dynamic_weighting_disentangle_value = use_dynamic_weighting_disentangle_value
+        self.reuse_visual_scoping = reuse_visual_scoping
 
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
-
-        self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
-                           for i in range(num_partitions)]
+        if reuse_visual_scoping:
+            self.Q_networks = []
+            qnet0 = QLearnerAgent(obs_size, num_actions, f'qnet0', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
+            self.Q_networks.append(qnet0)
+            self.visual_scope = qnet0.visual_scope
+            for i in range(1, num_partitions):
+                self.Q_networks.append(
+                    QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
+                                  visual=visual, gpu_num=gpu_num, use_gpu=use_gpu,
+                                  alternate_visual_scope=self.visual_scope)
+                )
+        else:
+            self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
+                               for i in range(num_partitions)]
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 #self.inp_only_rewarding_trajectories = tf.placeholder(tf.bool)
@@ -243,18 +255,25 @@ class RewardPartitionNetwork(object):
 
 
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
-        with tf.variable_scope(name, reuse=reuse):
-            # sp : [bs, 32, 32 ,3]
-            print('r', r)
-            x = sp
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
-            #error_control = tf.layers.dense(x, 1, activation=tf.nn.sigmoid, name='error_control') # [bs, 1]
+        if self.reuse_visual_scoping:
+            x = self.Q_networks[0].qa_network_preprocessing(sp, self.visual_scope, reuse=True)
+            # TODO expected behavior should be that the reward network has no control over the visual representation.
+            # This should prevent the reward network from fixating on details that are unimportant to the values in an
+            # effort to disentangle.
+            with tf.variable_scope(name, reuse=reuse):
+                soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+        else:
+            with tf.variable_scope(name, reuse=reuse):
+                # sp : [bs, 32, 32 ,3]
+                print('r', r)
+                x = sp
+                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
+                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+                x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+                soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
 
-            rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
+        rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
         return rewards
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):

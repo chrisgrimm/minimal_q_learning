@@ -26,6 +26,7 @@ if 'STY' in os.environ:
 else:
     parser.add_argument('--name', type=str, required=True)
 
+parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, required=True)
 parser.add_argument('--max-value-mult', type=float, required=True)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
@@ -95,7 +96,7 @@ reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.o
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
-                                    lr=args.learning_rate)
+                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual)
 
 batch_size = 32
 s = env.reset()
