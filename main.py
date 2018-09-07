@@ -4,7 +4,7 @@ from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics
 import argparse
 from utils import LOG, build_directory_structure
 import argparse
@@ -52,8 +52,10 @@ if mode == 'ASSAULT':
         [name, name_extension] = name.split('.')
         hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
         reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
+        statistics_full_name = os.path.join(path, name+'_statistics.txt')
         produce_assault_ship_histogram_visualization(network, env, hist_full_name)
         produce_assault_reward_visualization(network, env, reward_full_name)
+        produce_reward_statistics(network, env, statistics_full_name)
 
 
     def on_reward_print_func(r, sp, info, network):
@@ -158,7 +160,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
+    if buffer.length() >= batch_size and reward_buffer.length() >= 10:
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):

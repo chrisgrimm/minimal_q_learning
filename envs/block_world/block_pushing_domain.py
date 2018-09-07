@@ -317,10 +317,11 @@ class BlockPushingDomain(object):
         new_obs = self.get_observation(self.observation_mode)
         reward = self.get_reward(new_obs_vec)
         terminal = self.get_terminal(new_obs_vec)
+        info = {'internal_terminal': terminal}
         if terminal:
             self.reset()
         # TODO use old_obs for hindsight.
-        return new_obs, reward, False, {}
+        return new_obs, reward, False, info
 
     def render(self):
         object_positions = self.produce_object_positions_from_blocks()

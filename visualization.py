@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import os
 import pickle
+
+from reward_network import RewardPartitionNetwork
 from utils import horz_stack_images
 
 
@@ -98,6 +100,28 @@ def produce_assault_ship_histogram_visualization(network, env, name):
     color_map = cv2.applyColorMap(all_hist_arrays, cv2.COLORMAP_JET)
     color_map = cv2.resize(color_map, (200*4, 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
     cv2.imwrite(name, color_map)
+
+
+def produce_reward_statistics(network, env, name):
+    num_episodes_per_policy = 30
+    partition_average_rewards = []
+    for i in range(network.num_partitions):
+        all_episode_partitioned_rewards = []
+        for j in range(num_episodes_per_policy):
+            s = env.reset()
+            episode_partitioned_reward = np.zeros(shape=[network.num_partitions])
+            while True:
+                a = network.get_state_actions([s])[i][0]
+                s, r, t, info = env.step(a)
+                partitioned_reward = network.get_partitioned_reward([s], [r])[0]
+                episode_partitioned_reward += partitioned_reward
+                if t or (('internal_terminal' in info) and info['internal_terminal']):
+                    all_episode_partitioned_rewards.append(episode_partitioned_reward)
+                    break
+        average_episode_partitioned_rewards = np.mean(all_episode_partitioned_rewards, axis=0)
+        partition_average_rewards.append((i, average_episode_partitioned_rewards))
+    with open(name, 'w') as f:
+        f.write('\n'.join(str(x) for x in partition_average_rewards))
 
 def produce_assault_reward_visualization(network, env, name):
     with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
