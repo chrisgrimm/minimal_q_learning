@@ -6,7 +6,7 @@ class QLearnerAgent(object):
     # classes have name scopes. need a way to allow an agent to use another agent's weights for a portion of the network.
     # this needs to be suppliable as a function, we need a function that will produce a tensorflow graph
     def __init__(self, obs_size, num_actions, name, reuse=None, visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False,
-                 alternate_visual_scope=None):
+                 alternate_visual_scope=None, sess=None):
         if not use_gpu:
             gpu_num = 0
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
@@ -38,16 +38,18 @@ class QLearnerAgent(object):
                 if alternate_visual_scope is not None:
                     # TODO confirm that this works with reuse.
                     # a quick look at the source-code suggests that it should.
+                    print('alt_scope', alternate_visual_scope)
                     self.q_encoding, self.visual_scope = self.qa_network_preprocessing(self.inp_s_converted, alternate_visual_scope, reuse=True)
                 else:
+                    print('here!')
                     self.q_encoding, self.visual_scope = self.qa_network_preprocessing(self.inp_s_converted, 'qa_network_preprocessing')
-                self.qa = self.qa_network(self.q_encoding, 'qa_network_out')
+                qa = self.qa_network(self.q_encoding, 'qa_network_out')
                 # TODO confirm that this works as expected. and that reused variables are being updated properly.
-                preprocessing_scope = f'{name}/qa_network_preprocessing/' if alternate_visual_scope is None else alternate_visual_scope
+                preprocessing_scope = f'{name}/qa_network_preprocessing/' if alternate_visual_scope is None else alternate_visual_scope.name
                 qa_vars = (tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                              scope=preprocessing_scope) +
                            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                             scope=f'{name}/qs_network_out/'))
+                                             scope=f'{name}/qa_network_out/'))
 
                 print('qa_vars', qa_vars)
 
@@ -75,13 +77,17 @@ class QLearnerAgent(object):
                 hard_update_target = tf.group(*[tf.assign(target, network)
                                                 for network, target in zip(qa_vars, qa_target_vars)])
                 self.hard_update_target = hard_update_target
-
-                config = tf.ConfigProto(allow_soft_placement=True)
-                config.gpu_options.allow_growth = True
-                self.sess = sess = tf.Session(config=config)
+                if sess is None:
+                    config = tf.ConfigProto(allow_soft_placement=True)
+                    config.gpu_options.allow_growth = True
+                    self.sess = tf.Session(config=config)
+                else:
+                    self.sess = sess
             all_vars = tf.get_collection(tf.GraphKeys.VARIABLES, scope=name+'/')
+            print('all_vars', all_vars)
             self.sess.run(tf.variables_initializer(all_vars))
             self.sess.run(self.hard_update_target)
+            print(f'Finished Initializing {name}')
 
 
     def qa_network_preprocessing(self, obs, name, reuse=None):

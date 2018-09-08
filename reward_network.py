@@ -25,19 +25,25 @@ class RewardPartitionNetwork(object):
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
 
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        self.sess = sess = tf.Session(config=config)
+
         if reuse_visual_scoping:
             self.Q_networks = []
-            qnet0 = QLearnerAgent(obs_size, num_actions, f'qnet0', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
+            qnet0 = QLearnerAgent(obs_size, num_actions, f'qnet0', num_visual_channels=num_visual_channels,
+                                  visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
             self.Q_networks.append(qnet0)
             self.visual_scope = qnet0.visual_scope
             for i in range(1, num_partitions):
                 self.Q_networks.append(
                     QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
                                   visual=visual, gpu_num=gpu_num, use_gpu=use_gpu,
-                                  alternate_visual_scope=self.visual_scope)
+                                  alternate_visual_scope=self.visual_scope, sess=self.sess)
                 )
         else:
-            self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels, visual=visual, gpu_num=gpu_num, use_gpu=use_gpu)
+            self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
+                                             visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
                                for i in range(num_partitions)]
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
@@ -143,9 +149,7 @@ class RewardPartitionNetwork(object):
                 self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
-            config = tf.ConfigProto(allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
-            self.sess = sess = tf.Session(config=config)
+            print('reward_vars', all_variables)
             self.sess.run(tf.variables_initializer(all_variables))
 
 
@@ -256,7 +260,7 @@ class RewardPartitionNetwork(object):
 
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
         if self.reuse_visual_scoping:
-            x = self.Q_networks[0].qa_network_preprocessing(sp, self.visual_scope, reuse=True)
+            x, _ = self.Q_networks[0].qa_network_preprocessing(sp, self.visual_scope, reuse=True)
             # TODO expected behavior should be that the reward network has no control over the visual representation.
             # This should prevent the reward network from fixating on details that are unimportant to the values in an
             # effort to disentangle.
