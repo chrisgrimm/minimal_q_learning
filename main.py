@@ -75,6 +75,11 @@ elif mode == 'SOKOBAN':
     num_partitions = 3
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
+
+    def on_reward_print_func(r, sp, info, network):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(r, partitioned_r)
+
     env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
