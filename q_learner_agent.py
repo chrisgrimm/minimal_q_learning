@@ -43,7 +43,7 @@ class QLearnerAgent(object):
                 else:
                     print('here!')
                     self.q_encoding, self.visual_scope = self.qa_network_preprocessing(self.inp_s_converted, 'qa_network_preprocessing')
-                qa = self.qa_network(self.q_encoding, 'qa_network_out')
+                self.qa = qa = self.qa_network(self.q_encoding, 'qa_network_out')
                 # TODO confirm that this works as expected. and that reused variables are being updated properly.
                 preprocessing_scope = f'{name}/qa_network_preprocessing/' if alternate_visual_scope is None else alternate_visual_scope.name
                 qa_vars = (tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
