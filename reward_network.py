@@ -24,7 +24,7 @@ class RewardPartitionNetwork(object):
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
-
+        self.visual_scope = None
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
         self.sess = sess = tf.Session(config=config)
@@ -145,8 +145,12 @@ class RewardPartitionNetwork(object):
                 self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
-                print(reward_params)
-                self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params)
+                print('visual_scope', self.visual_scope.name)
+                visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []
+                print('reward_params', reward_params)
+                print('visual_params', visual_params)
+
+                self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             print('reward_vars', all_variables)
