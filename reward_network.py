@@ -6,7 +6,9 @@ class RewardPartitionNetwork(object):
 
     def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
-                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False):
+                 visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
+                 separate_reward_repr=False):
+        assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
         self.num_partitions = num_partitions
@@ -20,6 +22,7 @@ class RewardPartitionNetwork(object):
         self.use_dynamic_weighting_max_value = use_dynamic_weighting_max_value
         self.use_dynamic_weighting_disentangle_value = use_dynamic_weighting_disentangle_value
         self.reuse_visual_scoping = reuse_visual_scoping
+        self.separate_reward_repr = separate_reward_repr
 
         self.num_visual_channels = num_visual_channels
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
@@ -55,9 +58,16 @@ class RewardPartitionNetwork(object):
                     self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
                     self.inp_sp_converted = self.inp_sp
                 self.inp_r = tf.placeholder(tf.float32, [None])
+                self.pred_reward, self.internal_repr = self.reward_visual_tf(self.inp_sp_converted, 'pred_reward')
+
+
                 #print('OG partitioned reward', self.inp_s, inp_a_onehot)
                 partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
                 self.partitioned_reward = partitioned_reward
+
+
+
+
 
 
 
@@ -138,19 +148,20 @@ class RewardPartitionNetwork(object):
 
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
 
-
+                self.reward_loss = tf.reduce_mean(tf.square(self.pred_reward - self.inp_r), axis=0)
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
                 self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
-                print('visual_scope', self.visual_scope.name)
+                pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
                 visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []
                 print('reward_params', reward_params)
                 print('visual_params', visual_params)
 
                 self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
+                self.train_op_reward = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.reward_loss, var_list=pred_reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             print('reward_vars', all_variables)
@@ -172,6 +183,14 @@ class RewardPartitionNetwork(object):
             Q_losses.append(loss)
         return Q_losses
 
+    def train_predicted_reward(self):
+        batch_size = 32
+        _, _, r_no_reward_batch, sp_no_reward_batch, _ = self.buffer.sample(batch_size // 2)
+        _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
+        r_batch = r_no_reward_batch + r_reward_batch
+        sp_batch = sp_no_reward_batch + sp_reward_batch
+        [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
+        return loss
 
 
     def train_R_function(self, dummy_env_cluster):
@@ -262,12 +281,26 @@ class RewardPartitionNetwork(object):
         return rewards
 
 
+    def reward_visual_tf(self, sp, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            x = sp
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+            internal_rep = x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+            r = tf.reshape(tf.layers.dense(x, 1, name='pred_reward'), [-1])
+        return r, internal_rep
+
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
         if self.reuse_visual_scoping:
             x, _ = self.Q_networks[0].qa_network_preprocessing(sp, self.visual_scope, reuse=True)
             # TODO expected behavior should be that the reward network has no control over the visual representation.
             # This should prevent the reward network from fixating on details that are unimportant to the values in an
             # effort to disentangle.
+            with tf.variable_scope(name, reuse=reuse):
+                soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+        elif self.separate_reward_repr:
+            _, x = self.reward_visual_tf(sp, 'pred_reward', reuse=True)
             with tf.variable_scope(name, reuse=reuse):
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
         else:

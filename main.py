@@ -34,6 +34,7 @@ parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSA
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
+parser.add_argument('--separate-reward-repr', action='store_true')
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -101,7 +102,7 @@ reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.o
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
-                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual)
+                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr)
 
 batch_size = 32
 s = env.reset()
@@ -111,6 +112,8 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
+num_reward_steps = 1000
+current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
 
@@ -166,13 +169,16 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= 1000:
+    if (buffer.length() >= batch_size) and (reward_buffer.length() >= 1000) and (current_reward_training_step >= num_reward_steps):
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
             q_losses = reward_net.train_Q_networks()
         for j in range(1):
             reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
+        if args.separate_reward_repr:
+            pred_reward_loss = reward_net.train_predicted_reward()
+
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
@@ -189,10 +195,18 @@ while True:
 
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
+    # run the training
+    if (buffer.length() >= batch_size) and (reward_buffer.length() >= 1000) and current_reward_training_step < num_reward_steps:
+        reward_loss = reward_net.train_predicted_reward()
+        print(f'{current_reward_training_step}/{num_reward_steps} Loss : {reward_loss}')
+        current_reward_training_step += 1
 
 
 
-        i += 1
+
+
+
+    i += 1
     current_episode_length += 1
 
 
