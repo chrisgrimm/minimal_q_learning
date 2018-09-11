@@ -4,7 +4,7 @@ from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
 import argparse
 from utils import LOG, build_directory_structure
 import argparse
@@ -112,6 +112,7 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
+min_reward_experiences = 1000
 num_reward_steps = 10000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -134,6 +135,7 @@ def get_action(s):
 pre_training = True
 current_episode_length = 0
 max_length_before_policy_switch = 30
+
 while True:
     # take random action
 
@@ -169,7 +171,7 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-    if (buffer.length() >= batch_size) and (reward_buffer.length() >= 1000) and (current_reward_training_step >= num_reward_steps):
+    if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and (current_reward_training_step >= num_reward_steps):
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
@@ -196,10 +198,14 @@ while True:
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
     # run the training
-    if (buffer.length() >= batch_size) and (reward_buffer.length() >= 1000) and current_reward_training_step < num_reward_steps:
+    if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and current_reward_training_step < num_reward_steps:
         reward_loss = reward_net.train_predicted_reward()
         print(f'{current_reward_training_step}/{num_reward_steps} Loss : {reward_loss}')
         current_reward_training_step += 1
+    else:
+        visualize_all_representations_all_reward_images(reward_net)
+        break
+
 
 
 

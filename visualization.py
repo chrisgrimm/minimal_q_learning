@@ -4,7 +4,7 @@ import os
 import pickle
 
 from reward_network import RewardPartitionNetwork
-from utils import horz_stack_images
+from utils import horz_stack_images, build_directory_structure
 
 
 def visualize_values(value_set):
@@ -123,6 +123,8 @@ def produce_reward_statistics(network, env, name):
     with open(name, 'w') as f:
         f.write('\n'.join(str(x) for x in partition_average_rewards))
 
+
+
 def produce_assault_reward_visualization(network, env, name):
     with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
         obs_samples = pickle.load(f)
@@ -147,7 +149,48 @@ def produce_reward_image(partition_state_pairs):
 
 
 
+def visualize_all_representations_all_reward_images(network: RewardPartitionNetwork):
+    with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
+        obs_samples = pickle.load(f)
+    for ship_num, ship_examples in enumerate(obs_samples):
+        for instance_num, example in enumerate(ship_examples):
+            visualize_all_representations(f'{ship_num}_{instance_num}', example, network)
 
+
+
+
+def visualize_all_representations(name: str, image: np.ndarray, network: RewardPartitionNetwork):
+    c0, c1, c2 = network.get_representations(image)
+    c0 = normalize_layer(c0)
+    c1 = normalize_layer(c1)
+    c2 = normalize_layer(c2)
+    build_directory_structure('.',
+        {'repr_vis':
+            {name:
+                {'c0': {},
+                 'c1': {},
+                 'c2': {}
+                 }
+             }
+         })
+    for i, c in enumerate([c0, c1, c2]):
+        c_path = os.path.join('repr_vis', name, f'c{i}')
+        orig = horz_stack_images(image[:, :, 0:3], image[:, :, 3:6], image[:, :, 6:9])
+        cv2.imwrite(os.path.join('repr_vis', name, 'orig.png'), orig)
+
+        for layer_idx in range(c.shape[2]):
+            cv2.imwrite(os.path.join(c_path, f'layer{layer_idx}.png'), cv2.resize(np.tile(c[:, :, [layer_idx]], [1, 1, 3]), (64, 64), interpolation=cv2.INTER_NEAREST))
+
+
+
+
+
+
+def normalize_layer(layer: np.ndarray):
+    layer = layer.astype(np.float32)
+    span = np.max(layer) - np.min(layer)
+    layer = (layer - np.min(layer)) / span
+    return (255*layer).astype(np.uint8)
 
 
 

@@ -58,7 +58,8 @@ class RewardPartitionNetwork(object):
                     self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
                     self.inp_sp_converted = self.inp_sp
                 self.inp_r = tf.placeholder(tf.float32, [None])
-                self.pred_reward, self.internal_repr = self.reward_visual_tf(self.inp_sp_converted, 'pred_reward')
+                self.pred_reward, self.internal_repr, self.all_layers = self.reward_visual_tf(self.inp_sp_converted, 'pred_reward')
+
 
 
                 #print('OG partitioned reward', self.inp_s, inp_a_onehot)
@@ -239,6 +240,11 @@ class RewardPartitionNetwork(object):
         mix_rand_a_list = rand_a_list * (U < rand_prob).astype(np.float32) + a_list * (U >= rand_prob).astype(np.float32)
         return mix_rand_a_list
 
+    def get_representations(self, s):
+        [c0, c1, c2] = self.sess.run([self.all_layers['c0'], self.all_layers['c1'], self.all_layers['c2']], feed_dict={self.inp_sp: [s]})
+        return c0[0], c1[0], c2[0]
+
+
     # grab sample trajectories from a starting state.
     def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
         sp_traj = []
@@ -284,12 +290,12 @@ class RewardPartitionNetwork(object):
     def reward_visual_tf(self, sp, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             x = sp
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            internal_rep = x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            r = tf.reshape(tf.layers.dense(x, 1, name='pred_reward'), [-1])
-        return r, internal_rep
+            c0 = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
+            c1 = tf.layers.conv2d(c0, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+            c2 = tf.layers.conv2d(c1, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+            internal_rep = tf.layers.dense(tf.reshape(c2, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+            r = tf.reshape(tf.layers.dense(internal_rep, 1, name='pred_reward'), [-1])
+        return r, internal_rep, {'c0': c0, 'c1': c1, 'c2': c2}
 
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
         if self.reuse_visual_scoping:
@@ -300,7 +306,7 @@ class RewardPartitionNetwork(object):
             with tf.variable_scope(name, reuse=reuse):
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
         elif self.separate_reward_repr:
-            _, x = self.reward_visual_tf(sp, 'pred_reward', reuse=True)
+            _, x, _ = self.reward_visual_tf(sp, 'pred_reward', reuse=True)
             with tf.variable_scope(name, reuse=reuse):
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
         else:
