@@ -306,10 +306,11 @@ class RewardPartitionNetwork(object):
             Y = Y.astype(np.float32)
             X = tf.reshape(X, [1, 64, 64])
             Y = tf.reshape(Y, [1, 64, 64])
-            detectors = tf.layers.conv2d(x, 2*num_objects, 4, 1)
+            detectors = tf.layers.conv2d(x, 2*num_objects, 4, 1, padding='SAME')
             coords = []
             for i in range(num_objects):
                 object_slice = detectors[:, :, :, 2*i:2*(i+1)]
+                print(object_slice)
                 object_slice_X = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 0], [-1, 64*64])), [-1, 64, 64])
                 object_slice_Y = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 1], [-1, 64*64])), [-1, 64, 64])
                 EX = tf.reshape(tf.reduce_sum(object_slice_X * X, axis=[1,2]), [-1, 1])
