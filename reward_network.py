@@ -302,6 +302,8 @@ class RewardPartitionNetwork(object):
             x = sp
             num_objects = 4
             X, Y = np.meshgrid(np.linspace(0, 1, num=64), np.linspace(0, 1, num=64))
+            X = X.astype(np.float32)
+            Y = Y.astype(np.float32)
             X = tf.reshape(X, [1, 64, 64])
             Y = tf.reshape(Y, [1, 64, 64])
             detectors = tf.layers.conv2d(x, 2*num_objects, 4, 1)
