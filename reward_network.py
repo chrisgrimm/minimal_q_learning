@@ -42,7 +42,6 @@ class RewardPartitionNetwork(object):
                 self.partitioned_reward = partitioned_reward
 
 
-
                 # build the list of placeholders
                 self.list_inp_sp_traj = []
                 self.list_inp_r_traj = []

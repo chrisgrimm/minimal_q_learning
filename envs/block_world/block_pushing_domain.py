@@ -5,7 +5,7 @@ import numpy as np
 from envs.block_world.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
 from gym.spaces import Discrete, Box
 
-from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock
+from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock, RandomGoalBlock
 
 BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 
@@ -43,11 +43,7 @@ class BlockPushingDomain(object):
         #    [ConstantGoalBlock((self.grid_size-1, y), self.goal_color) for y in range(0, self.grid_size)]
         #)
 
-        # self.blocks = (
-        #     [AgentBlock(self.agent_color),
-        #      RandomGoalBlock(self.goal_color1, reward=1.0),
-        #      RandomGoalBlock(self.goal_color2, reward=1.0)]
-        # )
+
 
         RGB_ordering = [0,1,2]
         #print(cv2.imread(os.path.join(BASE_DIR, 'blue_wall.png')))
@@ -60,11 +56,18 @@ class BlockPushingDomain(object):
         background_blocks = [BackgroundBlock((x,y), background_color, background_texture)
                              for x in range(self.grid_size) for y in range(self.grid_size)]
 
+        # self.blocks = (
+        #     [AgentBlock(self.agent_color, texture=agent_texture),
+        #      ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
+        #      ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
+        #      ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture)] +
+        #     background_blocks
+        # )
+
         self.blocks = (
             [AgentBlock(self.agent_color, texture=agent_texture),
-             ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
-             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-             ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture)] +
+             RandomGoalBlock(self.goal_color1, texture=goal1_texture, reward=1.0),
+             RandomGoalBlock(self.goal_color2, texture=goal2_texture, reward=1.0)] +
             background_blocks
         )
 

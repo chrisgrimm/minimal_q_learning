@@ -58,9 +58,9 @@ if mode == 'ASSAULT':
         produce_reward_statistics(network, env, statistics_full_name)
 
 
-    def on_reward_print_func(r, sp, info, network):
+    def on_reward_print_func(r, sp, info, network, reward_buffer):
         partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-        print(r, partitioned_r, info['ship_status'])
+        print(reward_buffer.length(), partitioned_r, info['ship_status'])
 
     visualization_func = run_assault_visualizations
     # visual mode must be on for Assault domain.
@@ -71,13 +71,17 @@ if mode == 'ASSAULT':
                                             SimpleAssault)
     dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
-    num_partitions = 3
+    num_partitions = 2
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
                                             BlockPushingDomain)
+    def on_reward_print_func(r, sp, info, network, reward_buffer):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(reward_buffer.length(), partitioned_r)
+
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 else:
     raise Exception(f'mode must be in {mode_options}.')
@@ -136,7 +140,7 @@ while True:
         #print(f'{reward_buffer.length()}/{1000}')
 
         reward_buffer.append(s, a, r, sp, t)
-        on_reward_print_func(r, sp, info, reward_net)
+        on_reward_print_func(r, sp, info, reward_net, reward_buffer)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
         #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
