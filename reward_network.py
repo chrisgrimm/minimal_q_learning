@@ -81,15 +81,15 @@ class RewardPartitionNetwork(object):
 
                 if self.use_dynamic_weighting_max_value:
                     avg_max_values = tf.identity(
-                        [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
+                        [self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)])
                     max_value_weighting = tf.stop_gradient(tf.nn.softmax(-avg_max_values))  # [num_partitions]
                 else:
-                    max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
+                    max_value_weighting = tf.ones(shape=[1, self.num_partitions], dtype=tf.float32)
 
 
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
-                    max_value_constraint += max_value_weighting[i] * self.list_trajectory_values[i][:, i]
+                    max_value_constraint += max_value_weighting[:, i] * self.list_trajectory_values[i][:, i]
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
