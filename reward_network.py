@@ -306,7 +306,7 @@ class RewardPartitionNetwork(object):
             Y = Y.astype(np.float32)
             X = tf.reshape(X, [1, 64, 64])
             Y = tf.reshape(Y, [1, 64, 64])
-            detectors = tf.layers.conv2d(x, 32, 4, 1, padding='SAME', name='d1')
+            detectors = tf.layers.conv2d(x, 32, 4, 1, activation=tf.nn.relu, padding='SAME', name='d1')
             detectors = tf.layers.conv2d(detectors, 2*num_objects, 4, 1, padding='SAME', name='d2')
             coords = []
             for i in range(num_objects):
