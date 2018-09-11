@@ -178,8 +178,8 @@ while True:
             q_losses = reward_net.train_Q_networks()
         for j in range(1):
             reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
-        if args.separate_reward_repr:
-            pred_reward_loss = reward_net.train_predicted_reward()
+        #if args.separate_reward_repr:
+        #    pred_reward_loss = reward_net.train_predicted_reward()
 
         # tensorboard logging.
         for j in range(num_partitions):
