@@ -172,6 +172,8 @@ while True:
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
     if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and (current_reward_training_step >= num_reward_steps):
+        visualize_all_representations_all_reward_images(reward_net)
+        input('__done__')
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(5):
@@ -202,9 +204,6 @@ while True:
         reward_loss = reward_net.train_predicted_reward()
         print(f'{current_reward_training_step}/{num_reward_steps} Loss : {reward_loss}')
         current_reward_training_step += 1
-    else:
-        visualize_all_representations_all_reward_images(reward_net)
-        break
 
 
 
