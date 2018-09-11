@@ -287,15 +287,41 @@ class RewardPartitionNetwork(object):
         return rewards
 
 
+    # def reward_visual_tf(self, sp, name, reuse=None):
+    #     with tf.variable_scope(name, reuse=reuse):
+    #         x = sp
+    #         c0 = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
+    #         c1 = tf.layers.conv2d(c0, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
+    #         c2 = tf.layers.conv2d(c1, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
+    #         internal_rep = tf.layers.dense(tf.reshape(c2, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+    #         r = tf.reshape(tf.layers.dense(internal_rep, 1, name='pred_reward'), [-1])
+    #     return r, internal_rep, {'c0': c0, 'c1': c1, 'c2': c2}
+
     def reward_visual_tf(self, sp, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             x = sp
-            c0 = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
-            c1 = tf.layers.conv2d(c0, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            c2 = tf.layers.conv2d(c1, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            internal_rep = tf.layers.dense(tf.reshape(c2, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-            r = tf.reshape(tf.layers.dense(internal_rep, 1, name='pred_reward'), [-1])
-        return r, internal_rep, {'c0': c0, 'c1': c1, 'c2': c2}
+            num_objects = 4
+            X, Y = np.meshgrid(np.linspace(0, 1, num=64), np.linspace(0, 1, num=64))
+            X = tf.reshape(X, [1, 64, 64])
+            Y = tf.reshape(Y, [1, 64, 64])
+            detectors = tf.layers.conv2d(x, 2*num_objects, 4, 1)
+            coords = []
+            for i in range(num_objects):
+                object_slice = detectors[:, :, :, 2*i:2*(i+1)]
+                object_slice_X = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 0], [-1, 64*64])), [-1, 64, 64])
+                object_slice_Y = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 1], [-1, 64*64])), [-1, 64, 64])
+                EX = tf.reshape(tf.reduce_sum(object_slice_X * X, axis=[1,2]), [-1, 1])
+                EY = tf.reshape(tf.reduce_sum(object_slice_Y * Y, axis=[1,2]), [-1, 1])
+                coords.append(EX)
+                coords.append(EY)
+            coords = tf.concat(coords, axis=1)
+            fc1 = tf.layers.dense(coords, 128, activation=tf.nn.relu, name='fc1')
+            r = tf.reshape(tf.layers.dense(fc1, 1, name='pred_reward'), [-1])
+            return r, coords, None
+
+
+
+
 
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
         if self.reuse_visual_scoping:
