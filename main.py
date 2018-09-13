@@ -112,8 +112,8 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
-min_reward_experiences = 100
-num_reward_steps = 100
+min_reward_experiences = 1000
+num_reward_steps = 30000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
@@ -180,15 +180,15 @@ while True:
             print('Training reward network...')
             for j in range(1):
                 reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
+                LOG.add_line('reward_loss', reward_loss)
+                LOG.add_line('max_value_constraint', max_value_constraint)
+
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
 
         # tensorboard logging.
         for j in range(num_partitions):
             LOG.add_line(f'q_loss{j}', q_losses[j])
-
-        LOG.add_line('reward_loss', reward_loss)
-        LOG.add_line('max_value_constraint', max_value_constraint)
 
 
         log_string = f'({i}) ' + \
@@ -197,7 +197,7 @@ while True:
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
-        if i % 100 == 0:
+        if i % 1000 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
         i += 1
