@@ -228,8 +228,7 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        for _ in tqdm.tqdm(range(100)):
-            [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
+        [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
         return loss, max_value_constraint, value_constraint
 
 
