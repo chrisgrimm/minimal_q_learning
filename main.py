@@ -174,10 +174,12 @@ while True:
     if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and (current_reward_training_step >= num_reward_steps):
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
-        for j in range(5):
-            q_losses = reward_net.train_Q_networks()
         for j in range(1):
-            reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
+            q_losses = reward_net.train_Q_networks()
+        if i % 100 == 0:
+            print('Training reward network...')
+            for j in range(1):
+                reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
 
@@ -197,7 +199,10 @@ while True:
 
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
-    # run the training
+
+        i += 1
+
+    # train the reward initially
     if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and current_reward_training_step < num_reward_steps:
         reward_loss = reward_net.train_predicted_reward()
         print(f'{current_reward_training_step}/{num_reward_steps} Loss : {reward_loss}')
@@ -209,7 +214,6 @@ while True:
 
 
 
-    i += 1
     current_episode_length += 1
 
 
