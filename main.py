@@ -227,7 +227,7 @@ while True:
 
         i += 1
 
-    if i % update_threshold_frequency == 0:
+    if (reward_buffer.length() >= min_reward_experiences) and (i % update_threshold_frequency == 0):
         threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
 
 
