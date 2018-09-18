@@ -156,8 +156,8 @@ while True:
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, info = env.step(a)
-    #if args.bayes_reward_filter:
-    #    tracker.add(sp, r)
+    if args.bayes_reward_filter:
+        tracker.add(sp, r)
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         #print(f'{reward_buffer.length()}/{1000}')

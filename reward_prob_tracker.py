@@ -65,7 +65,7 @@ class RewardProbTracker(object):
 
 def compute_threshold_image(tracker, threshold):
     image = tracker.compute_threshold_image(threshold)
-    image = np.tile(np.max(image, axis=2, keepdims=True), [1, 1, 3])
+    image = 255*np.tile(np.max(image, axis=2, keepdims=True), [1, 1, 3])
     return image
 
 if __name__ == '__main__':
@@ -74,15 +74,16 @@ if __name__ == '__main__':
     print('building...')
     tracker = RewardProbTracker(64, 64, 3)
     print('finished building!')
-    min_each = 500
-    for desired_reward in [0, 1]:
+    min_each = 100
+    for desired_reward in [1]:
         num_reward = 0
         while num_reward < min_each:
             sp, r, t, _ = env.step(np.random.randint(env.action_space.n))
             if r == desired_reward:
-                tracker.add(sp[:, :, :], r)
                 num_reward += 1
                 print(f'{num_reward}/{min_each}')
+            tracker.add(sp[:, :, :], r)
+
             if t:
                 env.reset()
 
