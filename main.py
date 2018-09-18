@@ -149,24 +149,31 @@ update_threshold_frequency = 100
 s = env.reset()
 
 
-
+reward_tracker_zero_filter = 0
 while True:
     # take random action
 
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, info = env.step(a)
-    if args.bayes_reward_filter:
-        tracker.add(sp, r)
+
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         #print(f'{reward_buffer.length()}/{1000}')
         reward_buffer.append(s, a, r, sp, t)
         on_reward_print_func(r, sp, info, reward_net, reward_buffer)
+        if args.bayes_reward_filter:
+            tracker.add(sp, r)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
         #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
         #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
         #print(r, partitioned_r)
+    else:
+        if args.bayes_reward_filter and reward_tracker_zero_filter % 100 == 0:
+            tracker.add(sp, r)
+
+    reward_tracker_zero_filter += 1
+
 
     episode_reward += r
     #env.render()
