@@ -211,7 +211,7 @@ while True:
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
-        if i % 1000 == 0:
+        if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
 
