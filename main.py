@@ -120,7 +120,7 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
-min_reward_experiences = 1000
+min_reward_experiences = 500
 num_reward_steps = 30000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -193,6 +193,10 @@ while True:
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
+    if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (i % update_threshold_frequency == 0):
+        threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
+        reward_net.update_threshold_image(threshold)
+
     if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and (current_reward_training_step >= num_reward_steps):
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
@@ -224,9 +228,7 @@ while True:
 
         i += 1
 
-    if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (i % update_threshold_frequency == 0):
-        threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
-        reward_net.update_threshold_image(threshold)
+
 
 
     # train the reward initially
