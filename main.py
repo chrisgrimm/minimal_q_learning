@@ -143,7 +143,7 @@ def get_action(s):
 pre_training = True
 current_episode_length = 0
 max_length_before_policy_switch = 30
-update_threshold_frequency = 1000
+update_threshold_frequency = 100
 (h, w, d) = env.observation_space.shape
 
 s = env.reset()
