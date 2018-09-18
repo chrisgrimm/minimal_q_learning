@@ -12,6 +12,7 @@ class RewardPartitionNetwork(object):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
+        self.threshold = np.ones(shape=[64, 64, num_visual_channels], dtype=np.uint8)
         self.num_partitions = num_partitions
         self.num_actions = num_actions
         self.obs_size = obs_size
@@ -191,6 +192,7 @@ class RewardPartitionNetwork(object):
         _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
         r_batch = r_no_reward_batch + r_reward_batch
         sp_batch = sp_no_reward_batch + sp_reward_batch
+        sp_batch = np.reshape(self.threshold, [1, 64, 64, 1]) * np.array(sp_batch)
         [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
         return loss
 
@@ -367,6 +369,8 @@ class RewardPartitionNetwork(object):
             Rs_traj.append(tf.reshape(Rs, [-1, 1, self.num_partitions])) # [bs, 1, n]
         return tf.concat(Rs_traj, axis=1) # [bs, traj, n]
 
+    def update_threshold_image(self, threshold):
+        self.threshold = threshold
 
     def get_partitioned_reward(self, sp, r):
         [partitioned_r]  = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp, self.inp_r: r})

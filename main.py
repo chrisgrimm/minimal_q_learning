@@ -52,7 +52,6 @@ if mode == 'ASSAULT':
 
 
     def run_assault_visualizations(network, env, name):
-        global threshold
         [path, name] = os.path.split(name)
         [name, name_extension] = name.split('.')
         hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
@@ -61,7 +60,7 @@ if mode == 'ASSAULT':
         produce_assault_ship_histogram_visualization(network, env, hist_full_name)
         produce_assault_reward_visualization(network, env, reward_full_name)
         produce_reward_statistics(network, env, statistics_full_name)
-        cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(threshold, [1,1,3]))
+        cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
 
 
 
@@ -146,16 +145,8 @@ current_episode_length = 0
 max_length_before_policy_switch = 30
 update_threshold_frequency = 1000
 (h, w, d) = env.observation_space.shape
-threshold = np.ones([h,w,1], dtype=np.uint8)
 
-def state_preprocessing(s):
-    global threshold
-    if args.bayes_reward_filter:
-        return threshold * s
-    else:
-        return s
-
-s = state_preprocessing(env.reset())
+s = env.reset()
 
 
 
@@ -165,7 +156,6 @@ while True:
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, info = env.step(a)
-    sp = state_preprocessing(sp)
     #if args.bayes_reward_filter:
     #    tracker.add(sp, r)
     if r > 0:
@@ -227,8 +217,9 @@ while True:
 
         i += 1
 
-    if (reward_buffer.length() >= min_reward_experiences) and (i % update_threshold_frequency == 0):
+    if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (i % update_threshold_frequency == 0):
         threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
+        reward_net.update_threshold_image(threshold)
 
 
     # train the reward initially
