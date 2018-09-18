@@ -139,6 +139,7 @@ def produce_assault_reward_visualization(network, env, name):
     cv2.imwrite(name, all_partitioned_rewards)
 
 
+
 def produce_reward_image(partition_state_pairs):
     canvas = np.zeros(shape=(5,5), dtype=np.float32)
     for (x,y), reward in partition_state_pairs:

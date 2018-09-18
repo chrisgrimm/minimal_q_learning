@@ -7,6 +7,7 @@ from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
 import argparse
 from utils import LOG, build_directory_structure
+from reward_prob_tracker import RewardProbTracker
 import argparse
 from random import choice
 import cv2
@@ -35,6 +36,7 @@ parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--separate-reward-repr', action='store_true')
+parser.add_argument('--bayes-reward-filter', action='store_true')
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -50,6 +52,7 @@ if mode == 'ASSAULT':
 
 
     def run_assault_visualizations(network, env, name):
+        global threshold
         [path, name] = os.path.split(name)
         [name, name_extension] = name.split('.')
         hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
@@ -58,6 +61,8 @@ if mode == 'ASSAULT':
         produce_assault_ship_histogram_visualization(network, env, hist_full_name)
         produce_assault_reward_visualization(network, env, reward_full_name)
         produce_reward_statistics(network, env, statistics_full_name)
+        cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(threshold, [1,1,3]))
+
 
 
     def on_reward_print_func(r, sp, info, network, reward_buffer):
@@ -104,8 +109,12 @@ reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.o
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr)
 
+(height, width, depth) = env.observation_space.shape
+tracker = RewardProbTracker(height, width, depth)
+
+
+
 batch_size = 32
-s = env.reset()
 epsilon = 0.1
 episode_reward = 0
 print(env.action_space)
@@ -135,6 +144,20 @@ def get_action(s):
 pre_training = True
 current_episode_length = 0
 max_length_before_policy_switch = 30
+update_threshold_frequency = 1000
+(h, w, d) = env.observation_space.shape
+threshold = np.ones([h,w,1], dtype=np.uint8)
+
+def state_preprocessing(s):
+    global threshold
+    if args.bayes_reward_filter:
+        return threshold * s
+    else:
+        return s
+
+s = state_preprocessing(env.reset())
+
+
 
 while True:
     # take random action
@@ -142,10 +165,12 @@ while True:
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, info = env.step(a)
+    sp = state_preprocessing(sp)
+    #if args.bayes_reward_filter:
+    #    tracker.add(sp, r)
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         #print(f'{reward_buffer.length()}/{1000}')
-
         reward_buffer.append(s, a, r, sp, t)
         on_reward_print_func(r, sp, info, reward_net, reward_buffer)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
@@ -176,8 +201,7 @@ while True:
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(1):
             q_losses = reward_net.train_Q_networks()
-        if i % 10 == 0:
-            print('Training reward network...')
+        if i % 1 == 0:
             for j in range(1):
                 reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
                 LOG.add_line('reward_loss', reward_loss)
@@ -200,7 +224,12 @@ while True:
         if i % 1000 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
+
         i += 1
+
+    if i % update_threshold_frequency == 0:
+        threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
+
 
     # train the reward initially
     if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and current_reward_training_step < num_reward_steps:
