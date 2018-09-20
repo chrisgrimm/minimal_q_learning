@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import cv2
 import tqdm
 from q_learner_agent import QLearnerAgent
 
@@ -8,11 +9,17 @@ class RewardPartitionNetwork(object):
     def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
-                 separate_reward_repr=False):
+                 separate_reward_repr=False, use_ideal_threshold=False):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
         self.threshold = np.ones(shape=[64, 64, 1], dtype=np.uint8)
+        self.use_ideal_threshold = use_ideal_threshold
+        if use_ideal_threshold:
+            self.ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
+        else:
+            self.ideal_threshold = None
+
         self.num_partitions = num_partitions
         self.num_actions = num_actions
         self.obs_size = obs_size
@@ -192,7 +199,8 @@ class RewardPartitionNetwork(object):
         _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
         r_batch = r_no_reward_batch + r_reward_batch
         sp_batch = sp_no_reward_batch + sp_reward_batch
-        sp_batch = np.reshape(self.threshold, [1, 64, 64, 1]) * np.array(sp_batch)
+        threshold = self.threshold if not self.use_ideal_threshold else self.ideal_threshold
+        sp_batch = np.reshape(threshold, [1, 64, 64, 1]) * np.array(sp_batch)
         [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
         return loss
 
@@ -232,7 +240,6 @@ class RewardPartitionNetwork(object):
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
         [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
         return loss, max_value_constraint, value_constraint
-
 
 
     def get_action_stoch(self, policy, s_list, rand_prob=0.1):

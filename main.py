@@ -37,6 +37,7 @@ parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--separate-reward-repr', action='store_true')
 parser.add_argument('--bayes-reward-filter', action='store_true')
+parser.add_argument('--use-ideal-filter', action='store_true')
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -106,7 +107,8 @@ reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.o
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
-                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr)
+                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
+                                    use_ideal_threshold=args.use_ideal_filter)
 
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)
@@ -120,7 +122,7 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
-min_reward_experiences = 500
+min_reward_experiences = 10
 num_reward_steps = 30000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -148,6 +150,7 @@ update_threshold_frequency = 100
 
 s = env.reset()
 
+ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
 
 reward_tracker_zero_filter = 0
 while True:
