@@ -164,7 +164,8 @@ class RewardPartitionNetwork(object):
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                product_negation_term = 1 if self.reward_mode == 'SUM' else -1
+                #product_negation_term = 1 if self.reward_mode == 'SUM' else -1
+                product_negation_term = 1
                 self.loss = (value_constraint - product_negation_term * self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
