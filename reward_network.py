@@ -91,6 +91,7 @@ class RewardPartitionNetwork(object):
                 #self.list_reward_trajs = []
                 self.list_trajectory_values = []
                 #self.list_any_r = []
+
                 for i in range(self.num_partitions):
                     if self.visual:
                         inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
@@ -116,6 +117,21 @@ class RewardPartitionNetwork(object):
                                                                        reuse=True)
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
+
+                self.inp_sp_mixed_traj = tf.placeholder(tf.uint8, self.obs_shape_traj)
+                inp_sp_mixed_traj_converted = tf.image.convert_image_dtype(self.inp_sp_mixed_traj, dtype=tf.float32)
+                self.inp_r_mixed_traj = tf.placeholder(tf.float32, [None, self.traj_len])
+                self.inp_t_mixed_traj = tf.placeholder(tf.bool, [None, self.traj_len])
+
+                reward_trajs_mixed = self.partition_reward_traj(inp_sp_mixed_traj_converted, self.inp_r_mixed_traj, name='reward_partition', reuse=True)
+                prod_reward_traj = tf.reduce_prod(reward_trajs_mixed, axis=2, keep_dims=True) #[bs, traj_len, 1]
+                mixed_values = self.get_values(prod_reward_traj, self.inp_t_mixed_traj) #[bs, 1]
+                print(mixed_values)
+
+
+
+
+
 
                 #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
 
@@ -164,9 +180,13 @@ class RewardPartitionNetwork(object):
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
+
                 #product_negation_term = 1 if self.reward_mode == 'SUM' else -1
-                product_negation_term = 1
-                self.loss = (value_constraint - product_negation_term * self.max_value_mult*max_value_constraint)
+                #product_negation_term = 1
+                if self.reward_mode == 'SUM':
+                    self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
+                else:
+                    self.loss = (value_constraint - self.max_value_mult*tf.reduce_mean(mixed_values))
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
@@ -229,6 +249,13 @@ class RewardPartitionNetwork(object):
 
         feed_dict = {}
 
+        dummy_env_cluster('reset', args=[])
+        starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
+        SP_mixed, R_mixed, T_mixed = self.get_trajectory(dummy_env_cluster, starting_states, -1, self.traj_len)
+        feed_dict[self.inp_sp_mixed_traj] = SP_mixed
+        feed_dict[self.inp_r_mixed_traj] = R_mixed
+        feed_dict[self.inp_t_mixed_traj] = T_mixed
+
         for j in range(self.num_partitions):
             dummy_env_cluster('reset', args=[])
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
@@ -236,6 +263,7 @@ class RewardPartitionNetwork(object):
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
+
 
 
 
@@ -261,6 +289,16 @@ class RewardPartitionNetwork(object):
 
     # grab sample trajectories from a starting state.
     def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
+        if policy == -1:
+            def policy_func(s_list):
+                all_a = []
+                for s in s_list:
+                    a = self.Q_networks[np.random.randint(self.num_partitions)].get_action([s])
+                    all_a.append(a)
+                return np.concatenate(all_a, axis=0)
+
+        else:
+            policy_func = lambda s_list: self.Q_networks[policy].get_action(s_list)
         sp_traj = []
         t_traj = []
         r_traj = []
@@ -268,7 +306,7 @@ class RewardPartitionNetwork(object):
         s_list = dummy_env_cluster('restore_state', sharded_args=starting_states)
         for i in range(trajectory_length):
             #a = self.Q_networks[policy].get_action([s0])[0]
-            a_list = [[x] for x in self.Q_networks[policy].get_action(s_list)]
+            a_list = [[x] for x in policy_func(s_list)]
             #s, _, t, _ = dummy_env.step(a)
             #(sp, r, t, info)
             experience_tuple_list = dummy_env_cluster('step', sharded_args=a_list)
