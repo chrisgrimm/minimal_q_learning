@@ -125,6 +125,14 @@ class RewardPartitionNetwork(object):
                 self.inp_r_mixed_traj = tf.placeholder(tf.float32, [None, self.traj_len])
                 self.inp_t_mixed_traj = tf.placeholder(tf.bool, [None, self.traj_len])
 
+                prod_reward_traj_1 = self.partition_reward_traj(tf.image.convert_image_dtype(self.list_inp_sp_traj[1], tf.float32),
+                                                                self.list_inp_r_traj[1],
+                                                                name='reward_partition',
+                                                                reuse=True)
+                prod_reward_traj_1 = tf.reduce_prod(prod_reward_traj_1, axis=2, keep_dims=True) #[bs, traj_len]
+                # TODO fix hack
+                value_prod_reward_1 = self.get_values(prod_reward_traj_1, self.inp_t_mixed_traj)
+
                 reward_trajs_mixed = self.partition_reward_traj(inp_sp_mixed_traj_converted, self.inp_r_mixed_traj, name='reward_partition', reuse=True)
                 prod_reward_traj = tf.reduce_prod(reward_trajs_mixed, axis=2, keep_dims=True) #[bs, traj_len, 1]
                 mixed_values = self.get_values(prod_reward_traj, self.inp_t_mixed_traj) #[bs, 1]
@@ -175,7 +183,7 @@ class RewardPartitionNetwork(object):
                 for i in range(self.num_partitions-1):
                     V_ip1 = self.list_trajectory_values[i+1][:, i+1]
                     R_i = self.list_traj_start_rewards[i+1][:, i]
-                    prod_max_value_constraint += V_ip1 * R_i + V_ip1 * (1 - R_i)
+                    prod_max_value_constraint += value_prod_reward_1 * R_i + value_prod_reward_1 * (1 - R_i)
 
 
 

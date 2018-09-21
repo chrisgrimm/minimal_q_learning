@@ -95,7 +95,7 @@ elif mode == 'SOKOBAN':
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
 elif mode == 'COLUMN':
     assert visual
-    num_partitions = 3
+    num_partitions = 2
     num_visual_channels = 3
     visualization_func = produce_reward_vis_column
     def on_reward_print_func(r, sp, info, network, reward_buffer):
