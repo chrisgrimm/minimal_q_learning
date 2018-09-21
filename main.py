@@ -3,8 +3,9 @@ import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.simple_assault import SimpleAssault
+from envs.block_world.discrete_column_world import ColumnGame
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, produce_reward_vis_column
 import argparse
 from utils import LOG, build_directory_structure
 from reward_prob_tracker import RewardProbTracker
@@ -31,13 +32,14 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, required=True)
 parser.add_argument('--max-value-mult', type=float, required=True)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'COLUMN'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--separate-reward-repr', action='store_true')
 parser.add_argument('--bayes-reward-filter', action='store_true')
 parser.add_argument('--use-ideal-filter', action='store_true')
+parser.add_argument('--product-reward', action='store_true')
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -91,6 +93,20 @@ elif mode == 'SOKOBAN':
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
                                             BlockPushingDomain)
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
+elif mode == 'COLUMN':
+    assert visual
+    num_partitions = 2
+    num_visual_channels = 3
+    visualization_func = produce_reward_vis_column
+    def on_reward_print_func(r, sp, info, network, reward_buffer):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(r, partitioned_r)
+    env = ColumnGame(2, 2)
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: ColumnGame(2,2),
+                                            ColumnGame)
+    dummy_env = ColumnGame(2,2)
+
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -103,12 +119,13 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
+reward_mode = 'PROD' if args.product_reward else 'SUM'
 reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0],
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
-                                    use_ideal_threshold=args.use_ideal_filter)
+                                    use_ideal_threshold=args.use_ideal_filter, reward_mode=reward_mode)
 
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)

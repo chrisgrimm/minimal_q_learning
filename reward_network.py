@@ -9,8 +9,10 @@ class RewardPartitionNetwork(object):
     def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
-                 separate_reward_repr=False, use_ideal_threshold=False):
+                 separate_reward_repr=False, use_ideal_threshold=False, reward_mode='SUM'):
         assert not (separate_reward_repr and reuse_visual_scoping)
+        assert reward_mode in ['SUM', 'PROD']
+        self.reward_mode = reward_mode
         if not use_gpu:
             gpu_num = 0
         self.threshold = np.ones(shape=[64, 64, 1], dtype=np.uint8)
@@ -162,7 +164,8 @@ class RewardPartitionNetwork(object):
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
+                product_negation_term = 1 if self.reward_mode == 'SUM' else -1
+                self.loss = (value_constraint - product_negation_term * self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
@@ -346,10 +349,14 @@ class RewardPartitionNetwork(object):
             # effort to disentangle.
             with tf.variable_scope(name, reuse=reuse):
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+                rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
+
         elif self.separate_reward_repr:
             _, x, _ = self.reward_visual_tf(sp, 'pred_reward', reuse=True)
             with tf.variable_scope(name, reuse=reuse):
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+                rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
+
         else:
             with tf.variable_scope(name, reuse=reuse):
                 # sp : [bs, 32, 32 ,3]
@@ -359,9 +366,12 @@ class RewardPartitionNetwork(object):
                 x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
                 x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
                 x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
-                soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
-
-        rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
+                if self.reward_mode == 'SUM':
+                    soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+                    rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
+                else:
+                    soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+                    rewards = tf.exp(tf.reshape(tf.log(r + 0.01), [-1, 1]) * soft)  # * error_control
         return rewards
 
     def partition_reward_traj(self, sp_traj, r_traj, name, reuse=None):
@@ -400,6 +410,7 @@ class RewardPartitionNetwork(object):
     def get_values(self, rs_traj, ts_traj):
         # rs_traj : [bs, traj_len, num_partitions]
         # ts_traj : [bs, traj_len]
+
         print(rs_traj)
         gamma = 0.99
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])

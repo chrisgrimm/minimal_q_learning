@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 import pickle
+from envs.block_world.discrete_column_world import ColumnGame
 
 from reward_network import RewardPartitionNetwork
 from utils import horz_stack_images, build_directory_structure
@@ -183,8 +184,25 @@ def visualize_all_representations(name: str, image: np.ndarray, network: RewardP
             cv2.imwrite(os.path.join(c_path, f'layer{layer_idx}.png'), cv2.resize(np.tile(c[:, :, [layer_idx]], [1, 1, 3]), (64, 64), interpolation=cv2.INTER_NEAREST))
 
 
-
-
+def produce_reward_vis_column(network: RewardPartitionNetwork, env: ColumnGame, name: str):
+    states = env.produce_all_states()
+    state_rewards =[{} for _ in range(network.num_partitions)]
+    for (x,y), (s, r) in states.items():
+        reward_partition = network.get_reward(s, r)
+        for i in range(network.num_partitions):
+            state_rewards[i][(x,y)] = reward_partition[i]
+    all_canvases = []
+    for i in range(network.num_partitions):
+        n = env.num_steps
+        canvas = np.zeros([2*n+1, 2*n+1], dtype=np.float32)
+        for (x,y), r in state_rewards[i].items():
+            x = x + n
+            y = y + n
+            canvas[y, x] = r
+        canvas = cv2.applyColorMap((255 * np.clip(np.array(canvas), 0, 1)).astype(np.uint8), cv2.COLORMAP_JET)
+        canvas = cv2.resize(canvas, (400, 400), interpolation=cv2.INTER_NEAREST)
+        all_canvases.append(canvas)
+    cv2.imwrite(name, horz_stack_images(*all_canvases))
 
 
 def normalize_layer(layer: np.ndarray):
