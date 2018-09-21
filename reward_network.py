@@ -290,13 +290,7 @@ class RewardPartitionNetwork(object):
     # grab sample trajectories from a starting state.
     def get_trajectory(self, dummy_env_cluster, starting_states, policy, trajectory_length):
         if policy == -1:
-            def policy_func(s_list):
-                all_a = []
-                for s in s_list:
-                    a = self.Q_networks[np.random.randint(self.num_partitions)].get_action([s])
-                    all_a.append(a)
-                return np.concatenate(all_a, axis=0)
-
+            policy_func = lambda s_list: self.Q_networks[np.random.randint(0, self.num_partitions)].get_action(s_list)
         else:
             policy_func = lambda s_list: self.Q_networks[policy].get_action(s_list)
         sp_traj = []
