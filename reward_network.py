@@ -168,10 +168,15 @@ class RewardPartitionNetwork(object):
 
 
                 prod_max_value_constraint = 0
-                for i in range(self.num_partitions-1):
-                    V_ip1 = self.list_trajectory_values[i+1][:, i+1]
-                    R_i = self.list_traj_start_rewards[i][:, i]
-                    prod_max_value_constraint += V_ip1 * R_i + V_ip1 * (1 - R_i)
+                V_0, V_1 = self.list_trajectory_values[0][:,0], self.list_trajectory_values[1][:,1]
+                R_0, R_1 = self.list_traj_start_rewards[0][:,0], self.list_traj_start_rewards[1][:,1]
+                prod_max_value_constraint += V_1 * R_0 + V_1 * (1 - R_0)
+                prod_max_value_constraint += V_0 * R_1 + V_0 * (1 - R_1)
+                
+                #for i in range(self.num_partitions-1):
+                #    V_ip1 = self.list_trajectory_values[i+1][:, i+1]
+                #    R_i = self.list_traj_start_rewards[i][:, i]
+                #    prod_max_value_constraint += V_ip1 * R_i + V_ip1 * (1 - R_i)
 
 
 
