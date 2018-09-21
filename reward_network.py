@@ -90,6 +90,7 @@ class RewardPartitionNetwork(object):
                 #self.list_inp_sp_traj_converted = []
                 #self.list_reward_trajs = []
                 self.list_trajectory_values = []
+                self.list_traj_start_rewards = []
                 #self.list_any_r = []
 
                 for i in range(self.num_partitions):
@@ -115,6 +116,7 @@ class RewardPartitionNetwork(object):
                                                                        inp_r_trajs_i_then_i,
                                                                        name='reward_partition',
                                                                        reuse=True)
+                    self.list_traj_start_rewards.append(reward_trajs_i_then_i[:, 0, :]) # [bs, num_partitions]
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
 
@@ -164,6 +166,15 @@ class RewardPartitionNetwork(object):
                 else:
                     dist_value_weighting = tf.ones(shape=[self.num_partitions**2 - self.num_partitions], dtype=tf.float32)
 
+
+                prod_max_value_constraint = 0
+                for i in range(self.num_partitions-1):
+                    V_ip1 = self.list_trajectory_values[i+1][:, i+1]
+                    R_i = self.list_traj_start_rewards[i][:, i]
+                    prod_max_value_constraint += V_ip1 * R_i + V_ip1 * (1 - R_i)
+
+
+
                 #build the value constraint
                 index = 0
                 value_constraint = 0
@@ -186,7 +197,7 @@ class RewardPartitionNetwork(object):
                 if self.reward_mode == 'SUM':
                     self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
                 else:
-                    self.loss = (value_constraint - self.max_value_mult*tf.reduce_mean(mixed_values))
+                    self.loss = (value_constraint - self.max_value_mult*tf.reduce_mean(prod_max_value_constraint))
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
