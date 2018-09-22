@@ -91,6 +91,7 @@ class RewardPartitionNetwork(object):
                 #self.list_reward_trajs = []
                 self.list_trajectory_values = []
                 self.list_traj_start_rewards = []
+                self.list_diff = []
                 #self.list_any_r = []
 
                 for i in range(self.num_partitions):
@@ -116,6 +117,9 @@ class RewardPartitionNetwork(object):
                                                                        inp_r_trajs_i_then_i,
                                                                        name='reward_partition',
                                                                        reuse=True)
+                    diff_i = tf.abs(reward_trajs_i_then_i[:, 1:self.traj_len, :] - reward_trajs_i_then_i[:, 0:self.traj_len-1, :])
+                    diff_i = tf.reduce_mean(diff_i, axis=1) # [bs, num_partitions]
+                    self.list_diff.append(diff_i)
                     self.list_traj_start_rewards.append(reward_trajs_i_then_i[:, 0, :]) # [bs, num_partitions]
                     i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i)
                     self.list_trajectory_values.append(i_trajectory_values)
@@ -175,15 +179,13 @@ class RewardPartitionNetwork(object):
                     dist_value_weighting = tf.ones(shape=[self.num_partitions**2 - self.num_partitions], dtype=tf.float32)
 
 
-                prod_max_value_constraint = 0
-                #V_0, V_1 = self.list_trajectory_values[0][:,0], self.list_trajectory_values[1][:,1]
-                #R_0, R_1 = self.list_traj_start_rewards[0][:,0], self.list_traj_start_rewards[1][:,1]
-                #prod_max_value_constraint += V_1 * R_0 + V_1 * (1 - R_0)
+                prod_diff_constraint = 0
+                for i in range(self.num_partitions):
+                    for j in range(self.num_partitions):
+                        if i == j:
+                            continue
+                        prod_diff_constraint += self.list_diff[i][:, j]
 
-                for i in range(self.num_partitions-1):
-                    V_ip1 = self.list_trajectory_values[i+1][:, i+1]
-                    R_i = self.list_traj_start_rewards[i+1][:, i]
-                    prod_max_value_constraint += value_prod_reward_1 * R_i + value_prod_reward_1 * (1 - R_i)
 
 
 
@@ -209,7 +211,7 @@ class RewardPartitionNetwork(object):
                 if self.reward_mode == 'SUM':
                     self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
                 else:
-                    self.loss = (value_constraint - self.max_value_mult*tf.reduce_mean(prod_max_value_constraint))
+                    self.loss = tf.reduce_mean(prod_diff_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
