@@ -211,7 +211,7 @@ class RewardPartitionNetwork(object):
                 if self.reward_mode == 'SUM':
                     self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
                 else:
-                    self.loss = tf.reduce_mean(prod_diff_constraint)
+                    self.loss = value_constraint + tf.reduce_mean(prod_diff_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
