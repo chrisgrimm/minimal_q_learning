@@ -58,9 +58,10 @@ if mode == 'ASSAULT':
         hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
         reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
         statistics_full_name = os.path.join(path, name+'_statistics.txt')
+        behavior_full_name = os.path.join(path, name+'_behavior_file.pickle')
         produce_assault_ship_histogram_visualization(network, env, hist_full_name)
         produce_assault_reward_visualization(network, env, reward_full_name)
-        produce_reward_statistics(network, env, statistics_full_name)
+        produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
         cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
 
 

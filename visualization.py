@@ -102,26 +102,35 @@ def produce_assault_ship_histogram_visualization(network, env, name):
     cv2.imwrite(name, color_map)
 
 
-def produce_reward_statistics(network, env, name):
+def produce_reward_statistics(network, env, name_reward, name_traj_file):
     num_episodes_per_policy = 10
     partition_average_rewards = []
+    all_trajectories = []
     for i in range(network.num_partitions):
         all_episode_partitioned_rewards = []
+        policy_trajectories = []
         for j in range(num_episodes_per_policy):
+            trajectory = []
             s = env.reset()
+            trajectory.append(s)
             episode_partitioned_reward = np.zeros(shape=[network.num_partitions])
             while True:
                 a = network.get_state_actions([s])[i][0]
                 s, r, t, info = env.step(a)
+                trajectory.append(s)
                 partitioned_reward = network.get_partitioned_reward([s], [r])[0]
                 episode_partitioned_reward += partitioned_reward
                 if t or (('internal_terminal' in info) and info['internal_terminal']):
                     all_episode_partitioned_rewards.append(episode_partitioned_reward)
                     break
+            policy_trajectories.append(trajectory)
+        all_trajectories.append(policy_trajectories)
         average_episode_partitioned_rewards = np.mean(all_episode_partitioned_rewards, axis=0)
         partition_average_rewards.append((i, average_episode_partitioned_rewards))
-    with open(name, 'w') as f:
+    with open(name_reward, 'w') as f:
         f.write('\n'.join(str(x) for x in partition_average_rewards))
+    with open(name_traj_file, 'wb') as f:
+        pickle.dump(all_trajectories, f)
 
 
 
