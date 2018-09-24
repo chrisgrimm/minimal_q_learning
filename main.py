@@ -211,6 +211,7 @@ while True:
                 reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
                 LOG.add_line('reward_loss', reward_loss)
                 LOG.add_line('max_value_constraint', max_value_constraint)
+                LOG.add_line('vlaue_constraint', value_constraint)
 
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
