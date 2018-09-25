@@ -2,7 +2,11 @@ import cv2, numpy as np, pickle
 import tempfile, os, shutil, subprocess
 from utils import build_directory_structure
 
-file_name = 'policy_vis_55000_behavior_file.pickle'
+#file_name = 'policy_vis_55000_behavior_file.pickle' # assault
+#file_name = './runs/statistics_dir/policy_vis_6200_behavior_file.pickle' # pacman
+#file_name = './runs/statistics_dir/policy_vis_10000_behavior_file.pickle' # qbert
+#file_name = './runs/statistics_dir/policy_vis_5100_behavior_file.pickle' # pacman traj20 3part
+file_name = './runs/statistics_dir/policy_vis_9200_behavior_file.pickle'
 with open(file_name, 'rb') as f:
     data = pickle.load(f)
 
@@ -24,9 +28,7 @@ def produce_video_from_traj(video_name, ext, traj):
 
 def produce_all_videos(data):
     build_directory_structure('.', {'policy_data':
-                                        {'pi_0': {},
-                                         'pi_1': {},
-                                         'pi_2': {}}})
+                                        {f'pi_{i}': {} for i in range(len(data))}})
     for policy_num, policy_trajectories in enumerate(data):
         for traj_num, trajectory in enumerate(policy_trajectories):
             name = f'policy_data/pi_{policy_num}/{traj_num}'

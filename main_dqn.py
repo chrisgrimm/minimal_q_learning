@@ -56,7 +56,7 @@ elif mode == 'SOKOBAN_META':
     visualization_func = produce_two_goal_visualization
     base_env = BlockPushingDomain(observation_mode=observation_mode)
     reward_network = RewardPartitionNetwork(None, None, None, 2, base_env.observation_space.shape[0], base_env.action_space.n, 'reward_net', visual=True, gpu_num=args.gpu_num)
-    reward_network.restore('./runs/sokoban_2block_saving/weights/', 'reward_net.ckpt')
+    reward_network.restore('./runs/sokoban_saving_longer/weights/', 'reward_net.ckpt')
     env = MetaEnvironment(base_env, reward_network.Q_networks)
 else:
     raise Exception(f'mode must be in {mode_options}.')
