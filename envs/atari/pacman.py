@@ -4,10 +4,10 @@ from gym.spaces import Box
 import cv2
 
 #env = gym.make('MsPacman-v0')
-class PacmanWrapper():
+class AtariWrapper():
 
-    def __init__(self):
-        self.env = AtariEnv(game='ms_pacman', obs_type='image', frameskip=5)
+    def __init__(self, game):
+        self.env = AtariEnv(game=game, obs_type='image', frameskip=5)
         self.action_space = self.env.action_space
         self.image_size = 64
         self.frame_buffer_len = 3
@@ -50,9 +50,16 @@ class PacmanWrapper():
     def render(self):
         return self.env.render()
 
+class PacmanWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('ms_pacman')
+
+class QBertWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('qbert')
 
 if __name__ == '__main__':
-    env = PacmanWrapper()
+    env = QBertWrapper()
     print(env.action_space.n)
     action_mapping = {'w': 0,}
 
