@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 
 
 class QLearnerAgent(object):
@@ -85,9 +86,16 @@ class QLearnerAgent(object):
                     self.sess = sess
             all_vars = tf.get_collection(tf.GraphKeys.VARIABLES, scope=name+'/')
             print('all_vars', all_vars)
+            self.saver = tf.train.Saver(var_list=all_vars)
             self.sess.run(tf.variables_initializer(all_vars))
             self.sess.run(self.hard_update_target)
             print(f'Finished Initializing {name}')
+
+    def save(self, path, name):
+        self.saver.save(self.sess, os.path.join(path, name))
+
+    def restore(self, path, name):
+        self.saver.restore(self.sess, os.path.join(path, name))
 
 
     def qa_network_preprocessing(self, obs, name, reuse=None):

@@ -49,11 +49,11 @@ class SimpleAssault(object):
         self.frame_buffer = self.frame_buffer[1:] + [sp]
         if r > 0:
             r = 1
-            t = True
+            #t = True
         else:
             r = 0
-        if self.step_num >= self.episode_length:
-            t = True
+        #if self.step_num >= self.episode_length:
+        #    t = True
         obs = self.get_obs()
         info = {
             'ship_status': self.determine_ship_states(),

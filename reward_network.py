@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import tqdm
+import os
 from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
@@ -125,11 +126,13 @@ class RewardPartitionNetwork(object):
                 else:
                     max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
 
-
+                self.J_nontrivial = 0
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
                     max_value_constraint += max_value_weighting[i] * self.list_trajectory_values[i][:, i]
+                    self.J_nontrivial += self.list_trajectory_values[i][:, i]
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
+                self.J_nontrivial = tf.reduce_mean(self.J_nontrivial, axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
 
@@ -157,7 +160,7 @@ class RewardPartitionNetwork(object):
                        index += 1
 
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
-
+                self.J_indep = value_constraint
                 self.reward_loss = tf.reduce_mean(tf.square(self.pred_reward - self.inp_r), axis=0)
 
                 self.max_value_constraint = max_value_constraint
@@ -174,9 +177,19 @@ class RewardPartitionNetwork(object):
                 self.train_op_reward = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.reward_loss, var_list=pred_reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
+            self.saver = tf.train.Saver(var_list=all_variables)
             print('reward_vars', all_variables)
             self.sess.run(tf.variables_initializer(all_variables))
 
+    def save(self, path, name):
+        self.saver.save(self.sess, os.path.join(path, name))
+        for i, q_net in enumerate(self.Q_networks):
+            q_net.save(path, f'q_net{i}.ckpt')
+
+    def restore(self, path, name):
+        self.saver.restore(self.sess, os.path.join(path, name))
+        for i, q_net in enumerate(self.Q_networks):
+            q_net.restore(path, f'q_net{i}.ckpt')
 
     def train_Q_networks(self):
         Q_losses = []
@@ -238,8 +251,8 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        [_, loss, max_value_constraint, value_constraint] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint], feed_dict=feed_dict)
-        return loss, max_value_constraint, value_constraint
+        [_, loss, max_value_constraint, value_constraint, J_indep, J_nontrivial] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.J_indep, self.J_nontrivial], feed_dict=feed_dict)
+        return loss, max_value_constraint, value_constraint, J_indep, J_nontrivial
 
 
     def get_action_stoch(self, policy, s_list, rand_prob=0.1):

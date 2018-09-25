@@ -104,6 +104,7 @@ def produce_assault_ship_histogram_visualization(network, env, name):
 
 def produce_reward_statistics(network, env, name_reward, name_traj_file):
     num_episodes_per_policy = 10
+    max_episode_steps = 200
     partition_average_rewards = []
     all_trajectories = []
     for i in range(network.num_partitions):
@@ -113,16 +114,24 @@ def produce_reward_statistics(network, env, name_reward, name_traj_file):
             trajectory = []
             s = env.reset()
             trajectory.append(s)
-            episode_partitioned_reward = np.zeros(shape=[network.num_partitions])
-            while True:
+            episode_step_num = 0
+            traj_s = []
+            traj_r = []
+
+            while episode_step_num < max_episode_steps:
                 a = network.get_state_actions([s])[i][0]
                 s, r, t, info = env.step(a)
+                traj_s.append(s)
+                traj_r.append(r)
                 trajectory.append(s)
-                partitioned_reward = network.get_partitioned_reward([s], [r])[0]
-                episode_partitioned_reward += partitioned_reward
-                if t or (('internal_terminal' in info) and info['internal_terminal']):
-                    all_episode_partitioned_rewards.append(episode_partitioned_reward)
+                #partitioned_reward = network.get_partitioned_reward([s], [r])[0]
+                #episode_partitioned_reward += partitioned_reward
+                if t:
                     break
+            # this should be faster.
+            traj_partitioned_rewards = network.get_partitioned_reward(traj_s, traj_r)
+            episode_partitioned_reward = np.sum(traj_partitioned_rewards, axis=0)
+            all_episode_partitioned_rewards.append(episode_partitioned_reward)
             policy_trajectories.append(trajectory)
         all_trajectories.append(policy_trajectories)
         average_episode_partitioned_rewards = np.mean(all_episode_partitioned_rewards, axis=0)

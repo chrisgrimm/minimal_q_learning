@@ -47,6 +47,8 @@ visual = args.visual
 observation_mode = 'image' if visual else 'vector'
 
 
+
+
 if mode == 'ASSAULT':
     num_partitions = 3
     num_visual_channels = 9
@@ -59,10 +61,10 @@ if mode == 'ASSAULT':
         reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
         statistics_full_name = os.path.join(path, name+'_statistics.txt')
         behavior_full_name = os.path.join(path, name+'_behavior_file.pickle')
-        produce_assault_ship_histogram_visualization(network, env, hist_full_name)
-        produce_assault_reward_visualization(network, env, reward_full_name)
+        #produce_assault_ship_histogram_visualization(network, env, hist_full_name)
+        #produce_assault_reward_visualization(network, env, reward_full_name)
         produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
-        cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
+        #cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
 
 
 
@@ -73,11 +75,11 @@ if mode == 'ASSAULT':
     visualization_func = run_assault_visualizations
     # visual mode must be on for Assault domain.
     assert visual
-    env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    env = SimpleAssault(initial_states_file=None)
     dummy_env_cluster = ThreadedEnvironment(32,
-                                            lambda i: SimpleAssault(initial_states_file='stored_states_64.pickle'),
+                                            lambda i: SimpleAssault(initial_states_file=None),
                                             SimpleAssault)
-    dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    dummy_env = SimpleAssault(initial_states_file=None)
 elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
@@ -96,9 +98,11 @@ else:
     raise Exception(f'mode must be in {mode_options}.')
 
 build_directory_structure('.', {'runs': {
-    args.name: {
-        'images': {}}}})
+                                    args.name: {
+                                        'images': {},
+                                        'weights': {}}}})
 LOG.setup(f'./runs/{args.name}')
+save_path = os.path.join('runs', args.name, 'weights')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
@@ -125,6 +129,7 @@ min_epsilon = 0.1
 num_epsilon_steps = 100000
 min_reward_experiences = 500
 num_reward_steps = 30000
+save_freq = 1000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
@@ -208,10 +213,12 @@ while True:
             q_losses = reward_net.train_Q_networks()
         if i % 1 == 0:
             for j in range(1):
-                reward_loss, max_value_constraint, value_constraint = reward_net.train_R_function(dummy_env_cluster)
+                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial = reward_net.train_R_function(dummy_env_cluster)
                 LOG.add_line('reward_loss', reward_loss)
                 LOG.add_line('max_value_constraint', max_value_constraint)
-                LOG.add_line('vlaue_constraint', value_constraint)
+                LOG.add_line('value_constraint', value_constraint)
+                LOG.add_line('J_indep', J_indep)
+                LOG.add_line('J_nontrivial', J_nontrivial)
 
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
@@ -230,6 +237,8 @@ while True:
         if i % 100 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
 
+        if i % save_freq == 0:
+            reward_net.save(save_path, 'reward_net.ckpt')
 
         i += 1
 

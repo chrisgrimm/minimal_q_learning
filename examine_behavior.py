@@ -2,7 +2,7 @@ import cv2, numpy as np, pickle
 import tempfile, os, shutil, subprocess
 from utils import build_directory_structure
 
-file_name = 'policy_vis_39700_behavior_file.pickle'
+file_name = 'policy_vis_55000_behavior_file.pickle'
 with open(file_name, 'rb') as f:
     data = pickle.load(f)
 
