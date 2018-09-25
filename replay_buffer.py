@@ -40,3 +40,31 @@ class ReplayBuffer(object):
         else:
             return self.index
 
+
+class StateReplayBuffer(object):
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.state = [None for _ in range(capacity)]
+        self.index = 0
+        self.is_full = False
+
+    def append(self, state):
+        self.state[self.index] = state
+        self.index += 1
+        if self.index == self.capacity:
+            self.index = 0
+            self.is_full = True
+
+    def sample(self, batch_size):
+        indices = np.random.randint(0, self.length(), size=batch_size)
+        STATE = []
+        for idx in indices:
+            STATE.append(self.state[idx])
+        return STATE
+
+    def length(self):
+        if self.is_full:
+            return self.capacity
+        else:
+            return self.index

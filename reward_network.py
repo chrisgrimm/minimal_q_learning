@@ -3,17 +3,19 @@ import numpy as np
 import cv2
 import tqdm
 import os
+from replay_buffer import ReplayBuffer
 from q_learner_agent import QLearnerAgent
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
+    def __init__(self, buffer, reward_buffer, state_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
                  separate_reward_repr=False, use_ideal_threshold=False):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
+        self.state_buffer = state_buffer
         self.threshold = np.ones(shape=[64, 64, 1], dtype=np.uint8)
         self.use_ideal_threshold = use_ideal_threshold
         if use_ideal_threshold:
@@ -239,7 +241,8 @@ class RewardPartitionNetwork(object):
         feed_dict = {}
 
         for j in range(self.num_partitions):
-            dummy_env_cluster('reset', args=[])
+            dummy_env_cluster('restore_state', sharded_args=[[x] for x in self.state_buffer.sample(32)])
+            #dummy_env_cluster('reset', args=[])
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
             SP_j_then_j, R_j_then_j, T_j_then_j = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j

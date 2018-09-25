@@ -13,6 +13,7 @@ import argparse
 from random import choice
 import cv2
 import os
+from replay_buffer import StateReplayBuffer
 
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
@@ -134,7 +135,9 @@ save_path = os.path.join('runs', args.name, 'weights')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0],
+state_replay_buffer = StateReplayBuffer(100000)
+
+reward_net = RewardPartitionNetwork(buffer, reward_buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
@@ -191,6 +194,7 @@ while True:
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, info = env.step(a)
+    state_replay_buffer.append(env.get_current_state())
 
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
