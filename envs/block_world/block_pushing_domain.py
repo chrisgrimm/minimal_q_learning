@@ -235,6 +235,9 @@ class BlockPushingDomain(object):
     def produce_vector(self, object_positions):
         return np.concatenate(object_positions, axis=0)
 
+    def get_obs(self):
+        return self.get_observation('image')
+
     def get_observation(self, observation_mode, object_positions=None):
         if object_positions is None:
             object_positions = self.produce_object_positions_from_blocks()

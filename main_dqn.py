@@ -7,6 +7,7 @@ from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
 import argparse
 from utils import LOG, build_directory_structure
+from envs.metacontroller_actor import MetaEnvironment
 import argparse
 from random import choice
 import cv2
@@ -21,7 +22,7 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'SOKOBAN_META'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
@@ -50,6 +51,13 @@ elif mode == 'SOKOBAN':
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
                                             BlockPushingDomain)
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
+elif mode == 'SOKOBAN_META':
+    num_visual_channels = 3
+    visualization_func = produce_two_goal_visualization
+    base_env = BlockPushingDomain(observation_mode=observation_mode)
+    reward_network = RewardPartitionNetwork(None, None, None, 2, base_env.observation_space.shape[0], base_env.action_space.n, 'reward_net', visual=True, gpu_num=args.gpu_num)
+    reward_network.restore('./runs/sokoban_2block_saving/weights/', 'reward_net.ckpt')
+    env = MetaEnvironment(base_env, reward_network.Q_networks)
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -137,7 +145,6 @@ while True:
     else:
         s = sp
 
-    epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
     if buffer.length() >= batch_size and reward_buffer.length() >= num_positive_examples:
         pre_training = False
@@ -172,6 +179,8 @@ while True:
         #if i % 100 == 0:
         #    visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
         i += 1
+        epsilon = max(min_epsilon, epsilon - epsilon_delta)
+
     current_episode_length += 1
 
 
