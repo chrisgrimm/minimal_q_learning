@@ -82,7 +82,9 @@ if mode == 'ASSAULT':
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: SimpleAssault(initial_states_file=None),
                                             SimpleAssault)
+    dummy_env_cluster('reset', args=[])
     dummy_env = SimpleAssault(initial_states_file=None)
+    dummy_env.reset()
 elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
@@ -96,7 +98,9 @@ elif mode == 'SOKOBAN':
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
                                             BlockPushingDomain)
+    dummy_env_cluster('reset', args=[])
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
+    dummy_env.reset()
 elif mode == 'PACMAN':
     num_partitions = args.num_pacman_partitions
     num_visual_channels = 9
@@ -119,8 +123,10 @@ elif mode == 'PACMAN':
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: PacmanWrapper(),
                                             PacmanWrapper)
-    dummy_env = PacmanWrapper()
+    dummy_env_cluster('reset', args=[])
 
+    dummy_env = PacmanWrapper()
+    dummy_env.reset()
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
