@@ -128,6 +128,7 @@ def produce_reward_statistics(network, env, name_reward, name_traj_file):
                 #episode_partitioned_reward += partitioned_reward
                 if t:
                     break
+                episode_step_num += 1
             # this should be faster.
             traj_partitioned_rewards = network.get_partitioned_reward(traj_s, traj_r)
             episode_partitioned_reward = np.sum(traj_partitioned_rewards, axis=0)
