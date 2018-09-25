@@ -2,6 +2,7 @@ from random import choice
 import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
+from envs.atari.pacman import PacmanWrapper
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
@@ -31,13 +32,14 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, required=True)
 parser.add_argument('--max-value-mult', type=float, required=True)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'PACMAN'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, required=True)
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--separate-reward-repr', action='store_true')
 parser.add_argument('--bayes-reward-filter', action='store_true')
 parser.add_argument('--use-ideal-filter', action='store_true')
+parser.add_argument('--num-pacman-partitions', type=int, default=2)
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -94,6 +96,30 @@ elif mode == 'SOKOBAN':
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode),
                                             BlockPushingDomain)
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
+elif mode == 'PACMAN':
+    num_partitions = args.num_pacman_partitions
+    num_visual_channels = 9
+    def run_assault_visualizations(network, env, name):
+        [path, name] = os.path.split(name)
+        [name, name_extension] = name.split('.')
+        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
+        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
+        statistics_full_name = os.path.join(path, name+'_statistics.txt')
+        behavior_full_name = os.path.join(path, name+'_behavior_file.pickle')
+        #produce_assault_ship_histogram_visualization(network, env, hist_full_name)
+        #produce_assault_reward_visualization(network, env, reward_full_name)
+        produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
+        #cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
+    visualization_func = run_assault_visualizations
+    def on_reward_print_func(r, sp, info, network, reward_buffer):
+        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+        print(r, partitioned_r)
+    env = PacmanWrapper()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: PacmanWrapper(),
+                                            PacmanWrapper)
+    dummy_env = PacmanWrapper()
+
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -127,7 +153,7 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 100000
-min_reward_experiences = 500
+min_reward_experiences = 10
 num_reward_steps = 30000
 save_freq = 1000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
