@@ -12,7 +12,7 @@ class MetaEnvironment(object):
 
     def step(self, a):
         obs = self.env.get_obs()
-        actual_action = self.q_learners[a].get_action(obs)
+        actual_action = self.q_learners[a].get_action([obs])[0]
         return self.env.step(actual_action)
 
     def reset(self):

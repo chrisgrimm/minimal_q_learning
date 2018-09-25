@@ -33,7 +33,6 @@ observation_mode = 'image' if visual else 'vector'
 
 
 if mode == 'ASSAULT':
-    num_partitions = 3
     num_visual_channels = 9
     visualization_func = produce_assault_ship_histogram_visualization
     # visual mode must be on for Assault domain.
@@ -44,7 +43,6 @@ if mode == 'ASSAULT':
                                             SimpleAssault)
     dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
 elif mode == 'SOKOBAN':
-    num_partitions = 3
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     env = BlockPushingDomain(observation_mode=observation_mode)
@@ -64,7 +62,6 @@ LOG.setup(f'./runs/{args.name}')
 buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
-#reward_net = RewardPartitionNetwork(buffer, reward_buffer, num_partitions, env.observation_space.shape[0], env.action_space.n, 'reward_net', num_visual_channels=num_visual_channels, visual=visual)
 dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 batch_size = 32
 s = env.reset()
@@ -78,13 +75,10 @@ epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
 
 # indices of current policy
-policy_indices = list(range(num_partitions)) + [-1]
-current_policy = choice(policy_indices)
 
 def get_action(s):
     global pre_training
-    global current_policy
-    is_random = np.random.uniform(0, 1) < 0.1
+    is_random = np.random.uniform(0, 1) < epsilon
     if is_random or pre_training:
         action = np.random.randint(0, env.action_space.n)
     else:
@@ -92,11 +86,22 @@ def get_action(s):
         #action = reward_net.get_state_actions([s])[current_policy][0]
     return action
 
+def evaluate_performance(env, q_network: QLearnerAgent):
+    max_steps = 1000
+    s = env.reset()
+    cumulative_reward = 0
+    for i in range(max_steps):
+        a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
+        s, r, t, _ = env.step(a)
+        cumulative_reward += r
+    return cumulative_reward
+
+
 pre_training = True
 current_episode_length = 0
-max_length_before_policy_switch = 30
-num_positive_examples = 1000
+num_positive_examples = 500
 time_since_reward = 0
+evaluation_frequency = 100
 while True:
     # take random action
 
@@ -120,11 +125,8 @@ while True:
         time_since_reward += 1
 
     episode_reward += r
-    #env.render()
     buffer.append(s, a, r, sp, t)
-    #if current_episode_length >= max_length_before_policy_switch:
-    #    current_episode_length = 0
-    #    current_policy = choice(policy_indices)
+
     if t:
         s = env.reset()
         #current_policy = choice(policy_indices)
@@ -135,7 +137,7 @@ while True:
     else:
         s = sp
 
-    #epsilon = max(min_epsilon, epsilon - epsilon_delta)
+    epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
     if buffer.length() >= batch_size and reward_buffer.length() >= num_positive_examples:
         pre_training = False
@@ -157,7 +159,11 @@ while True:
         #for j in range(num_partitions):
         LOG.add_line(f'q_loss', q_loss)
 
-        log_string = f'({i}) Q_loss: {q_loss}'
+        if i % evaluation_frequency == 0:
+            cum_reward = evaluate_performance(env, dqn)
+            LOG.add_line('cum_reward', cum_reward)
+
+        log_string = f'({i}) Q_loss: {q_loss}, ({epsilon})'
         #log_string = f'({i}) ' + \
         #             ''.join([f'Q_{j}_loss: {q_loss[j]}\t' for j in range(num_partitions)]) + \
         #             f'Reward Loss: {reward_loss}'
@@ -165,10 +171,7 @@ while True:
 
         #if i % 100 == 0:
         #    visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
-
-
-
-    i += 1
+        i += 1
     current_episode_length += 1
 
 
