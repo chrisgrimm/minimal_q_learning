@@ -119,7 +119,7 @@ while True:
         #if pre_training:
         #    print(f'{reward_buffer.length()}/{num_positive_examples}')
         #else:
-        print('Got Reward!')
+        #print('Got Reward!')
         LOG.add_line('episode_length', time_since_reward)
         time_since_reward = 0
         reward_buffer.append(s, a, r, sp, t)
@@ -137,7 +137,7 @@ while True:
         s = env.reset()
         #current_policy = choice(policy_indices)
         current_episode_length = 0
-        print(f'Episode Reward: {episode_reward}')
+        #print(f'Episode Reward: {episode_reward}')
         #print(f'Epsilon {epsilon}')
         episode_reward = 0
     else:
