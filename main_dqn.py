@@ -7,6 +7,7 @@ from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
 import argparse
 from utils import LOG, build_directory_structure
+from envs.atari.pacman import PacmanWrapper, AssaultWrapper, QBertWrapper
 from envs.metacontroller_actor import MetaEnvironment
 import argparse
 from random import choice
@@ -23,7 +24,7 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'SOKOBAN_META'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 args = parser.parse_args()
@@ -36,29 +37,17 @@ observation_mode = 'image' if visual else 'vector'
 
 if mode == 'ASSAULT':
     num_visual_channels = 9
-    visualization_func = produce_assault_ship_histogram_visualization
-    # visual mode must be on for Assault domain.
-    assert visual
-    env = SimpleAssault(initial_states_file='stored_states_64.pickle')
-    dummy_env_cluster = ThreadedEnvironment(32,
-                                            lambda i: SimpleAssault(initial_states_file='stored_states_64.pickle'),
-                                            SimpleAssault)
-    dummy_env = SimpleAssault(initial_states_file='stored_states_64.pickle')
+    env = AssaultWrapper()
+elif mode == 'PACMAN':
+    num_visual_channels = 9
+    env = PacmanWrapper()
+elif mode == 'QBERT':
+    num_visual_channels = 9
+    env = QBertWrapper()
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     env = BlockPushingDomain(observation_mode=observation_mode)
-    dummy_env_cluster = ThreadedEnvironment(32,
-                                            lambda i: BlockPushingDomain(observation_mode=observation_mode),
-                                            BlockPushingDomain)
-    dummy_env = BlockPushingDomain(observation_mode=observation_mode)
-elif mode == 'SOKOBAN_META':
-    num_visual_channels = 3
-    visualization_func = produce_two_goal_visualization
-    base_env = BlockPushingDomain(observation_mode=observation_mode)
-    reward_network = RewardPartitionNetwork(None, None, None, 2, base_env.observation_space.shape[0], base_env.action_space.n, 'reward_net', visual=True, gpu_num=args.gpu_num)
-    reward_network.restore('./runs/sokoban_saving_longer/weights/', 'reward_net.ckpt')
-    env = MetaEnvironment(base_env, reward_network.Q_networks)
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -124,7 +113,6 @@ while True:
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, _ = env.step(a)
-    env.render()
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp])[0]
         if pre_training:
