@@ -33,17 +33,16 @@ else:
 
 parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
-parser.add_argument('--max-value-mult', type=float, required=True)
+parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'PACMAN', 'QBERT'])
 parser.add_argument('--visual', action='store_true')
-parser.add_argument('--learning-rate', type=float, required=True)
+parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--separate-reward-repr', action='store_true')
 parser.add_argument('--bayes-reward-filter', action='store_true')
 parser.add_argument('--use-ideal-filter', action='store_true')
-parser.add_argument('--num-pacman-partitions', type=int, default=2)
-parser.add_argument('--num-qbert-partitions', type=int, default=2)
+parser.add_argument('--num-partitions', type=int, required=True)
 parser.add_argument('--use-meta-controller', action='store_true')
 
 args = parser.parse_args()
@@ -67,7 +66,7 @@ def default_on_reward_print_func(r, sp, info, network, reward_buffer):
 
 
 if mode == 'ASSAULT':
-    num_partitions = 3
+    num_partitions = args.num_partitions
     num_visual_channels = 9
     on_reward_print_func = default_on_reward_print_func
     visualization_func = default_visualizations
@@ -81,7 +80,7 @@ if mode == 'ASSAULT':
     dummy_env = SimpleAssault(initial_states_file=None)
     dummy_env.reset()
 elif mode == 'SOKOBAN':
-    num_partitions = 2
+    num_partitions = args.num_partitions
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
     on_reward_print_func = default_on_reward_print_func
@@ -95,7 +94,7 @@ elif mode == 'SOKOBAN':
     dummy_env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env.reset()
 elif mode == 'PACMAN':
-    num_partitions = args.num_pacman_partitions
+    num_partitions = args.num_partitions
     num_visual_channels = 9
 
     on_reward_print_func = default_on_reward_print_func
@@ -110,7 +109,7 @@ elif mode == 'PACMAN':
     dummy_env = PacmanWrapper()
     dummy_env.reset()
 elif mode == 'QBERT':
-    num_partitions = args.num_qbert_partitions
+    num_partitions = args.num_partitions
     num_visual_channels = 9
 
     on_reward_print_func = default_on_reward_print_func
