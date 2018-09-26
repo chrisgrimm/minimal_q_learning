@@ -96,9 +96,16 @@ def evaluate_performance(env, q_network: QLearnerAgent):
         a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, _ = env.step(a)
         cumulative_reward += r
-
+    quick_visualize_policy(env, q_network)
     return cumulative_reward
 
+def quick_visualize_policy(env, q_network: QLearnerAgent):
+    agent_positions, observations = zip(*env.get_all_agent_positions())
+    print(observations)
+    q_arrays = q_network.get_Q(observations)
+    res = np.argmax(q_arrays, axis=1)
+    for x, y in zip(agent_positions, res):
+        print(x, y)
 
 
 pre_training = True
@@ -106,7 +113,6 @@ current_episode_length = 0
 #num_positive_examples = 500
 time_since_reward = 0
 evaluation_frequency = 100
-
 
 while True:
     # take random action
