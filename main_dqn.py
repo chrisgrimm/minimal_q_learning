@@ -24,9 +24,13 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
+parser.add_argument('--meta', action='store_true')
+parser.add_argument('--num-partitions', type=int, default=None)
+parser.add_argument('--restore-path', type=str, default=None)
+
 args = parser.parse_args()
 
 mode = args.mode
@@ -37,19 +41,29 @@ observation_mode = 'image' if visual else 'vector'
 
 if mode == 'ASSAULT':
     num_visual_channels = 9
-    env = AssaultWrapper()
+    base_env = AssaultWrapper()
 elif mode == 'PACMAN':
     num_visual_channels = 9
-    env = PacmanWrapper()
+    base_env = PacmanWrapper()
 elif mode == 'QBERT':
     num_visual_channels = 9
-    env = QBertWrapper()
+    base_env = QBertWrapper()
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
-    visualization_func = produce_two_goal_visualization
-    env = BlockPushingDomain(observation_mode=observation_mode)
+    base_env = BlockPushingDomain(observation_mode=observation_mode)
 else:
     raise Exception(f'mode must be in {mode_options}.')
+
+if args.meta:
+    assert args.num_partitions is not None
+    assert args.restore_path is not None
+    reward_net = RewardPartitionNetwork(None, None, None, args.num_partitions, base_env.observation_space.shape[0],
+                                        base_env.action_space.n, 'reward_net', traj_len=10,
+                                        num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
+    reward_net.restore(args.restore_path, 'reward_net.ckpt')
+    env = MetaEnvironment(base_env, reward_net.Q_networks)
+else:
+    env = base_env
 
 build_directory_structure('.', {'runs': {
     args.name: {
@@ -96,7 +110,7 @@ def evaluate_performance(env, q_network: QLearnerAgent):
         a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, _ = env.step(a)
         cumulative_reward += r
-    quick_visualize_policy(env, q_network)
+    #quick_visualize_policy(env, q_network)
     return cumulative_reward
 
 def quick_visualize_policy(env, q_network: QLearnerAgent):
@@ -186,8 +200,8 @@ while True:
         i += 1
         epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
-        if i % save_frequency:
-            dqn.save(save_path, 'dqn.ckpt')
+        #if i % save_frequency:
+        #    dqn.save(save_path, 'dqn.ckpt')
 
     current_episode_length += 1
 

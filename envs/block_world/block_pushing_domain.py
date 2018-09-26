@@ -64,8 +64,8 @@ class BlockPushingDomain(object):
             [AgentBlock(self.agent_color, texture=agent_texture),
              ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
              ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-             #ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-             #ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
+             ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
+             ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
              ] +
             background_blocks
         )

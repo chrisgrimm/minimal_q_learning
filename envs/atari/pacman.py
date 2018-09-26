@@ -38,6 +38,7 @@ class AtariWrapper():
         obs = self.get_obs()
         if t:
             self.env.reset()
+        info['internal_terminal'] = t
         return obs, r, False, info
 
     def reset(self):
@@ -75,7 +76,7 @@ class SeaquestWrapper(AtariWrapper):
         super().__init__('seaquest')
 
 if __name__ == '__main__':
-    env = AssaultWrapper()
+    env = AlienWrapper()
     print(env.action_space.n)
     action_mapping = {'w': 0,}
 
@@ -86,6 +87,8 @@ if __name__ == '__main__':
         cv2.imshow('pacman', cv2.resize(sp[:, :, 6:9], (400, 400)))
         cv2.waitKey(1)
         env.render()
+        env.env.ale.saveScreenPNG(b'test_image.png')
+
         print(i, r, t, info)
         input()
         s = sp

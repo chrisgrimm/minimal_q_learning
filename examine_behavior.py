@@ -7,7 +7,10 @@ from utils import build_directory_structure
 #file_name = './runs/statistics_dir/policy_vis_10000_behavior_file.pickle' # qbert
 #file_name = './runs/statistics_dir/policy_vis_5100_behavior_file.pickle' # pacman traj20 3part
 #file_name = './runs/statistics_dir/policy_vis_20600_behavior_file.pickle' #good qbert part2_traj10
-file_name = './runs/statistics_dir/policy_vis_24000_behavior_file.pickle' #decent pacman part2_traj10
+#file_name = './runs/statistics_dir/policy_vis_24000_behavior_file.pickle' #decent pacman part2_traj10
+#file_name = './qbert_final/part2/policy_vis_21600_behavior_file.pickle'
+#file_name = './pacman_final/part2/policy_vis_29200_behavior_file.pickle'
+file_name = './alien_final/part2/policy_vis_8800_behavior_file.pickle'
 with open(file_name, 'rb') as f:
     data = pickle.load(f)
 
