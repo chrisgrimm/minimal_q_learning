@@ -58,8 +58,12 @@ class QBertWrapper(AtariWrapper):
     def __init__(self):
         super().__init__('qbert')
 
+class AssaultWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('assault')
+
 if __name__ == '__main__':
-    env = QBertWrapper()
+    env = AssaultWrapper()
     print(env.action_space.n)
     action_mapping = {'w': 0,}
 

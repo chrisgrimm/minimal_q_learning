@@ -13,8 +13,14 @@ class MetaEnvironment(object):
     def step(self, a):
         obs = self.env.get_obs()
         actual_action = self.q_learners[a].get_action([obs])[0]
-        return self.env.step(actual_action)
+        sp, r, t, info = self.env.step(actual_action)
+        assert 'a' not in info
+        info['a'] = actual_action
+        return sp, r, t, info
 
     def reset(self):
         return self.env.reset()
+
+    def render(self):
+        return self.env.render()
 

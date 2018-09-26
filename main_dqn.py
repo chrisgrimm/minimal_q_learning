@@ -11,6 +11,7 @@ from envs.metacontroller_actor import MetaEnvironment
 import argparse
 from random import choice
 import cv2
+import os
 
 import numpy as np
 from envs.atari.threaded_environment import ThreadedEnvironment
@@ -63,8 +64,11 @@ else:
 
 build_directory_structure('.', {'runs': {
     args.name: {
-        'images': {}}}})
+        'images': {},
+        'weights': {}}}})
 LOG.setup(f'./runs/{args.name}')
+
+save_path = os.path.join('runs', args.name, 'weights')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(100000)
@@ -78,7 +82,8 @@ episode_reward = 0
 print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
-num_epsilon_steps = 100000
+num_epsilon_steps = 50000
+save_frequency = 1000
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
 
@@ -105,17 +110,21 @@ def evaluate_performance(env, q_network: QLearnerAgent):
     return cumulative_reward
 
 
+
 pre_training = True
 current_episode_length = 0
 num_positive_examples = 500
 time_since_reward = 0
 evaluation_frequency = 100
+
+
 while True:
     # take random action
 
     #a = np.random.randint(0, env.action_space.n)
     a = get_action(s)
     sp, r, t, _ = env.step(a)
+    env.render()
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp])[0]
         if pre_training:
@@ -149,7 +158,7 @@ while True:
     if buffer.length() >= batch_size and reward_buffer.length() >= num_positive_examples:
         pre_training = False
 
-        for j in range(5):
+        for j in range(1):
             s_sample_no_reward, a_sample_no_reward, r_sample_no_reward, sp_sample_no_reward, t_sample_no_reward = buffer.sample(
                 batch_size // 2)
             s_sample_reward, a_sample_reward, r_sample_reward, sp_sample_reward, t_sample_reward = reward_buffer.sample(
@@ -180,6 +189,9 @@ while True:
         #    visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
         i += 1
         epsilon = max(min_epsilon, epsilon - epsilon_delta)
+
+        if i % save_frequency:
+            dqn.save(save_path, 'dqn.ckpt')
 
     current_episode_length += 1
 

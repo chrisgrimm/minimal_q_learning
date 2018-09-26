@@ -103,7 +103,7 @@ def produce_assault_ship_histogram_visualization(network, env, name):
 
 
 def produce_reward_statistics(network, env, name_reward, name_traj_file):
-    num_episodes_per_policy = 10
+    num_episodes_per_policy = 1
     max_episode_steps = 200
     partition_average_rewards = []
     all_trajectories = []

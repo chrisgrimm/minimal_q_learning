@@ -2,7 +2,9 @@ from random import choice
 import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
-from envs.atari.pacman import PacmanWrapper, QBertWrapper
+from envs.atari.pacman import PacmanWrapper, QBertWrapper, AssaultWrapper
+from q_learner_agent import QLearnerAgent
+from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
@@ -30,7 +32,7 @@ else:
     parser.add_argument('--name', type=str, required=True)
 
 parser.add_argument('--reuse-visual', action='store_true')
-parser.add_argument('--traj-len', type=int, required=True)
+parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, required=True)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'PACMAN', 'QBERT'])
@@ -42,6 +44,8 @@ parser.add_argument('--bayes-reward-filter', action='store_true')
 parser.add_argument('--use-ideal-filter', action='store_true')
 parser.add_argument('--num-pacman-partitions', type=int, default=2)
 parser.add_argument('--num-qbert-partitions', type=int, default=2)
+parser.add_argument('--use-meta-controller', action='store_true')
+
 args = parser.parse_args()
 
 use_gpu = args.gpu_num >= 0
@@ -50,39 +54,29 @@ visual = args.visual
 
 observation_mode = 'image' if visual else 'vector'
 
+def default_visualizations(network, env, name):
+    [path, name] = os.path.split(name)
+    [name, name_extension] = name.split('.')
+    statistics_full_name = os.path.join(path, name + '_statistics.txt')
+    behavior_full_name = os.path.join(path, name + '_behavior_file.pickle')
+    produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
 
+def default_on_reward_print_func(r, sp, info, network, reward_buffer):
+    partitioned_r = network.get_partitioned_reward([sp], [r])[0]
+    print(reward_buffer.length(), partitioned_r)
 
 
 if mode == 'ASSAULT':
     num_partitions = 3
     num_visual_channels = 9
-
-
-    def run_assault_visualizations(network, env, name):
-        [path, name] = os.path.split(name)
-        [name, name_extension] = name.split('.')
-        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
-        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
-        statistics_full_name = os.path.join(path, name+'_statistics.txt')
-        behavior_full_name = os.path.join(path, name+'_behavior_file.pickle')
-        #produce_assault_ship_histogram_visualization(network, env, hist_full_name)
-        #produce_assault_reward_visualization(network, env, reward_full_name)
-        produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
-        #cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
-
-
-
-    def on_reward_print_func(r, sp, info, network, reward_buffer):
-        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-        print(reward_buffer.length(), partitioned_r, info['ship_status'])
-
-    visualization_func = run_assault_visualizations
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
     # visual mode must be on for Assault domain.
     assert visual
-    env = SimpleAssault(initial_states_file=None)
+    env = AssaultWrapper()
     dummy_env_cluster = ThreadedEnvironment(32,
-                                            lambda i: SimpleAssault(initial_states_file=None),
-                                            SimpleAssault)
+                                            lambda i: AssaultWrapper(),
+                                            AssaultWrapper)
     dummy_env_cluster('reset', args=[])
     dummy_env = SimpleAssault(initial_states_file=None)
     dummy_env.reset()
@@ -90,10 +84,8 @@ elif mode == 'SOKOBAN':
     num_partitions = 2
     num_visual_channels = 3
     visualization_func = produce_two_goal_visualization
+    on_reward_print_func = default_on_reward_print_func
 
-    def on_reward_print_func(r, sp, info, network, reward_buffer):
-        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-        print(r, partitioned_r)
 
     env = BlockPushingDomain(observation_mode=observation_mode)
     dummy_env_cluster = ThreadedEnvironment(32,
@@ -105,21 +97,10 @@ elif mode == 'SOKOBAN':
 elif mode == 'PACMAN':
     num_partitions = args.num_pacman_partitions
     num_visual_channels = 9
-    def run_assault_visualizations(network, env, name):
-        [path, name] = os.path.split(name)
-        [name, name_extension] = name.split('.')
-        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
-        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
-        statistics_full_name = os.path.join(path, name+'_statistics.txt')
-        behavior_full_name = os.path.join(path, name+'_behavior_file.pickle')
-        #produce_assault_ship_histogram_visualization(network, env, hist_full_name)
-        #produce_assault_reward_visualization(network, env, reward_full_name)
-        produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
-        #cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
-    visualization_func = run_assault_visualizations
-    def on_reward_print_func(r, sp, info, network, reward_buffer):
-        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-        print(r, partitioned_r)
+
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
+
     env = PacmanWrapper()
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: PacmanWrapper(),
@@ -132,26 +113,8 @@ elif mode == 'QBERT':
     num_partitions = args.num_qbert_partitions
     num_visual_channels = 9
 
-
-    def run_assault_visualizations(network, env, name):
-        [path, name] = os.path.split(name)
-        [name, name_extension] = name.split('.')
-        hist_full_name = os.path.join(path, name + '_hist') + '.' + name_extension
-        reward_full_name = os.path.join(path, name + '_reward') + '.' + name_extension
-        statistics_full_name = os.path.join(path, name + '_statistics.txt')
-        behavior_full_name = os.path.join(path, name + '_behavior_file.pickle')
-        # produce_assault_ship_histogram_visualization(network, env, hist_full_name)
-        # produce_assault_reward_visualization(network, env, reward_full_name)
-        produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
-        # cv2.imwrite(os.path.join(path, f'{name}_thres.{name_extension}'), 255*np.tile(network.threshold, [1,1,3]))
-
-
-    visualization_func = run_assault_visualizations
-
-
-    def on_reward_print_func(r, sp, info, network, reward_buffer):
-        partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-        print(r, partitioned_r)
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
 
 
     env = QBertWrapper()
@@ -186,6 +149,11 @@ reward_net = RewardPartitionNetwork(buffer, reward_buffer, state_replay_buffer, 
                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
                                     use_ideal_threshold=args.use_ideal_filter)
 
+meta_env = MetaEnvironment(env, reward_net.Q_networks)
+meta_controller_buffer = ReplayBuffer(100000)
+reward_meta_controller_buffer = ReplayBuffer(100000)
+meta_controller = QLearnerAgent(meta_env.observation_space.shape[0], meta_env.action_space.n, 'meta_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
+
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)
 
@@ -197,10 +165,11 @@ episode_reward = 0
 print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
-num_epsilon_steps = 100000
-min_reward_experiences = 500
+num_epsilon_steps = 50000
+min_reward_experiences = 10
 num_reward_steps = 30000
 save_freq = 1000
+evaluation_frequency = 100
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 i = 0
@@ -209,15 +178,36 @@ i = 0
 policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
+def get_action_meta_controller(s):
+    global epsilon, meta_controller
+    is_random = np.random.uniform(0,1) < epsilon
+    if is_random:
+        # flip a coin to decide if the random action will be low-level or high-level
+        action = -1 if np.random.uniform(0,1) < 0.5 else np.random.randint(0,meta_env.action_space.n)
+    else:
+        action = meta_controller.get_action([s])[0]
+    return action
+
+
 def get_action(s):
     global pre_training
     global current_policy
-    is_random = np.random.uniform(0, 1) < 0.1
-    if current_policy == -1 or is_random or pre_training:
+    is_random = np.random.uniform(0, 1) < 0.1 or pre_training
+    if current_policy == -1 or is_random:
         action = np.random.randint(0, env.action_space.n)
     else:
         action = reward_net.get_state_actions([s])[current_policy][0]
     return action
+
+def evaluate_performance(env, q_network: QLearnerAgent):
+    max_steps = 1000
+    s = env.reset()
+    cumulative_reward = 0
+    for i in range(max_steps):
+        a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
+        s, r, t, _ = env.step(a)
+        cumulative_reward += r
+    return cumulative_reward, env.reset()
 
 pre_training = True
 current_episode_length = 0
@@ -234,14 +224,26 @@ while True:
     # take random action
 
     #a = np.random.randint(0, env.action_space.n)
-    a = get_action(s)
-    sp, r, t, info = env.step(a)
+    if args.use_meta_controller:
+        meta_a = get_action_meta_controller(s)
+        if meta_a == -1:
+            a = np.random.randint(0, env.action_space.n)
+            sp, r, t, info = env.step(a)
+        else:
+            sp, r, t, info = meta_env.step(meta_a)
+            a = info['a']
+    else:
+        a = get_action(s)
+        sp, r, t, info = env.step(a)
+
     state_replay_buffer.append(env.get_current_state())
 
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
         #print(f'{reward_buffer.length()}/{1000}')
         reward_buffer.append(s, a, r, sp, t)
+        if args.use_meta_controller and meta_a != -1:
+            reward_meta_controller_buffer.append(s, meta_a, r, sp, t)
         on_reward_print_func(r, sp, info, reward_net, reward_buffer)
         if args.bayes_reward_filter:
             tracker.add(sp, r)
@@ -259,6 +261,8 @@ while True:
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
+    if args.use_meta_controller and meta_a != -1:
+        meta_controller_buffer.append(s, meta_a, r, sp, t)
     if current_episode_length >= max_length_before_policy_switch:
         current_episode_length = 0
         current_policy = choice(policy_indices)
@@ -278,11 +282,21 @@ while True:
         threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
         reward_net.update_threshold_image(threshold)
 
-    if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and (current_reward_training_step >= num_reward_steps):
+    if (buffer.length() >= batch_size) and (reward_buffer.length() >= min_reward_experiences) and \
+       (current_reward_training_step >= num_reward_steps and (meta_controller_buffer.length() >= batch_size or not args.use_meta_controller) and (reward_meta_controller_buffer.length() >= min_reward_experiences or not args.use_meta_controller)):
         pre_training = False
         #s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
         for j in range(1):
             q_losses = reward_net.train_Q_networks()
+            if args.use_meta_controller:
+                no_reward_S, no_reward_A, no_reward_R, no_reward_SP, no_reward_T = meta_controller_buffer.sample(batch_size // 2)
+                reward_S, reward_A, reward_R, reward_SP, reward_T = reward_meta_controller_buffer.sample(batch_size // 2)
+                S = no_reward_S + reward_S
+                A = no_reward_A + reward_A
+                R = no_reward_R + reward_R
+                SP = no_reward_SP + reward_SP
+                T = no_reward_T + reward_T
+                meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
         if i % 1 == 0:
             for j in range(1):
                 reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial = reward_net.train_R_function(dummy_env_cluster)
@@ -291,6 +305,8 @@ while True:
                 LOG.add_line('value_constraint', value_constraint)
                 LOG.add_line('J_indep', J_indep)
                 LOG.add_line('J_nontrivial', J_nontrivial)
+                if args.use_meta_controller:
+                    LOG.add_line('meta_controller_loss', meta_controller_loss)
 
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
@@ -300,7 +316,7 @@ while True:
             LOG.add_line(f'q_loss{j}', q_losses[j])
 
 
-        log_string = f'({i}) ' + \
+        log_string = f'({i}, eps: {epsilon}) ' + \
                      ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
                      f'Reward Loss: {reward_loss}' + \
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
@@ -312,6 +328,12 @@ while True:
         if i % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
 
+        if i % evaluation_frequency == 0:
+            # evaluate the performance and reset the environment.
+            eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
+            LOG.add_line('eval_cum_reward', eval_cum_reward)
+
+        epsilon = max(min_epsilon, epsilon - epsilon_delta)
         i += 1
 
 
