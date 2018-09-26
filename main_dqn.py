@@ -7,7 +7,7 @@ from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
 import argparse
 from utils import LOG, build_directory_structure
-from envs.atari.pacman import PacmanWrapper, AssaultWrapper, QBertWrapper
+from envs.atari.pacman import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
 from envs.metacontroller_actor import MetaEnvironment
 import argparse
 from random import choice
@@ -24,7 +24,7 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', ])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
@@ -48,6 +48,15 @@ elif mode == 'PACMAN':
 elif mode == 'QBERT':
     num_visual_channels = 9
     base_env = QBertWrapper()
+elif mode == 'BREAKOUT':
+    num_visual_channels = 9
+    base_env = BreakoutWrapper()
+elif mode == 'ALIEN':
+    num_visual_channels = 9
+    base_env = AlienWrapper()
+elif mode == 'SEAQUEST':
+    num_visual_channels = 9
+    base_env = SeaquestWrapper()
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
     base_env = BlockPushingDomain(observation_mode=observation_mode)
