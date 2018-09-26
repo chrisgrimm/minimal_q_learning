@@ -166,7 +166,7 @@ print(env.action_space)
 epsilon = 1.0
 min_epsilon = 0.1
 num_epsilon_steps = 50000
-min_reward_experiences = 10
+min_reward_experiences = 500
 num_reward_steps = 30000
 save_freq = 1000
 evaluation_frequency = 100
