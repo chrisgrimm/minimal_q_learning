@@ -189,11 +189,11 @@ while True:
             print(f'({i}) EVAL: {cum_reward}')
             LOG.add_line('cum_reward', cum_reward)
 
-        #log_string = f'({i}) Q_loss: {q_loss}, ({epsilon})'
+        log_string = f'({i}) Q_loss: {q_loss}, ({epsilon})'
         #log_string = f'({i}) ' + \
         #             ''.join([f'Q_{j}_loss: {q_loss[j]}\t' for j in range(num_partitions)]) + \
         #             f'Reward Loss: {reward_loss}'
-        #print(log_string)
+        print(log_string)
 
         #if i % 100 == 0:
         #    visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{i}.png')
