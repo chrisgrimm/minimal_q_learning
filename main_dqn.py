@@ -24,7 +24,7 @@ from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', ])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
