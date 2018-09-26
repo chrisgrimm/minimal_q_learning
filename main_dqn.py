@@ -166,6 +166,7 @@ while True:
 
         if i % evaluation_frequency == 0:
             cum_reward = evaluate_performance(env, dqn)
+            print(f'EVAL: {cum_reward}')
             LOG.add_line('cum_reward', cum_reward)
 
         log_string = f'({i}) Q_loss: {q_loss}, ({epsilon})'
