@@ -96,13 +96,14 @@ def evaluate_performance(env, q_network: QLearnerAgent):
         a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, _ = env.step(a)
         cumulative_reward += r
+
     return cumulative_reward
 
 
 
 pre_training = True
 current_episode_length = 0
-num_positive_examples = 500
+#num_positive_examples = 500
 time_since_reward = 0
 evaluation_frequency = 100
 
@@ -115,11 +116,11 @@ while True:
     sp, r, t, _ = env.step(a)
     if r > 0:
         #partitioned_r = reward_net.get_partitioned_reward([sp])[0]
-        if pre_training:
-            print(f'{reward_buffer.length()}/{num_positive_examples}')
-        else:
-            print('Got Reward!')
-            LOG.add_line('episode_length', time_since_reward)
+        #if pre_training:
+        #    print(f'{reward_buffer.length()}/{num_positive_examples}')
+        #else:
+        print('Got Reward!')
+        LOG.add_line('episode_length', time_since_reward)
         time_since_reward = 0
         reward_buffer.append(s, a, r, sp, t)
         #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
@@ -143,19 +144,19 @@ while True:
         s = sp
 
 
-    if buffer.length() >= batch_size and reward_buffer.length() >= num_positive_examples:
+    if buffer.length() >= batch_size: #and reward_buffer.length() >= num_positive_examples:
         pre_training = False
 
         for j in range(1):
             s_sample_no_reward, a_sample_no_reward, r_sample_no_reward, sp_sample_no_reward, t_sample_no_reward = buffer.sample(
-                batch_size // 2)
-            s_sample_reward, a_sample_reward, r_sample_reward, sp_sample_reward, t_sample_reward = reward_buffer.sample(
-                batch_size // 2)
-            s_sample = s_sample_no_reward + s_sample_reward
-            a_sample = a_sample_no_reward + a_sample_reward
-            r_sample = r_sample_no_reward + r_sample_reward
-            sp_sample = sp_sample_no_reward + sp_sample_reward
-            t_sample = t_sample_no_reward + t_sample_reward
+                batch_size)
+            #s_sample_reward, a_sample_reward, r_sample_reward, sp_sample_reward, t_sample_reward = reward_buffer.sample(
+            #    batch_size // 2)
+            s_sample = s_sample_no_reward# + s_sample_reward
+            a_sample = a_sample_no_reward# + a_sample_reward
+            r_sample = r_sample_no_reward# + r_sample_reward
+            sp_sample = sp_sample_no_reward# + sp_sample_reward
+            t_sample = t_sample_no_reward# + t_sample_reward
             q_loss = dqn.train_batch(s_sample, a_sample, r_sample, sp_sample, t_sample)
         #for j in range(3):
         #    reward_loss = reward_net.train_R_function(dummy_env_cluster)
