@@ -62,6 +62,18 @@ class AssaultWrapper(AtariWrapper):
     def __init__(self):
         super().__init__('assault')
 
+class BreakoutWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('breakout')
+
+class AlienWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('alien')
+
+class SeaquestWrapper(AtariWrapper):
+    def __init__(self):
+        super().__init__('seaquest')
+
 if __name__ == '__main__':
     env = AssaultWrapper()
     print(env.action_space.n)

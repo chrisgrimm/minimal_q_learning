@@ -2,7 +2,7 @@ from random import choice
 import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
-from envs.atari.pacman import PacmanWrapper, QBertWrapper, AssaultWrapper
+from envs.atari.pacman import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
@@ -35,7 +35,7 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'PACMAN', 'QBERT'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -107,6 +107,51 @@ elif mode == 'PACMAN':
     dummy_env_cluster('reset', args=[])
 
     dummy_env = PacmanWrapper()
+    dummy_env.reset()
+elif mode == 'SEAQUEST':
+    num_partitions = args.num_partitions
+    num_visual_channels = 9
+
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
+
+    env = SeaquestWrapper()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: SeaquestWrapper(),
+                                            SeaquestWrapper)
+    dummy_env_cluster('reset', args=[])
+
+    dummy_env = SeaquestWrapper()
+    dummy_env.reset()
+elif mode == 'BREAKOUT':
+    num_partitions = args.num_partitions
+    num_visual_channels = 9
+
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
+
+    env = BreakoutWrapper()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: BreakoutWrapper(),
+                                            BreakoutWrapper)
+    dummy_env_cluster('reset', args=[])
+
+    dummy_env = BreakoutWrapper()
+    dummy_env.reset()
+elif mode == 'ALIEN':
+    num_partitions = args.num_partitions
+    num_visual_channels = 9
+
+    on_reward_print_func = default_on_reward_print_func
+    visualization_func = default_visualizations
+
+    env = AlienWrapper()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: AlienWrapper(),
+                                            AlienWrapper)
+    dummy_env_cluster('reset', args=[])
+
+    dummy_env = AlienWrapper()
     dummy_env.reset()
 elif mode == 'QBERT':
     num_partitions = args.num_partitions
