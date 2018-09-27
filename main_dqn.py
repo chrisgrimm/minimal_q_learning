@@ -133,7 +133,7 @@ def quick_visualize_policy(env, q_network: QLearnerAgent):
 
 pre_training = True
 current_episode_length = 0
-#num_positive_examples = 500
+num_positive_examples = 500
 time_since_reward = 0
 evaluation_frequency = 100
 
@@ -173,7 +173,7 @@ while True:
         s = sp
 
 
-    if buffer.length() >= batch_size: #and reward_buffer.length() >= num_positive_examples:
+    if buffer.length() >= batch_size and reward_buffer.length() >= num_positive_examples:
         pre_training = False
 
         for j in range(1):
