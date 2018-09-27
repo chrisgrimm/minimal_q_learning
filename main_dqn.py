@@ -178,14 +178,14 @@ while True:
 
         for j in range(1):
             s_sample_no_reward, a_sample_no_reward, r_sample_no_reward, sp_sample_no_reward, t_sample_no_reward = buffer.sample(
-                batch_size)
-            #s_sample_reward, a_sample_reward, r_sample_reward, sp_sample_reward, t_sample_reward = reward_buffer.sample(
-            #    batch_size // 2)
-            s_sample = s_sample_no_reward# + s_sample_reward
-            a_sample = a_sample_no_reward# + a_sample_reward
-            r_sample = r_sample_no_reward# + r_sample_reward
-            sp_sample = sp_sample_no_reward# + sp_sample_reward
-            t_sample = t_sample_no_reward# + t_sample_reward
+                batch_size // 2)
+            s_sample_reward, a_sample_reward, r_sample_reward, sp_sample_reward, t_sample_reward = reward_buffer.sample(
+                batch_size // 2)
+            s_sample = s_sample_no_reward + s_sample_reward
+            a_sample = a_sample_no_reward + a_sample_reward
+            r_sample = r_sample_no_reward + r_sample_reward
+            sp_sample = sp_sample_no_reward + sp_sample_reward
+            t_sample = t_sample_no_reward + t_sample_reward
             q_loss = dqn.train_batch(s_sample, a_sample, r_sample, sp_sample, t_sample)
         #for j in range(3):
         #    reward_loss = reward_net.train_R_function(dummy_env_cluster)

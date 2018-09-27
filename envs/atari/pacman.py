@@ -87,7 +87,7 @@ if __name__ == '__main__':
         cv2.imshow('pacman', cv2.resize(sp[:, :, 6:9], (400, 400)))
         cv2.waitKey(1)
         env.render()
-        env.env.ale.saveScreenPNG(b'test_image.png')
+        env.env.ale.saveScreenPNG(b'test_image2.png')
 
         print(i, r, t, info)
         input()

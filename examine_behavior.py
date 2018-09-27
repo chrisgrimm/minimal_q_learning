@@ -11,7 +11,14 @@ from utils import build_directory_structure
 #file_name = './qbert_final/part2/policy_vis_21600_behavior_file.pickle'
 #file_name = './pacman_final/part2/policy_vis_29200_behavior_file.pickle'
 #file_name = './alien_final/part2/policy_vis_8800_behavior_file.pickle'
-file_name = './assault_final/part2/policy_vis_17600_behavior_file.pickle'
+#file_name = './assault_final/part2/policy_vis_17600_behavior_file.pickle'
+
+root_dir = './alien_final/part3/'
+file_number = '23000'
+
+file_name = os.path.join(root_dir, f'policy_vis_{file_number}_behavior_file.pickle')
+
+#file_name = './pacman_final/part2/policy_vis_24600_behavior_file.pickle'
 with open(file_name, 'rb') as f:
     data = pickle.load(f)
 
@@ -32,11 +39,11 @@ def produce_video_from_traj(video_name, ext, traj):
     cv2.destroyAllWindows()
 
 def produce_all_videos(data):
-    build_directory_structure('.', {'policy_data':
+    build_directory_structure(root_dir, {f'{file_number}':
                                         {f'pi_{i}': {} for i in range(len(data))}})
     for policy_num, policy_trajectories in enumerate(data):
         for traj_num, trajectory in enumerate(policy_trajectories):
-            name = f'policy_data/pi_{policy_num}/{traj_num}'
+            name = os.path.join(root_dir, f'{file_number}/pi_{policy_num}/{traj_num}')
             produce_video_from_traj(name, 'avi', trajectory)
 
 produce_all_videos(data)
