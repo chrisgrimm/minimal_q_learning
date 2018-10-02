@@ -247,7 +247,6 @@ class RewardPartitionNetwork(object):
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
-        print('here!')
 
 
         # for i in range(self.num_partitions):

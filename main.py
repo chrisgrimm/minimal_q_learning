@@ -265,7 +265,6 @@ ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(
 
 reward_tracker_zero_filter = 0
 while True:
-    print(time)
     # take random action
     #a = np.random.randint(0, env.action_space.n)
     if args.use_meta_controller:
