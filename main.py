@@ -353,7 +353,7 @@ while True:
             SP = no_reward_SP + reward_SP
             T = no_reward_T + reward_T
             meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
-        if time % 1 == 0:
+        if time % (q_train_freq * 10) == 0:
             for j in range(1):
                 reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial = reward_net.train_R_function(dummy_env_cluster)
                 LOG.add_line('reward_loss', reward_loss)
