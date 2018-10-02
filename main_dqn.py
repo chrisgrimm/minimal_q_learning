@@ -115,10 +115,13 @@ def evaluate_performance(env, q_network: QLearnerAgent):
     max_steps = 1000
     s = env.reset()
     cumulative_reward = 0
-    for i in range(max_steps):
+    internal_terminal = False
+    while not internal_terminal:
         a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
-        s, r, t, _ = env.step(a)
+        s, r, t, info = env.step(a)
         cumulative_reward += r
+        internal_terminal = info['internal_terminal']
+
     #quick_visualize_policy(env, q_network)
     return cumulative_reward
 
