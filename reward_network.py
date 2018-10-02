@@ -5,10 +5,12 @@ import tqdm
 import os
 from replay_buffer import ReplayBuffer
 from q_learner_agent import QLearnerAgent
+from baselines.deepq.experiments.training_wrapper import QNetworkTrainingWrapper, make_dqn
+
 
 class RewardPartitionNetwork(object):
 
-    def __init__(self, buffer, reward_buffer, state_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
+    def __init__(self, env, buffer, state_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
                  separate_reward_repr=False, use_ideal_threshold=False):
@@ -27,7 +29,6 @@ class RewardPartitionNetwork(object):
         self.num_actions = num_actions
         self.obs_size = obs_size
         self.buffer = buffer
-        self.reward_buffer = reward_buffer
         self.visual = visual
         self.traj_len = traj_len
         self.max_value_mult = max_value_mult
@@ -45,6 +46,7 @@ class RewardPartitionNetwork(object):
         self.sess = sess = tf.Session(config=config)
 
         if reuse_visual_scoping:
+            raise Exception("Cannot use the reuse visual scoping flag with the OpenAI DQN implementations yet...")
             self.Q_networks = []
             qnet0 = QLearnerAgent(obs_size, num_actions, f'qnet0', num_visual_channels=num_visual_channels,
                                   visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
@@ -57,9 +59,10 @@ class RewardPartitionNetwork(object):
                                   alternate_visual_scope=self.visual_scope, sess=self.sess)
                 )
         else:
-            self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
-                                             visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
-                               for i in range(num_partitions)]
+            self.Q_networks = [make_dqn(env, f'qnet{i}') for i in range(num_partitions)]
+            #self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
+            #                                 visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
+            #                   for i in range(num_partitions)]
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 #self.inp_only_rewarding_trajectories = tf.placeholder(tf.bool)
@@ -193,31 +196,27 @@ class RewardPartitionNetwork(object):
         for i, q_net in enumerate(self.Q_networks):
             q_net.restore(path, f'q_net{i}.ckpt')
 
-    def train_Q_networks(self):
+    def train_Q_networks(self, time):
         Q_losses = []
-        s_no_reward_batch, a_no_reward_batch, r_no_reward_batch, sp_no_reward_batch, t_no_reward_batch = self.buffer.sample(16)
-        s_reward_batch, a_reward_batch, r_reward_batch, sp_reward_batch, t_reward_batch = self.reward_buffer.sample(16)
-        s_batch = s_no_reward_batch + s_reward_batch
-        a_batch = a_no_reward_batch + a_reward_batch
-        r_batch = r_no_reward_batch + r_reward_batch
-        sp_batch = sp_no_reward_batch + sp_reward_batch
-        t_batch = t_no_reward_batch + t_reward_batch
+        s_batch, a_batch, r_batch, sp_batch, t_batch = self.buffer.sample(32)
         [partitioned_reward] = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp_batch, self.inp_r: r_batch})
         for i, network in enumerate(self.Q_networks):
-            loss = network.train_batch(s_batch, a_batch, partitioned_reward[:, i], sp_batch, t_batch)
+            weights, batch_idxes = np.ones_like(t_batch), None
+            loss = network.train_batch(time, s_batch, a_batch, partitioned_reward[:, i], sp_batch, t_batch, weights, batch_idxes)
             Q_losses.append(loss)
         return Q_losses
 
-    def train_predicted_reward(self):
-        batch_size = 32
-        _, _, r_no_reward_batch, sp_no_reward_batch, _ = self.buffer.sample(batch_size // 2)
-        _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
-        r_batch = r_no_reward_batch + r_reward_batch
-        sp_batch = sp_no_reward_batch + sp_reward_batch
-        threshold = self.threshold if not self.use_ideal_threshold else self.ideal_threshold
-        sp_batch = np.reshape(threshold, [1, 64, 64, 1]) * np.array(sp_batch)
-        [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
-        return loss
+    # currently unused.
+    #def train_predicted_reward(self):
+    #    batch_size = 32
+    #    _, _, r_no_reward_batch, sp_no_reward_batch, _ = self.buffer.sample(batch_size // 2)
+    #    _, _, r_reward_batch, sp_reward_batch, _ = self.reward_buffer.sample(batch_size // 2)
+    #    r_batch = r_no_reward_batch + r_reward_batch
+    #    sp_batch = sp_no_reward_batch + sp_reward_batch
+    #    threshold = self.threshold if not self.use_ideal_threshold else self.ideal_threshold
+    #    sp_batch = np.reshape(threshold, [1, 64, 64, 1]) * np.array(sp_batch)
+    #    [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
+    #    return loss
 
 
     def train_R_function(self, dummy_env_cluster):
@@ -248,7 +247,7 @@ class RewardPartitionNetwork(object):
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
-
+        print('here!')
 
 
         # for i in range(self.num_partitions):
@@ -257,18 +256,6 @@ class RewardPartitionNetwork(object):
         [_, loss, max_value_constraint, value_constraint, J_indep, J_nontrivial] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.J_indep, self.J_nontrivial], feed_dict=feed_dict)
         return loss, max_value_constraint, value_constraint, J_indep, J_nontrivial
 
-
-    def get_action_stoch(self, policy, s_list, rand_prob=0.1):
-        U = np.random.uniform(0,1, size=len(s_list))
-        rand_a_list = np.random.randint(0, self.num_actions, size=len(s_list))
-        a_list = self.Q_networks[policy].get_action(s_list)
-        # TODO double check this line.
-        mix_rand_a_list = rand_a_list * (U < rand_prob).astype(np.float32) + a_list * (U >= rand_prob).astype(np.float32)
-        return mix_rand_a_list
-
-    def get_representations(self, s):
-        [c0, c1, c2] = self.sess.run([self.all_layers['c0'], self.all_layers['c1'], self.all_layers['c2']], feed_dict={self.inp_sp: [s]})
-        return c0[0], c1[0], c2[0]
 
 
     # grab sample trajectories from a starting state.
@@ -316,42 +303,13 @@ class RewardPartitionNetwork(object):
     def reward_visual_tf(self, sp, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             x = sp
-            c0 = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 32, 32, 32]
-            c1 = tf.layers.conv2d(c0, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-            c2 = tf.layers.conv2d(c1, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-            internal_rep = tf.reshape(c2, [-1, 8*8*32])
+            c0 = tf.layers.conv2d(x, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
+            c1 = tf.layers.conv2d(c0, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
+            c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
+            internal_rep = tf.reshape(c2, [-1, 8*8*64])
             fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
             r = tf.reshape(tf.layers.dense(fc1, 1, name='pred_reward'), [-1])
         return r, internal_rep, {'c0': c0, 'c1': c1, 'c2': c2}
-
-    # def reward_visual_tf(self, sp, name, reuse=None):
-    #     with tf.variable_scope(name, reuse=reuse):
-    #         x = sp
-    #         num_objects = 4
-    #         X, Y = np.meshgrid(np.linspace(0, 1, num=64), np.linspace(0, 1, num=64))
-    #         X = X.astype(np.float32)
-    #         Y = Y.astype(np.float32)
-    #         X = tf.reshape(X, [1, 64, 64])
-    #         Y = tf.reshape(Y, [1, 64, 64])
-    #         detectors = tf.layers.conv2d(x, 32, 4, 1, activation=tf.nn.relu, padding='SAME', name='d1')
-    #         detectors = tf.layers.conv2d(detectors, 2*num_objects, 4, 1, padding='SAME', name='d2')
-    #         coords = []
-    #         for i in range(num_objects):
-    #             object_slice = detectors[:, :, :, 2*i:2*(i+1)]
-    #             print(object_slice)
-    #             object_slice_X = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 0], [-1, 64*64])), [-1, 64, 64])
-    #             object_slice_Y = tf.reshape(tf.nn.softmax(tf.reshape(object_slice[:, :, :, 1], [-1, 64*64])), [-1, 64, 64])
-    #             EX = tf.reshape(tf.reduce_sum(object_slice_X * X, axis=[1,2]), [-1, 1])
-    #             EY = tf.reshape(tf.reduce_sum(object_slice_Y * Y, axis=[1,2]), [-1, 1])
-    #             coords.append(EX)
-    #             coords.append(EY)
-    #         coords = tf.concat(coords, axis=1)
-    #         fc1 = tf.layers.dense(coords, 128, activation=tf.nn.relu, name='fc1')
-    #         r = tf.reshape(tf.layers.dense(fc1, 1, name='pred_reward'), [-1])
-    #         return r, coords, None
-
-
-
 
 
     def partitioned_reward_tf_visual(self, sp, r, name, reuse=None):
@@ -371,10 +329,10 @@ class RewardPartitionNetwork(object):
                 # sp : [bs, 32, 32 ,3]
                 print('r', r)
                 x = sp
-                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 32, 32, 32]
-                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 16, 16, 32]
-                x = tf.layers.conv2d(x, 32, 4, 2, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 32]
-                x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 32]), 128, activation=tf.nn.relu, name='fc1')
+                x = tf.layers.conv2d(x, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 16, 16, 32]
+                x = tf.layers.conv2d(x, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
+                x = tf.layers.conv2d(x, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
+                x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 64]), 128, activation=tf.nn.relu, name='fc1')
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
 
         rewards = tf.reshape(r, [-1, 1]) * soft #* error_control

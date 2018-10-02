@@ -119,9 +119,9 @@ class QLearnerAgent(object):
         return qa
 
 
-    def encode_q(self, obs):
-        [encoding] = self.sess.run([self.q_encoding], feed_dict={self.inp_s: obs})
-        return encoding
+    # def encode_q(self, obs):
+    #     [encoding] = self.sess.run([self.q_encoding], feed_dict={self.inp_s: obs})
+    #     return encoding
 
     def train_batch(self, s, a, r, sp, t):
         [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict={
@@ -135,7 +135,6 @@ class QLearnerAgent(object):
         return loss
 
     def get_action(self, s):
-
         [qa] = self.sess.run([self.qa], feed_dict={self.inp_s: s})
         a = np.argmax(qa, axis=1)
         return a

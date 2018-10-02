@@ -179,27 +179,27 @@ def visualize_all_representations_all_reward_images(network: RewardPartitionNetw
 
 
 
-def visualize_all_representations(name: str, image: np.ndarray, network: RewardPartitionNetwork):
-    c0, c1, c2 = network.get_representations(image)
-    c0 = normalize_layer(c0)
-    c1 = normalize_layer(c1)
-    c2 = normalize_layer(c2)
-    build_directory_structure('.',
-        {'repr_vis':
-            {name:
-                {'c0': {},
-                 'c1': {},
-                 'c2': {}
-                 }
-             }
-         })
-    for i, c in enumerate([c0, c1, c2]):
-        c_path = os.path.join('repr_vis', name, f'c{i}')
-        orig = horz_stack_images(image[:, :, 0:3], image[:, :, 3:6], image[:, :, 6:9])
-        cv2.imwrite(os.path.join('repr_vis', name, 'orig.png'), orig)
-
-        for layer_idx in range(c.shape[2]):
-            cv2.imwrite(os.path.join(c_path, f'layer{layer_idx}.png'), cv2.resize(np.tile(c[:, :, [layer_idx]], [1, 1, 3]), (64, 64), interpolation=cv2.INTER_NEAREST))
+# def visualize_all_representations(name: str, image: np.ndarray, network: RewardPartitionNetwork):
+#     c0, c1, c2 = network.get_representations(image)
+#     c0 = normalize_layer(c0)
+#     c1 = normalize_layer(c1)
+#     c2 = normalize_layer(c2)
+#     build_directory_structure('.',
+#         {'repr_vis':
+#             {name:
+#                 {'c0': {},
+#                  'c1': {},
+#                  'c2': {}
+#                  }
+#              }
+#          })
+#     for i, c in enumerate([c0, c1, c2]):
+#         c_path = os.path.join('repr_vis', name, f'c{i}')
+#         orig = horz_stack_images(image[:, :, 0:3], image[:, :, 3:6], image[:, :, 6:9])
+#         cv2.imwrite(os.path.join('repr_vis', name, 'orig.png'), orig)
+#
+#         for layer_idx in range(c.shape[2]):
+#             cv2.imwrite(os.path.join(c_path, f'layer{layer_idx}.png'), cv2.resize(np.tile(c[:, :, [layer_idx]], [1, 1, 3]), (64, 64), interpolation=cv2.INTER_NEAREST))
 
 
 

@@ -13,6 +13,9 @@ class AtariWrapper():
         self.frame_buffer_len = 3
         self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
         self.observation_space = Box(0, 255, shape=(64,64,3*self.frame_buffer_len), dtype=np.uint8)
+        self.reward_range = (0, 1)
+        self.metadata = self.env.metadata
+        self.spec = self.env.spec
 
     def get_current_state(self):
         state = self.env.clone_full_state()
