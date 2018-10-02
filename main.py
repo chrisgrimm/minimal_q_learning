@@ -212,7 +212,7 @@ min_epsilon = 0.01
 num_epsilon_steps = 1000000
 min_reward_experiences = 500
 num_reward_steps = 30000
-save_freq = 1000
+save_freq = 10000
 evaluation_frequency = 100
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -376,7 +376,7 @@ while True:
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
-        if time % 100 == 0:
+        if time % 1000 == 0:
             visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{time}.png')
 
         if time % save_freq == 0:
