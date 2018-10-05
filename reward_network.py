@@ -179,9 +179,9 @@ class RewardPartitionNetwork(object):
                 print('visual_params', visual_params)
                 opt = tf.train.AdamOptimizer(learning_rate=lr)
                 gradients = opt.compute_gradients(self.loss, var_list=reward_params + visual_params)
-                for i, (grad, var) in enumerate(gradients):
-                    if grad is not None:
-                        gradients[i] = (tf.clip_by_norm(grad, 1.0), var)
+                #for i, (grad, var) in enumerate(gradients):
+                #    if grad is not None:
+                #        gradients[i] = (tf.clip_by_norm(grad, 1.0), var)
                 self.train_op = opt.apply_gradients(gradients)
                 #self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
 
