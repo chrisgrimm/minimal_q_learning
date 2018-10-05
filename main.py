@@ -270,7 +270,7 @@ current_episode_length = 0
 max_length_before_policy_switch = -1
 update_threshold_frequency = 100
 (h, w, d) = env.observation_space.shape
-last_100_scores = []
+last_100_scores = [np.inf]
 best_score = np.inf
 s = env.reset()
 
@@ -395,7 +395,7 @@ for time in range(num_steps):
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
-        if time % 1000 == 0:
+        if time % 10000 == 0:
             visualization_func(reward_net, dummy_env, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
         if time % save_freq == 0:
@@ -406,7 +406,7 @@ for time in range(num_steps):
             eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
             LOG.add_line('eval_cum_reward', eval_cum_reward)
 
-        if time % 1000 == 0 and np.mean(last_100_scores) < best_score:
+        if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
             best_score = np.mean(last_100_scores)
             reward_net.save(best_save_path, 'reward_net.ckpt')
 
