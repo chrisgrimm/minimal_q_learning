@@ -179,14 +179,16 @@ elif mode == 'QBERT':
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
-build_directory_structure('.', {'runs': {
+run_dir = 'new_runs'
+
+build_directory_structure('.', {run_dir: {
                                     args.name: {
                                         'images': {},
                                         'weights': {},
                                         'best_weights': {},}}})
-LOG.setup(f'./runs/{args.name}')
-save_path = os.path.join('runs', args.name, 'weights')
-best_save_path = os.path.join('runs', args.name, 'best_weights')
+LOG.setup(f'./{run_dir}/{args.name}')
+save_path = os.path.join(run_dir, args.name, 'weights')
+best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
@@ -393,7 +395,7 @@ for time in range(num_steps):
         print(log_string)
 
         if time % 1000 == 0:
-            visualization_func(reward_net, dummy_env, f'./runs/{args.name}/images/policy_vis_{time}.png')
+            visualization_func(reward_net, dummy_env, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
         if time % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
