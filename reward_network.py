@@ -59,7 +59,7 @@ class RewardPartitionNetwork(object):
                                   alternate_visual_scope=self.visual_scope, sess=self.sess)
                 )
         else:
-            self.Q_networks = [make_dqn(env, f'qnet{i}') for i in range(num_partitions)]
+            self.Q_networks = [make_dqn(env, f'qnet{i}', gpu_num) for i in range(num_partitions)]
             #self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
             #                                 visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
             #                   for i in range(num_partitions)]
@@ -333,6 +333,7 @@ class RewardPartitionNetwork(object):
                 x = tf.layers.conv2d(x, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
                 x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 64]), 128, activation=tf.nn.relu, name='fc1')
                 soft = tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.softmax, name='qa')
+                soft = tf.Print(soft, [soft], 'soft')
 
         rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
         return rewards

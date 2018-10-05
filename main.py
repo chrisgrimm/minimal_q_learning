@@ -14,8 +14,9 @@ from reward_prob_tracker import RewardProbTracker
 import argparse
 from random import choice
 import cv2
-import os
+import os, re
 from replay_buffer import StateReplayBuffer
+from examine_behavior import produce_all_videos
 
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
@@ -57,8 +58,13 @@ def default_visualizations(network, env, name):
     [path, name] = os.path.split(name)
     [name, name_extension] = name.split('.')
     statistics_full_name = os.path.join(path, name + '_statistics.txt')
-    behavior_full_name = os.path.join(path, name + '_behavior_file.pickle')
+    behavior_name = name + '_behavior_file.pickle'
+    behavior_full_name = os.path.join(path, behavior_name)
+
     produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
+    file_number = re.match(r'^policy\_vis\_(\d+)\_behavior_file.pickle$', behavior_name).groups()[0]
+    produce_all_videos(path, file_number)
+
 
 def default_on_reward_print_func(r, sp, info, network, reward_buffer):
     partitioned_r = network.get_partitioned_reward([sp], [r])[0]
@@ -176,9 +182,12 @@ else:
 build_directory_structure('.', {'runs': {
                                     args.name: {
                                         'images': {},
-                                        'weights': {}}}})
+                                        'weights': {},
+                                        'best_weights': {},}}})
 LOG.setup(f'./runs/{args.name}')
 save_path = os.path.join('runs', args.name, 'weights')
+best_save_path = os.path.join('runs', args.name, 'best_weights')
+
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(10000)
@@ -217,6 +226,7 @@ evaluation_frequency = 1000
 current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 time = 0
+num_steps = 10000000
 
 # indices of current policy
 policy_indices = list(range(num_partitions)) + [-1]
@@ -258,13 +268,14 @@ current_episode_length = 0
 max_length_before_policy_switch = -1
 update_threshold_frequency = 100
 (h, w, d) = env.observation_space.shape
-
+last_100_scores = []
+best_score = np.inf
 s = env.reset()
 
 ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
 
 reward_tracker_zero_filter = 0
-while True:
+for time in range(num_steps):
     # take random action
     #a = np.random.randint(0, env.action_space.n)
     if args.use_meta_controller:
@@ -361,6 +372,11 @@ while True:
                 LOG.add_line('value_constraint', value_constraint)
                 LOG.add_line('J_indep', J_indep)
                 LOG.add_line('J_nontrivial', J_nontrivial)
+                LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                if len(last_100_scores) < 100:
+                    last_100_scores.append(J_indep - J_nontrivial)
+                else:
+                    last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
                 if args.use_meta_controller:
                     LOG.add_line('meta_controller_loss', meta_controller_loss)
 
@@ -387,8 +403,13 @@ while True:
             eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
             LOG.add_line('eval_cum_reward', eval_cum_reward)
 
+        if time % 100 == 0 and np.mean(last_100_scores) < best_score:
+            best_score = np.mean(last_100_scores)
+            reward_net.save(best_save_path, 'reward_net.ckpt')
+
+
+
         epsilon = max(min_epsilon, epsilon - epsilon_delta)
-    time += 1
 
 
 
