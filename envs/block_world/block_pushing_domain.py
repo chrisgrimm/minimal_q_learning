@@ -83,7 +83,7 @@ class BlockPushingDomain(object):
         self.timestep = 0
         self.action_space = Discrete(5)
         if self.observation_mode == 'image':
-            self.observation_space = Box(0, 255, shape=[32, 32, 3], dtype=np.uint8)
+            self.observation_space = Box(0, 255, shape=[64, 64, 3], dtype=np.uint8)
         else:
             self.observation_space = Box(-1, 1, shape=[self.obs_size + self.goal_size])
 

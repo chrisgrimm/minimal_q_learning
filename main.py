@@ -375,6 +375,7 @@ for time in range(num_steps):
                 LOG.add_line('J_indep', J_indep)
                 LOG.add_line('J_nontrivial', J_nontrivial)
                 LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                LOG.add_line('time', time)
                 if len(last_100_scores) < 100:
                     last_100_scores.append(J_indep - J_nontrivial)
                 else:
@@ -405,7 +406,7 @@ for time in range(num_steps):
             eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
             LOG.add_line('eval_cum_reward', eval_cum_reward)
 
-        if time % 100 == 0 and np.mean(last_100_scores) < best_score:
+        if time % 1000 == 0 and np.mean(last_100_scores) < best_score:
             best_score = np.mean(last_100_scores)
             reward_net.save(best_save_path, 'reward_net.ckpt')
 
