@@ -13,7 +13,7 @@ class RewardPartitionNetwork(object):
     def __init__(self, env, buffer, state_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
-                 separate_reward_repr=False, use_ideal_threshold=False):
+                 separate_reward_repr=False, use_ideal_threshold=False, clip_gradient=-1):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
@@ -179,9 +179,11 @@ class RewardPartitionNetwork(object):
                 print('visual_params', visual_params)
                 opt = tf.train.AdamOptimizer(learning_rate=lr)
                 gradients = opt.compute_gradients(self.loss, var_list=reward_params + visual_params)
-                #for i, (grad, var) in enumerate(gradients):
-                #    if grad is not None:
-                #        gradients[i] = (tf.clip_by_norm(grad, 1.0), var)
+                if clip_gradient > 0:
+                    for i, (grad, var) in enumerate(gradients):
+                        if grad is not None:
+                            gradients[i] = (tf.clip_by_norm(grad, clip_gradient), var)
+
                 self.train_op = opt.apply_gradients(gradients)
                 #self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
 

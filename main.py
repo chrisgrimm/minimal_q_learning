@@ -45,6 +45,7 @@ parser.add_argument('--bayes-reward-filter', action='store_true')
 parser.add_argument('--use-ideal-filter', action='store_true')
 parser.add_argument('--num-partitions', type=int, required=True)
 parser.add_argument('--use-meta-controller', action='store_true')
+parser.add_argument('--clip-gradient', type=float, default=-1)
 
 args = parser.parse_args()
 
@@ -201,7 +202,7 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
-                                    use_ideal_threshold=args.use_ideal_filter)
+                                    use_ideal_threshold=args.use_ideal_filter, clip_gradient=args.clip_gradient)
 
 meta_env = MetaEnvironment(env, reward_net.Q_networks)
 meta_controller_buffer = ReplayBuffer(10000)
