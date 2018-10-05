@@ -177,8 +177,14 @@ class RewardPartitionNetwork(object):
                 visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []
                 print('reward_params', reward_params)
                 print('visual_params', visual_params)
+                opt = tf.train.AdamOptimizer(learning_rate=lr)
+                gradients = opt.compute_gradients(self.loss, var_list=reward_params + visual_params)
+                for i, (grad, var) in enumerate(gradients):
+                    if grad is not None:
+                        gradients[i] = (tf.clip_by_norm(grad, 10.0), var)
+                self.train_op = opt.apply_gradients(gradients)
+                #self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
 
-                self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
                 self.train_op_reward = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.reward_loss, var_list=pred_reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
