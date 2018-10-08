@@ -16,7 +16,8 @@ def get_screen_names():
 def make_tensorboard_string():
     base_dir = os.getcwd()
     names = get_screen_names()
-    name_dir_pairs = [name+":"+os.path.join(base_dir, name) for name in names]
+    name_dir_pairs = [name+":"+os.path.join(base_dir, name) for name in names
+                      if os.path.isdir(os.path.join(base_dir, name))]
     command = f'tensorboard --logdir={",".join(name_dir_pairs)}'
     print(command)
 
