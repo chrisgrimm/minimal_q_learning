@@ -7,8 +7,6 @@ def get_screen_names():
     out, err = process.communicate()
     out = out.decode('utf-8')
     #err = err.decode('utf-8')
-    print('out', out)
-    print('err', err)
     regex = r'(\d+)\.(\S+).+?(\(Detached\)|\(Attached\))'
     groups = re.findall(regex, out)
     return [g[1] for g in groups]
