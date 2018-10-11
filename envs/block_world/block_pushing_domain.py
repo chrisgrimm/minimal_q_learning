@@ -5,15 +5,16 @@ import numpy as np
 from envs.block_world.initialization_types import AgentInitialization, ConstantInitialization, RandomInitialization
 from gym.spaces import Discrete, Box
 
-from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock
+from envs.block_world.blocks import ConstantGoalBlock, AgentBlock, BackgroundBlock, ConstantImmoveableBlock
 
 BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 
 
 class BlockPushingDomain(object):
 
-    def __init__(self, observation_mode='vector'):
-        self.grid_size = 5
+    def __init__(self, observation_mode='vector', configuration='standard'):
+        assert configuration in ['standard', 'obstacle']
+        self.grid_size = 5 if configuration == 'standard' else 7
         self.block_size = 8
         self.visual_mode_image_size = 64
         self.render_mode_image_size = self.grid_size * self.block_size
@@ -55,20 +56,35 @@ class BlockPushingDomain(object):
         agent_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'agent_sprite.png'))[:, :, RGB_ordering]
         goal1_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'reward_square_red.png'))[:, :, RGB_ordering]
         goal2_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'reward_square_green.png'))[:, :, RGB_ordering]
+        gray_wall_texture = cv2.imread(os.path.join(BASE_DIR, 'textures', 'grey_wall.png'))[:, :, RGB_ordering]
         #print('bg_shape', background_texture.shape)
         background_color = (255, 0, 0)
         background_blocks = [BackgroundBlock((x,y), background_color, background_texture)
                              for x in range(self.grid_size) for y in range(self.grid_size)]
 
-        self.blocks = (
-            [AgentBlock(self.agent_color, texture=agent_texture),
-             ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
-             ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-             ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-             ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
-             ] +
-            background_blocks
-        )
+
+        # standard configuration
+        if configuration == 'standard':
+            self.blocks = (
+                [AgentBlock(self.agent_color, texture=agent_texture),
+                 ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
+                 ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
+                 ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
+                 ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
+                 ] +
+                background_blocks
+            )
+        else:
+            self.blocks = (
+                [AgentBlock(self.agent_color, texture=agent_texture),
+                 ConstantGoalBlock((3,0), self.goal_color1, reward=1.0, texture=goal1_texture),
+                 ConstantGoalBlock((3,6), self.goal_color2, reward=1.0, texture=goal2_texture),
+                 ] +
+                [ConstantImmoveableBlock((x,3), color=(0,0,0), texture=gray_wall_texture) for x in range(1, 6)] +
+                background_blocks
+            )
+
+
 
         # any time a change is made to blocks, there needs to be a corresponding call to update the block indices.
         self.obs_blocks, self.obs_block_indices, \

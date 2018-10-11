@@ -56,7 +56,7 @@ def produce_two_goal_visualization(network, env, name):
     images = []
     images.append(state_image)
     for partition_state_pairs in data:
-        image = produce_reward_image(partition_state_pairs)
+        image = produce_reward_image(partition_state_pairs, env.grid_size)
         images.append(image)
     stacked = horz_stack_images(*images)
 
@@ -159,8 +159,8 @@ def produce_assault_reward_visualization(network, env, name):
 
 
 
-def produce_reward_image(partition_state_pairs):
-    canvas = np.zeros(shape=(5,5), dtype=np.float32)
+def produce_reward_image(partition_state_pairs, grid_size):
+    canvas = np.zeros(shape=(grid_size, grid_size), dtype=np.float32)
     for (x,y), reward in partition_state_pairs:
         canvas[y, x] = reward
     color_map = cv2.applyColorMap((255*np.clip(np.array(canvas), 0, 1)).astype(np.uint8), cv2.COLORMAP_JET)
