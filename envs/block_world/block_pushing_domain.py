@@ -12,7 +12,7 @@ BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 
 class BlockPushingDomain(object):
 
-    def __init__(self, observation_mode='vector', configuration='standard'):
+    def __init__(self, observation_mode='vector', configuration='obstacle'):
         assert configuration in ['standard', 'obstacle']
         self.grid_size = 5 if configuration == 'standard' else 7
         self.block_size = 8
