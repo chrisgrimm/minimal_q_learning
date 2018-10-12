@@ -170,7 +170,7 @@ class RewardPartitionNetwork(object):
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
-                self.loss = (0.1*value_constraint - self.max_value_mult*max_value_constraint)
+                self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
@@ -340,7 +340,7 @@ class RewardPartitionNetwork(object):
                 x = tf.layers.conv2d(x, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
                 x = tf.layers.conv2d(x, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
                 x = tf.layers.dense(tf.reshape(x, [-1, 8 * 8 * 64]), 128, activation=tf.nn.relu, name='fc1')
-                soft = tf.nn.softmax(tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
+                soft = tf.nn.softmax(2*tf.layers.dense(x, len(self.Q_networks), activation=tf.nn.tanh, name='qa'))
         rewards = tf.reshape(r, [-1, 1]) * soft #* error_control
         return rewards
 
