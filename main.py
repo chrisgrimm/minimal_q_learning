@@ -271,7 +271,7 @@ def restore_dead_run():
     largest_time = 0
     for s in tf.train.summary_iterator(event_path):
         for e in s.summary.value:
-            if s.tag == 'time':
+            if e.tag == 'time':
                 largest_time = max(e.simple_value, largest_time)
     # fill the replay buffer and state-buffers with experiences
     replay_buffer_size = 100000
