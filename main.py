@@ -14,7 +14,9 @@ from reward_prob_tracker import RewardProbTracker
 import argparse
 from random import choice
 import cv2
+import tqdm
 import os, re
+import tensorflow as tf
 from replay_buffer import StateReplayBuffer
 from examine_behavior import produce_all_videos
 
@@ -46,6 +48,7 @@ parser.add_argument('--use-ideal-filter', action='store_true')
 parser.add_argument('--num-partitions', type=int, required=True)
 parser.add_argument('--use-meta-controller', action='store_true')
 parser.add_argument('--clip-gradient', type=float, default=-1)
+parser.add_argument('--restore-dead-run', type=str, default=None)
 
 args = parser.parse_args()
 
@@ -252,6 +255,46 @@ num_steps = 10000000
 policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
+
+def restore_dead_run():
+    run_path = args.restore_dead_run
+    # first get the models loaded up
+    reward_net.restore(os.path.join(run_path, 'weights'), 'reward_net.ckpt')
+    # get the time that we made it to in the dead run.
+    event_file_names = [x for x in os.listdir(run_path) if x.startswith('events')]
+    if len(event_file_names) > 1:
+        raise Exception('Too many event files. Disambiguation required.')
+    elif len(event_file_names) == 0:
+        raise Exception(f'Cannot find event file in directory: {run_path}')
+    event_file_name = event_file_names[0]
+    event_path = os.path.join(run_path, event_file_name)
+    largest_time = 0
+    for s in tf.train.summary_iterator(event_path):
+        for e in s.summary.value:
+            if s.tag == 'time':
+                largest_time = max(e.simple_value, largest_time)
+    # fill the replay buffer and state-buffers with experiences
+    replay_buffer_size = 100000
+    fill_steps = min(replay_buffer_size, largest_time)
+    epsilon = max(1.0 - largest_time * epsilon_delta, min_epsilon)
+    s = env.reset()
+    for t in tqdm.tqdm(range(fill_steps)):
+        a = get_action(s)
+        sp, r, t, _ = env.step(a)
+        buffer.append(s, a, r, sp, t)
+        state_replay_buffer.append(env.get_current_state())
+        if t:
+            s = env.reset()
+        else:
+            s = sp
+    return time, epsilon
+
+
+
+
+
+
+
 def get_action_meta_controller(s):
     global epsilon, meta_controller
     is_random = np.random.uniform(0,1) < epsilon
@@ -292,10 +335,15 @@ last_100_scores = [np.inf]
 best_score = np.inf
 s = env.reset()
 
+starting_time = 0
+if args.restore_dead_run is not None:
+    starting_time, epsilon = restore_dead_run()
+
+
 ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
 
 reward_tracker_zero_filter = 0
-for time in range(num_steps):
+for time in range(starting_time, num_steps):
     # take random action
     #a = np.random.randint(0, env.action_space.n)
     if args.use_meta_controller:
