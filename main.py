@@ -257,7 +257,7 @@ current_policy = choice(policy_indices)
 
 
 def restore_dead_run():
-    run_path = args.restore_dead_run
+    run_path = os.path.join(run_dir, args.restore_dead_run)
     # first get the models loaded up
     reward_net.restore(os.path.join(run_path, 'weights'), 'reward_net.ckpt')
     # get the time that we made it to in the dead run.
