@@ -276,7 +276,7 @@ def restore_dead_run():
                 largest_time = max(e.simple_value, largest_time)
     # fill the replay buffer and state-buffers with experiences
     replay_buffer_size = 100000
-    fill_steps = max(replay_buffer_size, largest_time)
+    fill_steps = max(replay_buffer_size, int(largest_time))
     epsilon = max(1.0 - largest_time * epsilon_delta, min_epsilon)
     s = env.reset()
     for t in tqdm.tqdm(range(fill_steps)):
@@ -288,7 +288,7 @@ def restore_dead_run():
             s = env.reset()
         else:
             s = sp
-    return time, epsilon
+    return int(largest_time), epsilon
 
 
 
