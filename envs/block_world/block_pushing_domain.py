@@ -364,8 +364,8 @@ class BlockPushingDomain(object):
         initialized_positions = initialized_positions.union(
             AgentInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
                                                            'initialized_positions': initialized_positions}))
-
-        self.timestep = 0
+        if reset_timestep:
+            self.timestep = 0
         return self.get_observation(self.observation_mode)
 
 
