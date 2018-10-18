@@ -73,7 +73,7 @@ else:
 if args.meta:
     assert args.num_partitions is not None
     assert args.restore_path is not None
-    reward_net = RewardPartitionNetwork(None, None, None, args.num_partitions, base_env.observation_space.shape[0],
+    reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
                                         base_env.action_space.n, 'reward_net', traj_len=10,
                                         num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
     reward_net.restore(args.restore_path, 'reward_net.ckpt')
