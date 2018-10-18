@@ -95,7 +95,7 @@ class BlockPushingDomain(object):
         self.top_right_position = (self.grid_size-1, 0)
         self.obs_size = 2*len(self.obs_blocks)
         self.goal_size = 2*len(self.goal_blocks)
-        self.max_timesteps = 30
+        self.max_timesteps = 100
         self.timestep = 0
         self.action_space = Discrete(5)
         if self.observation_mode == 'image':
@@ -325,7 +325,7 @@ class BlockPushingDomain(object):
     def get_terminal(self, obs):
         at_goal_state = (self.get_reward(obs) == 1.0)
         game_over = (self.timestep >= self.max_timesteps)
-        return game_over or at_goal_state
+        return game_over
         #return game_over
 
     def step(self, raw_action):
@@ -338,8 +338,10 @@ class BlockPushingDomain(object):
         new_obs = self.get_observation(self.observation_mode)
         reward = self.get_reward(new_obs_vec)
         terminal = self.get_terminal(new_obs_vec)
+        # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
+        #   this should make plots of the cumulative reward more meaningful. 
         info = {'internal_terminal': terminal}
-        if terminal:
+        if terminal or (reward == 1.0):
             self.reset()
         # TODO use old_obs for hindsight.
         return new_obs, reward, False, info
