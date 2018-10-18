@@ -65,7 +65,7 @@ elif mode == 'SEAQUEST':
     base_env = SeaquestWrapper()
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
-    base_env = BlockPushingDomain(observation_mode=observation_mode)
+    base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard')
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
