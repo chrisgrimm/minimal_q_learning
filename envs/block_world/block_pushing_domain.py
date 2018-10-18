@@ -339,10 +339,10 @@ class BlockPushingDomain(object):
         reward = self.get_reward(new_obs_vec)
         terminal = self.get_terminal(new_obs_vec)
         # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
-        #   this should make plots of the cumulative reward more meaningful. 
+        #   this should make plots of the cumulative reward more meaningful.
         info = {'internal_terminal': terminal}
         if terminal or (reward == 1.0):
-            self.reset()
+            self.reset(reset_timestep=terminal)
         # TODO use old_obs for hindsight.
         return new_obs, reward, False, info
 
@@ -353,7 +353,7 @@ class BlockPushingDomain(object):
         cv2.waitKey(1)
 
 
-    def reset(self):
+    def reset(self, reset_timestep=True):
         initialized_positions = set()
         initialized_positions = initialized_positions.union(
             ConstantInitialization().initialize(self.blocks, {'grid_size': self.grid_size,
