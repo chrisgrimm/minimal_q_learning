@@ -36,6 +36,7 @@ parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
 parser.add_argument('--num-partitions', type=int, default=None)
 parser.add_argument('--restore-path', type=str, default=None)
+parser.add_argument('--run-dir', type=str, default='runs')
 
 args = parser.parse_args()
 
@@ -80,7 +81,7 @@ if args.meta:
 else:
     env = base_env
 
-runs_dir = 'runs'
+runs_dir = args.run_dir
 
 build_directory_structure('.', {runs_dir: {
     args.name: {
