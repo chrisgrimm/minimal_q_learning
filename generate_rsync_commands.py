@@ -35,7 +35,7 @@ command_list = []
 for (game, reward, run_num), run_name in bin_choices.items():
     destination_path = '.'
     ssh_path = f'crgrimm@{hostname}:'
-    source_path = os.path.join(path_to_runs, run_name, '.', 'best_weights')
+    source_path = os.path.join(path_to_runs, '.', run_name, 'best_weights')
     source_path = ssh_path+source_path
 
     command = f'rsync -r --relative {source_path} {destination_path}'
