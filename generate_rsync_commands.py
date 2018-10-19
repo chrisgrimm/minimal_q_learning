@@ -34,7 +34,7 @@ hostname = subprocess.check_output('hostname').decode('utf-8').strip()
 command_list = []
 for (game, reward, run_num), run_name in bin_choices.items():
     destination_path = '.'
-    ssh_path = f'crgrimm@{hostname}:'
+    ssh_path = f'crgrimm@{hostname}.eecs.umich.edu:'
     source_path = os.path.join(path_to_runs, '.', run_name, 'best_weights')
     source_path = ssh_path+source_path
 
