@@ -63,11 +63,12 @@ def replace_step_with_time(data):
 
 def create_merging_bins(all_data):
     bins = {}
+    bin_names = {}
     for full_name in all_data.keys():
 
         match = re.match(r'^(restore\d?\_)?(.+?)\_(\d)reward\_(\d+)mult(\_\d)?$', full_name)
         if match is None:
-            print(f'Rejecting name: {name}')
+            print(f'Rejecting name: {full_name}')
             continue
 
         (restored, name, num_rewards, num_mult, run_flag) = match.groups()
@@ -81,8 +82,12 @@ def create_merging_bins(all_data):
         merge_id = (name,num_rewards,num_mult,run_flag)
         if merge_id not in bins:
             bins[merge_id] = [all_data[full_name]]
+            bin_names[merge_id] = [full_name]
         else:
             bins[merge_id].append(all_data[full_name])
+            bin_names[merge_id].append(full_name)
+    for merge_id, full_names in bin_names.items():
+        print(merge_id, full_names)
     return bins
 
 def merge_data(bin):
@@ -113,9 +118,6 @@ def moving_average(a, n=3) :
     return ret[n - 1:] / n
 
 
-#x, y = x[n - 1:], moving_average(y, n=n)
-
-
 def make_J_disentangled_plots(merged_data, n=2000):
     path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/j_disentangled_plots'
     game_bins = {}
@@ -137,33 +139,7 @@ def make_J_disentangled_plots(merged_data, n=2000):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
-    #merged_data = load_and_merge_data()
-    #make_J_disentangled_plots(merged_data)
-
-    #sort_runs(data)
-
-
-
-
-
-
-
-
-
+    #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
+    merged_data = load_and_merge_data()
+    make_J_disentangled_plots(merged_data)
