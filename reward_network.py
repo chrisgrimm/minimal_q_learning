@@ -13,13 +13,16 @@ class RewardPartitionNetwork(object):
     def __init__(self, env, buffer, state_buffer, num_partitions, obs_size, num_actions, name, traj_len=30,
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
-                 separate_reward_repr=False, use_ideal_threshold=False, clip_gradient=-1):
+                 separate_reward_repr=False, use_ideal_threshold=False, clip_gradient=-1, softmin_temperature=1.0,
+                 stop_softmin_gradients=True):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
         self.state_buffer = state_buffer
         self.threshold = np.ones(shape=[64, 64, 1], dtype=np.uint8)
         self.use_ideal_threshold = use_ideal_threshold
+        self.softmin_temperature = softmin_temperature
+        self.stop_softmin_gradients = stop_softmin_gradients
         if use_ideal_threshold:
             self.ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
         else:
@@ -82,11 +85,6 @@ class RewardPartitionNetwork(object):
                 self.partitioned_reward = partitioned_reward
 
 
-
-
-
-
-
                 # build the list of placeholders
                 self.list_inp_sp_traj = []
                 self.list_inp_r_traj = []
@@ -127,7 +125,11 @@ class RewardPartitionNetwork(object):
                 if self.use_dynamic_weighting_max_value:
                     avg_max_values = tf.identity(
                         [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
-                    max_value_weighting = tf.stop_gradient(tf.nn.softmax(-avg_max_values))  # [num_partitions]
+                    pre_stopped = tf.nn.softmax(-softmin_temperature*avg_max_values)
+                    if self.stop_softmin_gradients:
+                        max_value_weighting = tf.stop_gradient(pre_stopped)  # [num_partitions]
+                    else:
+                        max_value_weighting = pre_stopped
                 else:
                     max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
 
@@ -391,4 +393,11 @@ class RewardPartitionNetwork(object):
         out = tf.reduce_sum(rs_traj * gamma_sequence * sticky_t_sequence, axis=1) # [bs, num_partitions]
         print('out', out)
         return out
+
+    def clean(self):
+        self.sess.__enter__()
+        tf.reset_default_graph()
+        self.sess.__exit__(None, None, None)
+        for q_net in self.Q_networks:
+            q_net.clean()
 
