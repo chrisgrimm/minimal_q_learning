@@ -25,7 +25,8 @@ from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
 from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
-@profile 
+
+@profile
 def main():
     parser = argparse.ArgumentParser()
     screen_name = None
@@ -305,7 +306,7 @@ def main():
 
 
     def get_action_meta_controller(s):
-        global epsilon, meta_controller
+        #global epsilon, meta_controller
         is_random = np.random.uniform(0,1) < epsilon
         if is_random:
             # flip a coin to decide if the random action will be low-level or high-level
@@ -316,8 +317,8 @@ def main():
 
 
     def get_action(s):
-        global epsilon
-        global current_policy
+        #global epsilon
+        #global current_policy
         is_random = np.random.uniform(0, 1) < epsilon
         if current_policy == -1 or is_random:
             action = np.random.randint(0, env.action_space.n)
