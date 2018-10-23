@@ -349,145 +349,146 @@ if args.restore_dead_run is not None:
 
 
 ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
-
-reward_tracker_zero_filter = 0
-for time in range(starting_time, num_steps):
-    # take random action
-    #a = np.random.randint(0, env.action_space.n)
-    if args.use_meta_controller:
-        meta_a = get_action_meta_controller(s)
-        if meta_a == -1:
-            a = np.random.randint(0, env.action_space.n)
-            sp, r, t, info = env.step(a)
-        else:
-            sp, r, t, info = meta_env.step(meta_a)
-            a = info['a']
-    else:
-        a = get_action(s)
-        sp, r, t, info = env.step(a)
-
-    state_replay_buffer.append(env.get_current_state())
-
-    #if r > 0:
-        #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
-        #print(f'{reward_buffer.length()}/{1000}')
-        #reward_buffer.append(s, a, r, sp, t)
-        #if args.use_meta_controller and meta_a != -1:
-        #    reward_meta_controller_buffer.append(s, meta_a, r, sp, t)
-        #on_reward_print_func(r, sp, info, reward_net, reward_buffer)
-        #if args.bayes_reward_filter:
-        #    tracker.add(sp, r)
-        #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
-        #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
-        #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
-        #print(r, partitioned_r)
-    #else:
-    #    if args.bayes_reward_filter and reward_tracker_zero_filter % 100 == 0:
-    #        tracker.add(sp, r)
-
-    reward_tracker_zero_filter += 1
-
-
-    episode_reward += r
-    #env.render()
-    buffer.append(s, a, r, sp, t)
-    if args.use_meta_controller and meta_a != -1:
-        meta_controller_buffer.append(s, meta_a, r, sp, t)
-
-    if info['internal_terminal']:
-        current_episode_length = 0
-        current_policy = choice(policy_indices)
-
-    if t:
-        s = env.reset()
-        current_policy = choice(policy_indices)
-        current_episode_length = 0
-        print(f'Episode Reward: {episode_reward}')
-        #print(f'Epsilon {epsilon}')
-        episode_reward = 0
-    else:
-        s = sp
-
-    #epsilon = max(min_epsilon, epsilon - epsilon_delta)
-
-    #if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (time % update_threshold_frequency == 0):
-    #    threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
-    #    reward_net.update_threshold_image(threshold)
-
-    # need to  figure out what these constraints imply. They should only ever be active when we're in meta-controller mode.
-    extra_meta_controller_constraints = \
-        (current_reward_training_step >= num_reward_steps and # lets the reward predictor train before the agents start (if reward prediction is not enabled, this is always true)
-        (meta_controller_buffer.length() >= batch_size or not args.use_meta_controller) and  # wait for the meta-controller's buffer to be sufficiently full.
-        (reward_meta_controller_buffer.length() >= min_reward_experiences or not args.use_meta_controller)) # same deal but with its reward buffer.
-
-
-
-
-    if time >= learning_starts and extra_meta_controller_constraints:
-
-        if time % q_train_freq == 0:
-            q_losses = reward_net.train_Q_networks(time)
-            # tensorboard logging.
-            for j in range(num_partitions):
-                LOG.add_line(f'q_loss{j}', q_losses[j])
-
+@profile 
+def main():
+    reward_tracker_zero_filter = 0
+    for time in range(starting_time, num_steps):
+        # take random action
+        #a = np.random.randint(0, env.action_space.n)
         if args.use_meta_controller:
-            no_reward_S, no_reward_A, no_reward_R, no_reward_SP, no_reward_T = meta_controller_buffer.sample(batch_size // 2)
-            reward_S, reward_A, reward_R, reward_SP, reward_T = reward_meta_controller_buffer.sample(batch_size // 2)
-            S = no_reward_S + reward_S
-            A = no_reward_A + reward_A
-            R = no_reward_R + reward_R
-            SP = no_reward_SP + reward_SP
-            T = no_reward_T + reward_T
-            meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
-        if time % (q_train_freq * 5) == 0:
-            for j in range(1):
-                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
-                LOG.add_line('reward_loss', reward_loss)
-                LOG.add_line('max_value_constraint', max_value_constraint)
-                LOG.add_line('value_constraint', value_constraint)
-                LOG.add_line('J_indep', J_indep)
-                LOG.add_line('J_nontrivial', J_nontrivial)
-                LOG.add_line('J_disentangled', J_indep - J_nontrivial)
-                LOG.add_line('time', time)
-                # TODO actually log the value_partition
-                if len(last_100_scores) < 100:
-                    last_100_scores.append(J_indep - J_nontrivial)
-                else:
-                    last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
-                if args.use_meta_controller:
-                    LOG.add_line('meta_controller_loss', meta_controller_loss)
+            meta_a = get_action_meta_controller(s)
+            if meta_a == -1:
+                a = np.random.randint(0, env.action_space.n)
+                sp, r, t, info = env.step(a)
+            else:
+                sp, r, t, info = meta_env.step(meta_a)
+                a = info['a']
+        else:
+            a = get_action(s)
+            sp, r, t, info = env.step(a)
 
-        #if args.separate_reward_repr:
-        #    pred_reward_loss = reward_net.train_predicted_reward()
+        state_replay_buffer.append(env.get_current_state())
 
+        #if r > 0:
+            #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
+            #print(f'{reward_buffer.length()}/{1000}')
+            #reward_buffer.append(s, a, r, sp, t)
+            #if args.use_meta_controller and meta_a != -1:
+            #    reward_meta_controller_buffer.append(s, meta_a, r, sp, t)
+            #on_reward_print_func(r, sp, info, reward_net, reward_buffer)
+            #if args.bayes_reward_filter:
+            #    tracker.add(sp, r)
+            #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
+            #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
+            #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
+            #print(r, partitioned_r)
+        #else:
+        #    if args.bayes_reward_filter and reward_tracker_zero_filter % 100 == 0:
+        #        tracker.add(sp, r)
 
-
-
-        log_string = f'({time}, eps: {epsilon}) ' + \
-                     ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {reward_loss}' + \
-                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
-        print(log_string)
-
-        if time % 10000 == 0:
-            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
-
-        if time % save_freq == 0:
-            reward_net.save(save_path, 'reward_net.ckpt')
-
-        if time % evaluation_frequency == 0:
-            # evaluate the performance and reset the environment.
-            eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
-            LOG.add_line('eval_cum_reward', eval_cum_reward)
-
-        if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
-            best_score = np.mean(last_100_scores)
-            reward_net.save(best_save_path, 'reward_net.ckpt')
+        reward_tracker_zero_filter += 1
 
 
+        episode_reward += r
+        #env.render()
+        buffer.append(s, a, r, sp, t)
+        if args.use_meta_controller and meta_a != -1:
+            meta_controller_buffer.append(s, meta_a, r, sp, t)
 
-        epsilon = max(min_epsilon, epsilon - epsilon_delta)
+        if info['internal_terminal']:
+            current_episode_length = 0
+            current_policy = choice(policy_indices)
+
+        if t:
+            s = env.reset()
+            current_policy = choice(policy_indices)
+            current_episode_length = 0
+            print(f'Episode Reward: {episode_reward}')
+            #print(f'Epsilon {epsilon}')
+            episode_reward = 0
+        else:
+            s = sp
+
+        #epsilon = max(min_epsilon, epsilon - epsilon_delta)
+
+        #if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (time % update_threshold_frequency == 0):
+        #    threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
+        #    reward_net.update_threshold_image(threshold)
+
+        # need to  figure out what these constraints imply. They should only ever be active when we're in meta-controller mode.
+        extra_meta_controller_constraints = \
+            (current_reward_training_step >= num_reward_steps and # lets the reward predictor train before the agents start (if reward prediction is not enabled, this is always true)
+            (meta_controller_buffer.length() >= batch_size or not args.use_meta_controller) and  # wait for the meta-controller's buffer to be sufficiently full.
+            (reward_meta_controller_buffer.length() >= min_reward_experiences or not args.use_meta_controller)) # same deal but with its reward buffer.
+
+
+
+
+        if time >= learning_starts and extra_meta_controller_constraints:
+
+            if time % q_train_freq == 0:
+                q_losses = reward_net.train_Q_networks(time)
+                # tensorboard logging.
+                for j in range(num_partitions):
+                    LOG.add_line(f'q_loss{j}', q_losses[j])
+
+            if args.use_meta_controller:
+                no_reward_S, no_reward_A, no_reward_R, no_reward_SP, no_reward_T = meta_controller_buffer.sample(batch_size // 2)
+                reward_S, reward_A, reward_R, reward_SP, reward_T = reward_meta_controller_buffer.sample(batch_size // 2)
+                S = no_reward_S + reward_S
+                A = no_reward_A + reward_A
+                R = no_reward_R + reward_R
+                SP = no_reward_SP + reward_SP
+                T = no_reward_T + reward_T
+                meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
+            if time % (q_train_freq * 5) == 0:
+                for j in range(1):
+                    reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
+                    LOG.add_line('reward_loss', reward_loss)
+                    LOG.add_line('max_value_constraint', max_value_constraint)
+                    LOG.add_line('value_constraint', value_constraint)
+                    LOG.add_line('J_indep', J_indep)
+                    LOG.add_line('J_nontrivial', J_nontrivial)
+                    LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                    LOG.add_line('time', time)
+                    # TODO actually log the value_partition
+                    if len(last_100_scores) < 100:
+                        last_100_scores.append(J_indep - J_nontrivial)
+                    else:
+                        last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
+                    if args.use_meta_controller:
+                        LOG.add_line('meta_controller_loss', meta_controller_loss)
+
+            #if args.separate_reward_repr:
+            #    pred_reward_loss = reward_net.train_predicted_reward()
+
+
+
+
+            log_string = f'({time}, eps: {epsilon}) ' + \
+                         ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
+                         f'Reward Loss: {reward_loss}' + \
+                         f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+            print(log_string)
+
+            if time % 10000 == 0:
+                visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+
+            if time % save_freq == 0:
+                reward_net.save(save_path, 'reward_net.ckpt')
+
+            if time % evaluation_frequency == 0:
+                # evaluate the performance and reset the environment.
+                eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
+                LOG.add_line('eval_cum_reward', eval_cum_reward)
+
+            if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
+                best_score = np.mean(last_100_scores)
+                reward_net.save(best_save_path, 'reward_net.ckpt')
+
+
+
+            epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
 
 
@@ -495,7 +496,8 @@ for time in range(starting_time, num_steps):
 
 
 
-    current_episode_length += 1
+        current_episode_length += 1
 
+main()
 
 
