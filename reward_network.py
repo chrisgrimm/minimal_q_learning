@@ -133,13 +133,14 @@ class RewardPartitionNetwork(object):
                 else:
                     max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
 
-                self.J_nontrivial = 0
+                self.J_nontrivial_list = []
                 max_value_constraint = 0
                 for i in range(self.num_partitions):
                     max_value_constraint += max_value_weighting[i] * self.list_trajectory_values[i][:, i]
-                    self.J_nontrivial += self.list_trajectory_values[i][:, i]
+                    self.J_nontrivial_list.append(self.list_trajectory_values[i][:, i])
                 max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
-                self.J_nontrivial = tf.reduce_mean(self.J_nontrivial, axis=0)
+
+                self.J_nontrivial = tf.reduce_mean(tf.reduce_max(self.J_nontrivial_list, axis=0), axis=0)
                 #max_value_constraint = tf.reduce_mean(
                 #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
 
@@ -165,6 +166,14 @@ class RewardPartitionNetwork(object):
                            continue
                        value_constraint += (dist_value_weighting[index] * self.list_trajectory_values[i][:, j])
                        index += 1
+
+
+                value_matrix = [[None for i in range(self.num_partitions)] for j in range(self.num_partitions)]
+                for i in range(self.num_partitions):
+                    for j in range(self.num_partitions):
+                        value = tf.reduce_mean(self.list_trajectory_values[i][:, j], axis=0)
+                        value_matrix[i][j] = value
+                self.value_matrix = value_matrix = tf.identity(value_matrix)
 
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
                 self.J_indep = value_constraint
@@ -262,8 +271,8 @@ class RewardPartitionNetwork(object):
         # for i in range(self.num_partitions):
         #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
         #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        [_, loss, max_value_constraint, value_constraint, J_indep, J_nontrivial] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.J_indep, self.J_nontrivial], feed_dict=feed_dict)
-        return loss, max_value_constraint, value_constraint, J_indep, J_nontrivial
+        [_, loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix] = self.sess.run([self.train_op, self.loss, self.max_value_constraint, self.value_constraint, self.J_indep, self.J_nontrivial, self.value_matrix], feed_dict=feed_dict)
+        return loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix
 
 
 

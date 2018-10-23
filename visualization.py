@@ -101,6 +101,10 @@ def produce_assault_ship_histogram_visualization(network, env, name):
     color_map = cv2.resize(color_map, (200*4, 200*network.num_partitions), interpolation=cv2.INTER_NEAREST)
     cv2.imwrite(name, color_map)
 
+def record_value_matrix(value_matrix, name_matrix_file):
+    with open(name_matrix_file, 'wb') as f:
+        pickle.dump(value_matrix, f)
+
 
 def produce_reward_statistics(network, env, name_reward, name_traj_file):
     num_episodes_per_policy = 1

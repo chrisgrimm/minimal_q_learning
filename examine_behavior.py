@@ -1,6 +1,7 @@
 import cv2, numpy as np, pickle
-import tempfile, os, shutil, subprocess
+import tempfile, os, shutil
 from utils import build_directory_structure
+from safe_subprocess import SafeSubprocess
 
 #file_name = 'policy_vis_55000_behavior_file.pickle' # assault
 #file_name = './runs/statistics_dir/policy_vis_6200_behavior_file.pickle' # pacman
@@ -14,8 +15,9 @@ from utils import build_directory_structure
 #file_name = './assault_final/part2/policy_vis_17600_behavior_file.pickle'
 
 
-
 # takes in a video_name, an extension, and the trajectory that it is going to make the video from.
+ffmpeg_subprocess = SafeSubprocess()
+
 def produce_video_from_traj(video_name, ext, traj):
 
     directory = tempfile.mkdtemp()
@@ -24,7 +26,8 @@ def produce_video_from_traj(video_name, ext, traj):
             print(image[:,:,6:9].shape)
             cv2.imwrite(os.path.join(directory, f'{idx}.png'), cv2.resize(image[:, :, 6:9], (400, 400), interpolation=cv2.INTER_NEAREST))
         cv2.imwrite(video_name+'_last.png', cv2.resize(traj[-1][:,:,6:9], (400,400), interpolation=cv2.INTER_NEAREST))
-        subprocess.call(['ffmpeg', '-y', '-i', os.path.join(directory, '%d.png'), video_name+'.'+ext])
+        #subprocess.call(['ffmpeg', '-y', '-i', os.path.join(directory, '%d.png'), video_name+'.'+ext])
+        ffmpeg_subprocess.push_command(['ffmpeg', '-y', '-i', os.path.join(directory, '%d.png'), video_name+'.'+ext])
 
     finally:
         shutil.rmtree(directory)

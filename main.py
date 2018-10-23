@@ -7,7 +7,7 @@ from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix
 import argparse
 from utils import LOG, build_directory_structure
 from reward_prob_tracker import RewardProbTracker
@@ -62,14 +62,16 @@ visual = args.visual
 
 observation_mode = 'image' if visual else 'vector'
 
-def default_visualizations(network, env, name):
+def default_visualizations(network, env, value_matrix, name):
     [path, name] = os.path.split(name)
     [name, name_extension] = name.split('.')
     statistics_full_name = os.path.join(path, name + '_statistics.txt')
     behavior_name = name + '_behavior_file.pickle'
     behavior_full_name = os.path.join(path, behavior_name)
+    value_matrix_full_name = os.path.join(path, name+'_value_matrix.pickle')
 
     produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
+    record_value_matrix(value_matrix, value_matrix_full_name)
     file_number = re.match(r'^policy\_vis\_(\d+)\_behavior_file.pickle$', behavior_name).groups()[0]
     produce_all_videos(path, file_number)
 
@@ -440,7 +442,7 @@ for time in range(starting_time, num_steps):
             meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
         if time % (q_train_freq * 5) == 0:
             for j in range(1):
-                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial = reward_net.train_R_function(dummy_env_cluster)
+                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
                 LOG.add_line('reward_loss', reward_loss)
                 LOG.add_line('max_value_constraint', max_value_constraint)
                 LOG.add_line('value_constraint', value_constraint)
@@ -448,6 +450,7 @@ for time in range(starting_time, num_steps):
                 LOG.add_line('J_nontrivial', J_nontrivial)
                 LOG.add_line('J_disentangled', J_indep - J_nontrivial)
                 LOG.add_line('time', time)
+                # TODO actually log the value_partition
                 if len(last_100_scores) < 100:
                     last_100_scores.append(J_indep - J_nontrivial)
                 else:
@@ -468,7 +471,7 @@ for time in range(starting_time, num_steps):
         print(log_string)
 
         if time % 10000 == 0:
-            visualization_func(reward_net, dummy_env, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
         if time % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
