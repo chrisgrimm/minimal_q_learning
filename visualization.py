@@ -39,7 +39,7 @@ def visualize_actions(action_set):
         print(grid_string)
 
 
-def produce_two_goal_visualization(network, env, name):
+def produce_two_goal_visualization(network, env, value_matrix, name):
     state_pairs = env.get_all_agent_positions()
     current_object_positions = env.produce_object_positions_from_blocks()
     state_image = env.produce_image(current_object_positions, env.render_mode_image_size)
