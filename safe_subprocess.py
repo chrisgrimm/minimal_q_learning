@@ -1,5 +1,4 @@
-import subprocess, multiprocessing
-#f = open('dump_file.txt', 'w')
+import subprocess
 
 class SafeSubprocess(object):
 

@@ -16,6 +16,8 @@ class AtariWrapper():
         self.reward_range = (0, 1)
         self.metadata = self.env.metadata
         self.spec = self.env.spec
+        self.max_steps = 10000
+        self.step_counter = 0
 
     def get_current_state(self):
         state = self.env.clone_full_state()
@@ -42,6 +44,9 @@ class AtariWrapper():
         if t:
             self.env.reset()
         info['internal_terminal'] = t
+        self.step_counter += 1
+        if self.step_counter >= self.max_steps:
+            info['internal_terminal'] = True
         return obs, r, False, info
 
     def reset(self):
@@ -49,6 +54,7 @@ class AtariWrapper():
         s = self.env.reset()
         self.frame_buffer = self.frame_buffer[1:] + [self.process_obs(s)]
         obs = self.get_obs()
+        self.step_counter = 0 
         return obs
 
     def render(self):

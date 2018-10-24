@@ -73,7 +73,7 @@ def default_visualizations(network, env, value_matrix, name):
     produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
     record_value_matrix(value_matrix, value_matrix_full_name)
     file_number = re.match(r'^policy\_vis\_(\d+)\_behavior_file.pickle$', behavior_name).groups()[0]
-    produce_all_videos(path, file_number)
+    #produce_all_videos(path, file_number)
 
 
 def default_on_reward_print_func(r, sp, info, network, reward_buffer):
