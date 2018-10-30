@@ -13,8 +13,11 @@ BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 class BlockPushingDomain(object):
 
     def __init__(self, observation_mode='vector', configuration='obstacle'):
-        assert configuration in ['standard', 'obstacle']
-        self.grid_size = 5 if configuration == 'standard' else 7
+        assert configuration in ['standard', 'obstacle', 'four_room']
+        self.configuration = configuration
+        self.grid_size = {'standard': 5,
+                          'obstacle': 7,
+                          'four_room': 13}[configuration]
         self.block_size = 8
         self.visual_mode_image_size = 64
         self.render_mode_image_size = self.grid_size * self.block_size
@@ -73,6 +76,33 @@ class BlockPushingDomain(object):
                  ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
                  ] +
                 background_blocks
+            )
+        elif configuration == 'four_room':
+            layout = [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
+            def select_block(x,y):
+                if layout[y][x] == 1:
+                    return ConstantImmoveableBlock((x,y), color=(0,0,0), texture=gray_wall_texture)
+                else:
+                    return ConstantGoalBlock((x,y), color=(0,0,0), texture=background_texture)
+            self.blocks = (
+                [AgentBlock(self.agent_color, texture=agent_texture)] +
+                [select_block(x,y)
+                 for x in range(self.grid_size)
+                 for y in range(self.grid_size)]
             )
         else:
             self.blocks = (
@@ -341,7 +371,8 @@ class BlockPushingDomain(object):
         # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
         #   this should make plots of the cumulative reward more meaningful.
         info = {'internal_terminal': terminal}
-        if terminal or (reward == 1.0):
+        terminate_on_reward = (self.configuration != 'four_room')
+        if terminal or (reward == 1.0 and terminate_on_reward):
             self.reset(reset_timestep=terminal)
         # TODO use old_obs for hindsight.
         return new_obs, reward, False, info
@@ -381,7 +412,7 @@ def block_info(block):
     return (block.get_position(), block.get_initialization_type().get_unique_name())
 
 if __name__ == '__main__':
-    env = BlockPushingDomain(observation_mode='image')
+    env = BlockPushingDomain(observation_mode='image', configuration='obstacle')
     s = env.reset()
     env.render()
     action_map = {'w': onehot(1, 5),

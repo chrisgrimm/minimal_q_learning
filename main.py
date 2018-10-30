@@ -38,7 +38,7 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_OBSTACLE', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -118,6 +118,22 @@ elif mode == 'SOKOBAN_OBSTACLE':
     on_reward_print_func = default_on_reward_print_func
 
     config = 'obstacle'
+    env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: BlockPushingDomain(observation_mode=observation_mode,
+                                                                         configuration=config),
+                                            BlockPushingDomain)
+    dummy_env_cluster('reset', args=[])
+    dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
+    dummy_env.reset()
+elif mode == 'SOKOBAN_FOUR_ROOM':
+    num_partitions = args.num_partitions
+
+    num_visual_channels = 3
+    visualization_func = produce_two_goal_visualization
+    on_reward_print_func = default_on_reward_print_func
+
+    config = 'four_room'
     env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode,

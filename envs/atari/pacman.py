@@ -54,7 +54,7 @@ class AtariWrapper():
         s = self.env.reset()
         self.frame_buffer = self.frame_buffer[1:] + [self.process_obs(s)]
         obs = self.get_obs()
-        self.step_counter = 0 
+        self.step_counter = 0
         return obs
 
     def render(self):
