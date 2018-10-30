@@ -81,6 +81,9 @@ def default_on_reward_print_func(r, sp, info, network, reward_buffer):
     print(reward_buffer.length(), partitioned_r)
 
 
+display_freq = 10000
+
+
 if mode == 'ASSAULT':
     num_partitions = args.num_partitions
     num_visual_channels = 9
@@ -134,6 +137,7 @@ elif mode == 'SOKOBAN_FOUR_ROOM':
     on_reward_print_func = default_on_reward_print_func
 
     config = 'four_room'
+    display_freq = 1000
     env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: BlockPushingDomain(observation_mode=observation_mode,
@@ -254,7 +258,6 @@ meta_controller = QLearnerAgent(meta_env.observation_space.shape[0], meta_env.ac
 
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)
-
 
 learning_starts = 10000
 batch_size = 32
@@ -486,7 +489,7 @@ for time in range(starting_time, num_steps):
                      f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
         print(log_string)
 
-        if time % 10000 == 0:
+        if time % display_freq == 0:
             visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
         if time % save_freq == 0:
