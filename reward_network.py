@@ -100,9 +100,14 @@ class RewardPartitionNetwork(object):
                                                                    self.inp_r_traj_rand,
                                                                    name='reward_partition',
                                                                    reuse=True)
-                rand_trajectory_values = self.get_values(reward_trajs_rand, self.inp_t_traj_rand)
-                regularization_constant = rand_trajectory_values * tf.stop_gradient(starting_reward)
-                self.J_reg = tf.reduce_mean(tf.reduce_sum(regularization_constant, axis=1), axis=0)
+                rand_trajectory_values = self.get_values(reward_trajs_rand, self.inp_t_traj_rand) # [bs, num_partitions]
+                self.J_reg = []
+                for i in range(num_partitions):
+                    for j in range(num_partitions):
+                        if i == j:
+                            continue
+                        self.J_reg.append(tf.stop_gradient(starting_reward)[:, i] * rand_trajectory_values[:, j])
+                self.J_reg = tf.reduce_mean(tf.reduce_sum(self.J_reg, axis=0), axis=0)
 
                 # build the list of placeholders
                 self.list_inp_sp_traj = []
