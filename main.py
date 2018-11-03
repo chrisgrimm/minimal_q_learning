@@ -53,6 +53,7 @@ parser.add_argument('--softmin-temp', type=float, default=1.0)
 parser.add_argument('--stop-softmin-gradient', action='store_true')
 parser.add_argument('--run-dir', type=str, default='new_runs')
 parser.add_argument('--regularize', action='store_true')
+parser.add_argument('--regularization-weight', type=float, default=1.0)
 
 
 args = parser.parse_args()
@@ -251,7 +252,7 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
                                     use_ideal_threshold=args.use_ideal_filter, clip_gradient=args.clip_gradient,
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
-                                    regularize=args.regularize)
+                                    regularize=args.regularize, regularization_weight=args.regularization_weight)
 
 meta_env = MetaEnvironment(env, reward_net.Q_networks)
 meta_controller_buffer = ReplayBuffer(10000)

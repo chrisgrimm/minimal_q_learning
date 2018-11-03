@@ -14,7 +14,7 @@ class RewardPartitionNetwork(object):
                  max_value_mult=10, use_dynamic_weighting_max_value=True, use_dynamic_weighting_disentangle_value=False,
                  visual=False, num_visual_channels=3, gpu_num=0, use_gpu=False, lr=0.0001, reuse=None, reuse_visual_scoping=False,
                  separate_reward_repr=False, use_ideal_threshold=False, clip_gradient=-1, softmin_temperature=1.0,
-                 stop_softmin_gradients=True, regularize=False):
+                 stop_softmin_gradients=True, regularize=False, regularization_weight=1.0):
         assert not (separate_reward_repr and reuse_visual_scoping)
         if not use_gpu:
             gpu_num = 0
@@ -107,7 +107,7 @@ class RewardPartitionNetwork(object):
                         if i == j:
                             continue
                         self.J_reg.append(tf.stop_gradient(starting_reward)[:, i] * rand_trajectory_values[:, j])
-                self.J_reg = tf.reduce_mean(tf.reduce_sum(self.J_reg, axis=0), axis=0)
+                self.J_reg = regularization_weight * tf.reduce_mean(tf.reduce_sum(self.J_reg, axis=0), axis=0)
 
                 # build the list of placeholders
                 self.list_inp_sp_traj = []
