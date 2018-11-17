@@ -3,7 +3,7 @@ import pickle, numpy as np, tqdm
 import matplotlib.pyplot as plt
 
 def load_mapping():
-    file = '/Users/chris/projects/q_learning/result_visualizations/commands'
+    file = '/Users/chris/projects/q_learning/result_visualizations/new_commands'
     with open(file, 'r') as f:
         text = f.read()
     paths = [os.path.split(x[:-1]) for x in re.findall(r'\/home.*?[\,\}]', text.replace('\n',''))]
@@ -23,9 +23,9 @@ def load_tb_data(file_path, fields):
 
 def cut_down_data(fields, dont_repeat_work=True):
     mapping = load_mapping()
-    directories = ['rldl3_runs', 'rldl5_runs', 'rldl11_runs', 'rldl4_runs']
+    directories = ['new_rldl3_runs', 'new_rldl5_runs', 'new_rldl11_runs', 'new_rldl4_runs']
     base_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/'
-    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down'
+    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
     for d in directories:
         path = os.path.join(base_path, d)
         event_names = [x for x in os.listdir(path) if x.startswith('events')]
@@ -112,7 +112,7 @@ def load_and_merge_data():
         merged_data[name] = merge_data(bin)
     return merged_data
 
-def moving_average(a, n=3) :
+def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
@@ -140,6 +140,6 @@ def make_J_disentangled_plots(merged_data, n=2000):
 
 
 if __name__ == '__main__':
-    #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
-    merged_data = load_and_merge_data()
-    make_J_disentangled_plots(merged_data)
+    data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
+    #merged_data = load_and_merge_data()
+    #make_J_disentangled_plots(merged_data)
