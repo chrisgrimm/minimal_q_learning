@@ -4,7 +4,8 @@ import sys
 import subprocess
 # ~/minimal_q_learning/new_runs/
 path_to_runs = sys.argv[1]
-run_folders = [x for x in os.listdir(path_to_runs) if re.match(r'^.*?\dreward.*?$', x)]
+match_regex = sys.argv[2]
+run_folders = [x for x in os.listdir(path_to_runs) if re.match(match_regex, x)]
 # build the data-structure to fold restored runs onto their originals.
 command_list = []
 hostname = subprocess.check_output('hostname').decode('utf-8').strip()

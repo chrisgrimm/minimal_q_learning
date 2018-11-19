@@ -21,11 +21,57 @@ def load_tb_data(file_path, fields):
                 data[v.tag].append((step, v.simple_value))
     return data
 
-def cut_down_data(fields, dont_repeat_work=True):
+def cut_down_meta_data():
+    meta_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/meta_runs/'
+    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_meta'
+    dirs = os.listdir(meta_runs_path)
+    for dir in dirs:
+        match = re.match(r'^meta\_(.+?)\_(\d)reward\_10mult\_(\d)$', dir)
+        if not match:
+            continue
+        (game, reward_partitions, run_num) = match.groups()
+        print(game, reward_partitions, run_num)
+        # get the events file
+        event_files = [x for x in os.listdir(os.path.join(meta_runs_path, dir)) if 'events' in x]
+        if len(event_files) != 1:
+            error = f'Found {len(event_files)} event files in {dir}. Skipping.'
+            print(error)
+            continue
+        event_file = event_files[0]
+        file_path = os.path.join(meta_runs_path, dir, event_file)
+        data = load_tb_data(file_path, ['cum_reward', 'time'])
+        with open(os.path.join(cut_down_path, dir), 'wb') as f:
+            pickle.dump(data, f)
+
+def cut_down_baseline_data():
+    meta_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines/'
+    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_baselines'
+    dirs = os.listdir(meta_runs_path)
+    for dir in dirs:
+        match = re.match(r'^baseline\_(.+?)\_(\d)reward\_10mult\_(\d)$', dir)
+        if not match:
+            continue
+        (game, reward_partitions, run_num) = match.groups()
+        print(game, reward_partitions, run_num)
+        # get the events file
+        event_files = [x for x in os.listdir(os.path.join(meta_runs_path, dir)) if 'events' in x]
+        if len(event_files) != 1:
+            error = f'Found {len(event_files)} event files in {dir}. Skipping.'
+            print(error)
+            continue
+        event_file = event_files[0]
+        file_path = os.path.join(meta_runs_path, dir, event_file)
+        data = load_tb_data(file_path, ['cum_reward', 'time'])
+        with open(os.path.join(cut_down_path, dir), 'wb') as f:
+            pickle.dump(data, f)
+
+
+
+def cut_down_data(fields, dont_repeat_work=True,
+                  base_path='/Users/chris/projects/q_learning/new_dqn_results/completed_runs/',
+                  cut_down_path='/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down',
+                  directories=('new_rldl3_runs', 'new_rldl5_runs', 'new_rldl11_runs', 'new_rldl4_runs')):
     mapping = load_mapping()
-    directories = ['new_rldl3_runs', 'new_rldl5_runs', 'new_rldl11_runs', 'new_rldl4_runs']
-    base_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/'
-    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
     for d in directories:
         path = os.path.join(base_path, d)
         event_names = [x for x in os.listdir(path) if x.startswith('events')]
@@ -42,8 +88,10 @@ def cut_down_data(fields, dont_repeat_work=True):
             with open(os.path.join(cut_down_path, run_name), 'wb') as f:
                 pickle.dump(data, f)
 
+
+
 def load_cutdown_data():
-    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down'
+    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
     names = os.listdir(cut_down_path)
     all_data = {}
     for name in tqdm.tqdm(names):
@@ -140,6 +188,7 @@ def make_J_disentangled_plots(merged_data, n=2000):
 
 
 if __name__ == '__main__':
-    data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
+    #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
+    data = cut_down_meta_data()
     #merged_data = load_and_merge_data()
     #make_J_disentangled_plots(merged_data)
