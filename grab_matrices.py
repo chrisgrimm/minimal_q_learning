@@ -21,7 +21,7 @@ for run_folder in run_folders:
     behavior_files = []
     for x in files:
         print(x)
-        match = re.match(r'^policy\_vis\_(d+)\_(.+?)\..+?$', x)
+        match = re.match(r'^policy\_vis\_(\d+)\_(.+?)\..+?$', x)
         if not match:
             continue
         (iteration_num, file_type) = match.groups()
