@@ -20,6 +20,7 @@ for run_folder in run_folders:
     matrix_files = []
     behavior_files = []
     for x in files:
+        print(x)
         match = re.match(r'^policy\_vis\_(d+)\_(.+?)\..+?$', x)
         if not match:
             continue
