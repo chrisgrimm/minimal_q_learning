@@ -44,23 +44,29 @@ def cut_down_meta_data():
             pickle.dump(data, f)
 
 def cut_down_baseline_data():
-    meta_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines/'
+    baseline_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/'
     cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_baselines'
-    dirs = os.listdir(meta_runs_path)
+    dirs = os.listdir(baseline_runs_path)
     for dir in dirs:
-        match = re.match(r'^baseline\_(.+?)\_(\d)reward\_10mult\_(\d)$', dir)
+        match = re.match(r'^baseline\_(.+?)\_(\d)$', dir)
         if not match:
             continue
-        (game, reward_partitions, run_num) = match.groups()
-        print(game, reward_partitions, run_num)
+        (game, run_num) = match.groups()
         # get the events file
-        event_files = [x for x in os.listdir(os.path.join(meta_runs_path, dir)) if 'events' in x]
+        event_files = [x for x in os.listdir(os.path.join(baseline_runs_path, dir)) if 'events' in x]
         if len(event_files) != 1:
             error = f'Found {len(event_files)} event files in {dir}. Skipping.'
             print(error)
             continue
+        print(game, run_num)
         event_file = event_files[0]
-        file_path = os.path.join(meta_runs_path, dir, event_file)
+        file_path = os.path.join(cut_down_path, dir)
+        print(file_path)
+        if os.path.isfile(file_path):
+            print(f'Found {dir}. Skipping.')
+            continue
+        event_file = event_files[0]
+        file_path = os.path.join(baseline_runs_path, dir, event_file)
         data = load_tb_data(file_path, ['cum_reward', 'time'])
         with open(os.path.join(cut_down_path, dir), 'wb') as f:
             pickle.dump(data, f)
@@ -99,6 +105,48 @@ def load_cutdown_data():
             data = replace_step_with_time(pickle.load(f))
         all_data[name] = data
     return all_data
+
+def load_metacontroller_and_baseline_data(single_game=None):
+    baselines = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_baselines'
+    meta = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_meta'
+    meta_runs = dict()
+    baseline_runs = dict()
+    for name in tqdm.tqdm(os.listdir(baselines)):
+        match = re.match(r'^baseline\_(.+?)\_(\d)$', name)
+        if not match:
+            print(f'{name} didnt match. Skipping...')
+            continue
+        (game, run_num) = match.groups()
+        if single_game is not None and single_game != game:
+            continue
+        with open(os.path.join(baselines, name), 'rb') as f:
+            data = replace_step_with_time(pickle.load(f))
+            print(data.keys())
+        if game in baseline_runs:
+            baseline_runs[game].append(data)
+        else:
+            baseline_runs[game] = [data]
+    for name in tqdm.tqdm(os.listdir(meta)):
+        match = re.match(r'^meta\_(.+?)\_(\d)reward\_.+?\_(\d)$', name)
+        if not match:
+            print(f'{name} didnt match. Skipping...')
+            continue
+        (game, num_rewards, run_num) = match.groups()
+        if single_game is not None and single_game != game:
+            continue
+        with open(os.path.join(meta, name), 'rb') as f:
+            data = replace_step_with_time(pickle.load(f))
+            print(data.keys())
+
+        if game in meta_runs:
+            if num_rewards in meta_runs[game]:
+                meta_runs[game][num_rewards].append(data)
+            else:
+                meta_runs[game][num_rewards] = [data]
+        else:
+            meta_runs[game] = {num_rewards: [data]}
+    return meta_runs, baseline_runs
+
 
 
 def replace_step_with_time(data):
@@ -184,11 +232,53 @@ def make_J_disentangled_plots(merged_data, n=2000):
         plt.hold(False)
         plt.savefig(os.path.join(path, f'{name}_{num_rewards}reward.pdf'))
 
+def make_meta_controller_plots(meta_runs, baseline_runs, n=20):
+    path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/meta_plots'
+    all_keys = set(list(meta_runs.keys()) + list(baseline_runs.keys()))
+    for game in all_keys:
+        plt.clf()
+        plt.hold(True)
+        # baselines
+        all_ys = []
+        for data in baseline_runs[game]:
+            print(len(data))
+            print(len(data['cum_reward']))
+            x = [time for time, J in data['cum_reward']][n-1:]
+            y = moving_average([J for time, J in data['cum_reward']],n=n)
+            print('shapes', len(data['cum_reward']), np.shape(y))
+            all_ys.append(y)
+        min_len = min([len(y) for y in all_ys])
+        all_ys = [y[-min_len:] for y in all_ys]
+        mean = np.mean(all_ys, axis=0)
+        err = np.std(all_ys, axis=0)
+        plt.plot(x[-min_len:], mean, color='blue', label=f'baseline')
+        plt.fill_between(x[-min_len:], mean-err, mean+err, color='blue', alpha=0.5)
+
+        color_mapping = {'2': 'red', '3': 'green', '4': 'orange'}
+        for reward, data_runs in meta_runs[game].items():
+            all_ys = []
+            for data in data_runs:
+                x = [time for time, J in data['cum_reward']][n-1:]
+                y = moving_average([J for time, J in data['cum_reward']], n=n)
+                all_ys.append(y)
+                #plt.plot(x, y, color=color_mapping[reward], label=f'{reward} rewards')
+            print(np.shape(all_ys))
+            err = np.std(all_ys, axis=0)
+            mean = np.mean(all_ys, axis=0)
+            plt.plot(x, mean, color=color_mapping[reward], label=f'{reward} rewards')
+            plt.fill_between(x, mean-err, mean+err, color=color_mapping[reward], alpha=0.5)
+        plt.legend()
+        plt.hold(False)
+        plt.savefig(os.path.join(path, f'{game}_meta.pdf'))
+
 
 
 
 if __name__ == '__main__':
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
-    data = cut_down_meta_data()
+    #data = cut_down_meta_data()
+    #data = cut_down_baseline_data()
+    meta_runs, baseline_runs = load_metacontroller_and_baseline_data('sokoban')
+    make_meta_controller_plots(meta_runs, baseline_runs)
     #merged_data = load_and_merge_data()
     #make_J_disentangled_plots(merged_data)
