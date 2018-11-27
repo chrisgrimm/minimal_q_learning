@@ -96,14 +96,16 @@ def cut_down_data(fields, dont_repeat_work=True,
 
 
 
-def load_cutdown_data():
+def load_cutdown_data(filter_regex=None):
     cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
     names = os.listdir(cut_down_path)
     all_data = {}
     for name in tqdm.tqdm(names):
-        with open(os.path.join(cut_down_path, name), 'rb') as f:
-            data = replace_step_with_time(pickle.load(f))
-        all_data[name] = data
+        print(name)
+        if filter_regex is None or re.match(filter_regex, name):
+            with open(os.path.join(cut_down_path, name), 'rb') as f:
+                data = replace_step_with_time(pickle.load(f))
+            all_data[name] = data
     return all_data
 
 def load_metacontroller_and_baseline_data(single_game=None):
@@ -199,8 +201,8 @@ def merge_data(bin):
 
 
 
-def load_and_merge_data():
-    data = load_cutdown_data()
+def load_and_merge_data(filter_regex=None):
+    data = load_cutdown_data(filter_regex=filter_regex)
     bins = create_merging_bins(data)
     merged_data = {}
     for name, bin in bins.items():
@@ -219,20 +221,31 @@ def make_J_disentangled_plots(merged_data, n=2000):
     game_bins = {}
     for (name, num_rewards, mult, run_num), data in merged_data.items():
         if (name, num_rewards) not in game_bins:
-            game_bins[(name, num_rewards)] = [data]
+            game_bins[(name, num_rewards)] = [(run_num, data)]
         else:
-            game_bins[(name, num_rewards)].append(data)
+            game_bins[(name, num_rewards)].append((run_num, data))
+    colors = {'_1': 'blue', '_2': 'red', '_3': 'orange', '_4': 'green'}
     for (name, num_rewards), data_list in game_bins.items():
+        print(f'Plotting {name}')
         plt.clf()
         plt.hold(True)
-        for data in data_list:
+        for (run_num, data) in data_list:
+            print('run_num', run_num)
             x = [time for time, J in data['J_disentangled']][n-1:]
-            y = moving_average([J for time, J in data['J_disentangled']],n=n)
-            plt.plot(x, y)
+            mv = np.array([mv for _, mv in data['max_value_constraint']])
+            indep = np.array([indep for _, indep in data['J_indep']])
+            loss = indep - mv
+            y = moving_average(loss, n=n)
+            #y = moving_average([J for time, J in data['J_disentangled']], n=n)
+            plt.plot(x, y, label=f'A{run_num}', color=colors[run_num])
+        #plt.legend()
+        #plt.title('Disentanglement Score')
+        plt.xlabel('Timesteps')
+        plt.ylabel('Disentanglement Score')
         plt.hold(False)
         plt.savefig(os.path.join(path, f'{name}_{num_rewards}reward.pdf'))
 
-def make_meta_controller_plots(meta_runs, baseline_runs, n=20):
+def make_meta_controller_plots(meta_runs, baseline_runs, n=20, y_range=None):
     path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/meta_plots'
     all_keys = set(list(meta_runs.keys()) + list(baseline_runs.keys()))
     for game in all_keys:
@@ -249,9 +262,13 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=20):
             all_ys.append(y)
         min_len = min([len(y) for y in all_ys])
         all_ys = [y[-min_len:] for y in all_ys]
+
         mean = np.mean(all_ys, axis=0)
         err = np.std(all_ys, axis=0)
         plt.plot(x[-min_len:], mean, color='blue', label=f'baseline')
+        if y_range is not None:
+            plt.ylim(y_range[0], y_range[1])
+        plt.ylim()
         plt.fill_between(x[-min_len:], mean-err, mean+err, color='blue', alpha=0.5)
 
         color_mapping = {'2': 'red', '3': 'green', '4': 'orange'}
@@ -275,10 +292,11 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=20):
 
 
 if __name__ == '__main__':
-    #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'time'])
+    #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #data = cut_down_baseline_data()
-    meta_runs, baseline_runs = load_metacontroller_and_baseline_data('sokoban')
-    make_meta_controller_plots(meta_runs, baseline_runs)
+    #meta_runs, baseline_runs = load_metacontroller_and_baseline_data('sokoban')
+    #make_meta_controller_plots(meta_runs, baseline_runs, y_range=[30, 40])
+    merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
     #merged_data = load_and_merge_data()
-    #make_J_disentangled_plots(merged_data)
+    make_J_disentangled_plots(merged_data)

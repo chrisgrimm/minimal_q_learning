@@ -33,15 +33,15 @@ def produce_video_from_traj(video_name, ext, traj):
         shutil.rmtree(directory)
     cv2.destroyAllWindows()
 
-def produce_all_videos(root_dir, file_number):
+def produce_all_videos(root_dir, file_number, ):
     file_name = os.path.join(root_dir, f'policy_vis_{file_number}_behavior_file.pickle')
     with open(file_name, 'rb') as f:
         data = pickle.load(f)
-    build_directory_structure(root_dir, {f'{file_number}':
+    build_directory_structure(root_dir, {f'viz_behavior_{file_number}':
                                         {f'pi_{i}': {} for i in range(len(data))}})
     for policy_num, policy_trajectories in enumerate(data):
         for traj_num, trajectory in enumerate(policy_trajectories):
-            name = os.path.join(root_dir, f'{file_number}/pi_{policy_num}/{traj_num}')
+            name = os.path.join(root_dir, f'viz_behavior_{file_number}/pi_{policy_num}/{traj_num}')
             produce_video_from_traj(name, 'avi', trajectory)
 
 

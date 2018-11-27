@@ -9,7 +9,7 @@ from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix
 import argparse
-from utils import LOG, build_directory_structure
+from utils import LOG, build_directory_structure, add_implicit_name_arg
 from reward_prob_tracker import RewardProbTracker
 import argparse
 from random import choice
@@ -27,12 +27,7 @@ from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
-screen_name = None
-if 'STY' in os.environ:
-    screen_name = ''.join(os.environ['STY'].split('.')[1:])
-    parser.add_argument('--name', type=str, default=screen_name)
-else:
-    parser.add_argument('--name', type=str, required=True)
+add_implicit_name_arg(parser)
 
 parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)

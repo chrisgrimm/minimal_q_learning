@@ -61,3 +61,10 @@ def horz_stack_images(*images, spacing=5, background_color=(0,0,0)):
         canvas[:, width_pos:width_pos+width, :] = image
         width_pos += (width + spacing)
     return canvas
+
+def add_implicit_name_arg(parser, arg_name='--name'):
+    if 'STY' in os.environ:
+        screen_name = ''.join(os.environ['STY'].split('.')[1:])
+        parser.add_argument(arg_name, type=str, default=screen_name)
+    else:
+        parser.add_argument(arg_name, type=str, required=True)

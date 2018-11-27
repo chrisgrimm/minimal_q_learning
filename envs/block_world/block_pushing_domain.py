@@ -12,7 +12,7 @@ BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 
 class BlockPushingDomain(object):
 
-    def __init__(self, observation_mode='vector', configuration='obstacle'):
+    def __init__(self, observation_mode='vector', configuration='obstacle', only_bottom_half=False):
         assert configuration in ['standard', 'obstacle', 'four_room']
         self.configuration = configuration
         self.grid_size = {'standard': 5,
@@ -68,12 +68,14 @@ class BlockPushingDomain(object):
 
         # standard configuration
         if configuration == 'standard':
+            top_half_reward = 0.0 if only_bottom_half else 1.0
+            bottom_half_reward = 1.0
             self.blocks = (
                 [AgentBlock(self.agent_color, texture=agent_texture),
-                 ConstantGoalBlock((0,0), self.goal_color1, reward=1.0, texture=goal1_texture),
-                 ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-                 ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=1.0, texture=goal2_texture),
-                 ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=1.0, texture=goal1_texture)
+                 ConstantGoalBlock((0,0), self.goal_color1, reward=top_half_reward, texture=goal1_texture),
+                 ConstantGoalBlock((self.grid_size-1, self.grid_size-1), self.goal_color2, reward=bottom_half_reward, texture=goal2_texture),
+                 ConstantGoalBlock((0, self.grid_size-1), self.goal_color2, reward=bottom_half_reward, texture=goal2_texture),
+                 ConstantGoalBlock((self.grid_size-1,0), self.goal_color1, reward=top_half_reward, texture=goal1_texture)
                  ] +
                 background_blocks
             )
@@ -412,7 +414,7 @@ def block_info(block):
     return (block.get_position(), block.get_initialization_type().get_unique_name())
 
 if __name__ == '__main__':
-    env = BlockPushingDomain(observation_mode='image', configuration='obstacle')
+    env = BlockPushingDomain(observation_mode='image', configuration='standard', only_bottom_half=True)
     s = env.reset()
     env.render()
     action_map = {'w': onehot(1, 5),
@@ -440,11 +442,11 @@ if __name__ == '__main__':
             continue
         action = action_map[action_key]
         print(action)
-        s, reward, terminal, _ = env.step(np.argmax(action))
+        s, reward, terminal, info = env.step(np.argmax(action))
         cv2.imwrite('./test.png', s)
         print(s.shape)
         env.render()
-        print(f'reward {reward}, terminal {terminal}')
+        print(f'reward {reward}, terminal {terminal} internal_terminal {info["internal_terminal"]}')
         if terminal:
             env.reset()
             env.render()

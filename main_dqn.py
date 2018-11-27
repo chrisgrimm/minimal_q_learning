@@ -6,7 +6,7 @@ from envs.atari.simple_assault import SimpleAssault
 from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
 import argparse
-from utils import LOG, build_directory_structure
+from utils import LOG, build_directory_structure, add_implicit_name_arg
 from baselines.deepq.experiments.training_wrapper import make_dqn
 from envs.atari.pacman import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
 from envs.metacontroller_actor import MetaEnvironment
@@ -24,13 +24,9 @@ from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
-screen_name = None
-if 'STY' in os.environ:
-    screen_name = ''.join(os.environ['STY'].split('.')[1:])
-    parser.add_argument('--name', type=str, default=screen_name)
-else:
-    parser.add_argument('--name', type=str, required=True)
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN'])
+add_implicit_name_arg(parser)
+
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN', 'SOKOBAN_NO_TOP'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
@@ -67,6 +63,9 @@ elif mode == 'SEAQUEST':
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard')
+elif mode == 'SOKOBAN_NO_TOP':
+    num_visual_channels = 3
+    base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard', only_bottom_half=True)
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
