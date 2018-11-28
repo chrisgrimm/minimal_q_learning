@@ -45,7 +45,7 @@ qbert_colors = [
     (175, 86, 44),
 ]
 qbert_threshold = 0.005
-def compute_policy_histogram(name: str, agent: QNetworkTrainingWrapper, env: AtariWrapper, target_colors, target_threshold):
+def compute_policy_histogram(agent: QNetworkTrainingWrapper, env: AtariWrapper, target_colors, target_threshold):
     s = env.reset()
     histogram = np.zeros(shape=env.observation_space.shape[:2], dtype=np.float32)
     n = 0
@@ -65,15 +65,17 @@ def compute_policy_histogram(name: str, agent: QNetworkTrainingWrapper, env: Ata
         match = match_by_color(s, target_colors, target_threshold).astype(np.float32)[:,:,0] / 255.
         histogram += match
         n += 1
-    z_score = (histogram - np.mean(histogram)) / np.std(histogram)
+    z_score = np.clip((histogram - np.mean(histogram)) / (0.01*np.std(histogram)), 0, 50)
     #threshold = 5
     #histogram[histogram < threshold] = 0
     #histogram[histogram > threshold] = 1
 
-    normed = z_score - np.min(z_score) / (np.max(z_score) - np.min(z_score))
+    normed = (z_score - np.min(z_score)) / (np.max(z_score) - np.min(z_score))
 
-    histogram = 255*np.tile(np.reshape(normed, list(histogram.shape[:2]) + [1]), [1,1,3])
-    cv2.imwrite(name, histogram)
+    histogram = (255*np.tile(np.reshape(normed, list(histogram.shape[:2]) + [1]), [1,1,3])).astype(np.uint8)
+    cv2.imwrite('./histogram_test2.png', histogram)
+    return histogram
+    #cv2.imwrite(name, histogram)
 
 class RandomAgent():
     def __init__(self, num_actions):
@@ -103,9 +105,9 @@ def test_color_getter(env, colors, threshold):
 
 game_binding = {'pacman': (pacman_colors, pacman_threshold, PacmanWrapper),
                 'assault': (assault_colors, assault_threshold, AssaultWrapper),
-                'qbert': (qbert_colors, qbert_threshold, QBertWrapper),
-                'seaquest': None,
-                'breakout': None}
+                'qbert': (qbert_colors, qbert_threshold, QBertWrapper)}
+                #'seaquest': None,
+                #'breakout': None}
 
 
 def compute_occupancy_maps(run_name):
@@ -120,7 +122,7 @@ def compute_occupancy_maps(run_name):
         return
     (colors, threshold, EnvClass) = game_binding[game]
     env = EnvClass()
-    weights_path = os.path.join('/Users/chris/projects/q_learning/new_dqn_results/weights', run_name, 'best_weights')
+    weights_path = os.path.join('/Users/chris/projects/q_learning/new_dqn_results/new_weights', run_name, 'best_weights')
     reward_net = RewardPartitionNetwork(env, None, None, int(reward_num), env.observation_space.shape[0],
                                         env.action_space.n, 'reward_net', traj_len=10,  gpu_num=-1,
                                         use_gpu=False, num_visual_channels=9, visual=True)
@@ -129,12 +131,36 @@ def compute_occupancy_maps(run_name):
     occupancy_maps_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/occupancy_maps'
     for i in range(int(reward_num)):
         agent = reward_net.Q_networks[i]
-        compute_policy_histogram(os.path.join(occupancy_maps_path, f'{run_name}_policy{i}.png'), agent, env, colors, threshold)
+        name = os.path.join(occupancy_maps_path, f'{run_name}_policy{i}.png')
+        histogram = compute_policy_histogram(agent, env, colors, threshold)
+        image = get_environment_image(env)
+        merged = merge_histogram_and_env_image(histogram, image)
+        cv2.imwrite(name, merged)
     #reward_net.clean()
+
+def get_environment_image(env):
+    env.reset()
+    num_steps = 100
+    for _ in range(num_steps):
+        s, r, t, _ = env.step(0)
+    return s[:, :, -3:]
+
+
+def merge_histogram_and_env_image(histogram, env_image):
+    histogram = histogram[:, :, [0]]
+    heatmap = cv2.applyColorMap(histogram, cv2.COLORMAP_HOT)
+    heatmap_alpha = cv2.applyColorMap(histogram, cv2.COLORMAP_BONE)[:, :, [0]] / 255.
+    heatmap = heatmap * heatmap_alpha
+    min_image = 0.1
+    max_histogram = 1 - min_image
+    histogram = np.minimum(histogram / 255., max_histogram)
+    grayscale = np.tile(np.reshape(cv2.cvtColor(env_image, cv2.COLOR_BGR2GRAY), [64, 64, 1]), [1, 1, 3])
+    merged = histogram * heatmap + (1 - histogram) * grayscale
+    return merged
 
 
 def compute_all_occupancy_maps():
-    weights_path = '/Users/chris/projects/q_learning/new_dqn_results/weights'
+    weights_path = '/Users/chris/projects/q_learning/new_dqn_results/new_weights'
     all_runs = [x for x in os.listdir(weights_path)
                 if re.match(r'^(restore\_)?(.+?)\_(\d)reward\_10mult(\_\d)?$', x)]
     for run in tqdm.tqdm(all_runs):
@@ -156,9 +182,9 @@ generate_command()
 
 if __name__ == '__main__':
     import sys
-    name = sys.argv[1]
-    compute_occupancy_maps(name)
-    #compute_all_occupancy_maps()
+    #name = sys.argv[1]
+    #compute_occupancy_maps(name)
+    compute_all_occupancy_maps()
     #env = QBertWrapper()
     #colors = qbert_colors
     #threshold = qbert_threshold

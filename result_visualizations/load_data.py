@@ -2,9 +2,8 @@ import os, re, tensorflow as tf
 import pickle, numpy as np, tqdm
 import matplotlib.pyplot as plt
 
-def load_mapping():
-    file = '/Users/chris/projects/q_learning/result_visualizations/new_commands'
-    with open(file, 'r') as f:
+def load_mapping(command_file='/Users/chris/projects/q_learning/result_visualizations/new_commands'):
+    with open(command_file, 'r') as f:
         text = f.read()
     paths = [os.path.split(x[:-1]) for x in re.findall(r'\/home.*?[\,\}]', text.replace('\n',''))]
     paths = [(path.split('/')[-1], name) for (path, name) in paths]
