@@ -1,4 +1,4 @@
-import os, numpy as np, re, sys
+import os, numpy as np, re, sys, subprocess
 
 
 def get_event_files(base_dir, regex):
@@ -15,6 +15,8 @@ def get_event_files(base_dir, regex):
     print(command)
 
 def get_event_files_rsync(base_dir, regex):
+    hostname = subprocess.check_output('hostname').decode('utf-8').strip()
+    ssh_path = f'crgrimm@{hostname}.eecs.umich.edu:'
     run_dirs = [x for x in os.listdir(base_dir)
                 if re.match(regex, x)]
     command_list = []
@@ -24,7 +26,7 @@ def get_event_files_rsync(base_dir, regex):
         if len(event_file) != 1:
             raise Exception(f'Path: {os.path.join(base_dir, run_dir)} contains {len(event_file)} event files.')
         event_file = event_file[0]
-        rel_path = os.path.join(base_dir, '.', run_dir, event_file)
+        rel_path = ssh_path+os.path.join(base_dir, '.', run_dir, event_file)
         command = f'rsync -r --relative {rel_path} .'
         command_list.append(command)
     command = '; '.join(command_list)
