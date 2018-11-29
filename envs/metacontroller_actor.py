@@ -20,12 +20,12 @@ class MetaEnvironment(object):
         for i in range(self.repeat):
             actual_action = self.q_learners[a].get_action([self.current_obs])[0]
             sp, r, t, info = self.env.step(actual_action)
+            self.current_obs = np.copy(sp)
             internal_terminal = info['internal_terminal'] or internal_terminal
             total_reward += r
             terminal = terminal or t
             if terminal:
                 break
-        self.current_obs = np.copy(sp)
         assert 'a' not in info
         info['a'] = actual_action
         info['internal_terminal'] = internal_terminal
