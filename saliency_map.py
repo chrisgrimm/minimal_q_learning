@@ -77,7 +77,7 @@ class LatentAttentionNetwork(object):
 
 if __name__ == '__main__':
     from reward_network import RewardPartitionNetwork
-    from envs.atari.pacman import PacmanWrapper
+    from envs.atari.atari_wrapper import PacmanWrapper
     path = 'pacman_new_dqn_5x_freq/part2'
     name = 'reward_net.ckpt'
     env = PacmanWrapper()

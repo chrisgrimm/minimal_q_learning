@@ -8,7 +8,7 @@ from visualization import produce_two_goal_visualization, produce_assault_ship_h
 import argparse
 from utils import LOG, build_directory_structure, add_implicit_name_arg
 from baselines.deepq.experiments.training_wrapper import make_dqn
-from envs.atari.pacman import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
+from envs.atari.atari_wrapper import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
 from envs.metacontroller_actor import MetaEnvironment
 import argparse
 from random import choice
@@ -30,6 +30,7 @@ parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSA
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
+parser.add_argument('--meta-repeat', type=int, default=1)
 parser.add_argument('--num-partitions', type=int, default=None)
 parser.add_argument('--restore-path', type=str, default=None)
 parser.add_argument('--run-dir', type=str, default='runs')
@@ -76,11 +77,12 @@ if args.meta:
                                         base_env.action_space.n, 'reward_net', traj_len=10,
                                         num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
     reward_net.restore(args.restore_path, 'reward_net.ckpt')
-    env = MetaEnvironment(base_env, reward_net.Q_networks)
+    env = MetaEnvironment(base_env, reward_net.Q_networks, args.meta_repeat)
 else:
     env = base_env
 
 runs_dir = args.run_dir
+q_loss_log_freq = 100
 
 build_directory_structure('.', {runs_dir: {
     args.name: {
@@ -107,7 +109,7 @@ min_epsilon = 0.01
 learning_starts = 10000
 num_epsilon_steps = 1000000
 num_steps = 10000000
-evaluation_frequency = 10000
+evaluation_frequency = 1000
 start_time = 0
 
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
@@ -158,8 +160,8 @@ for time in range(start_time, num_steps):
             weights, batch_idxes = np.ones_like(t_sample), None
 
             q_loss = dqn.train_batch(time, s_sample, a_sample, r_sample, sp_sample, t_sample, weights, batch_idxes)
-
-            LOG.add_line(f'q_loss', q_loss)
+            if time % q_loss_log_freq == 0:
+                LOG.add_line(f'q_loss', q_loss)
 
         if time % evaluation_frequency == 0:
             cum_reward = evaluate_performance(env, dqn)

@@ -2,7 +2,7 @@ from random import choice
 import numpy as np
 from replay_buffer import ReplayBuffer
 from envs.block_world.block_pushing_domain import BlockPushingDomain
-from envs.atari.pacman import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
+from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
@@ -260,6 +260,7 @@ tracker = RewardProbTracker(height, width, depth)
 learning_starts = 10000
 batch_size = 32
 q_train_freq = 4
+q_loss_log_freq = 100
 epsilon = 0.01
 episode_reward = 0
 print(env.action_space)
@@ -445,8 +446,9 @@ for time in range(starting_time, num_steps):
         if time % q_train_freq == 0:
             q_losses = reward_net.train_Q_networks(time)
             # tensorboard logging.
-            for j in range(num_partitions):
-                LOG.add_line(f'q_loss{j}', q_losses[j])
+            if time % q_loss_log_freq == 0:
+                for j in range(num_partitions):
+                    LOG.add_line(f'q_loss{j}', q_losses[j])
 
         if args.use_meta_controller:
             no_reward_S, no_reward_A, no_reward_R, no_reward_SP, no_reward_T = meta_controller_buffer.sample(batch_size // 2)

@@ -214,8 +214,8 @@ class RewardPartitionNetwork(object):
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 pred_reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/pred_reward/')
                 visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []
-                print('reward_params', reward_params)
-                print('visual_params', visual_params)
+                #print('reward_params', reward_params)
+                #print('visual_params', visual_params)
                 opt = tf.train.AdamOptimizer(learning_rate=lr)
                 gradients = opt.compute_gradients(self.loss, var_list=reward_params + visual_params)
                 if clip_gradient > 0:
@@ -230,7 +230,7 @@ class RewardPartitionNetwork(object):
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             self.saver = tf.train.Saver(var_list=all_variables)
-            print('reward_vars', all_variables)
+            #print('reward_vars', all_variables)
             self.sess.run(tf.variables_initializer(all_variables))
 
     def save(self, path, name):
@@ -388,7 +388,7 @@ class RewardPartitionNetwork(object):
         else:
             with tf.variable_scope(name, reuse=reuse):
                 # sp : [bs, 32, 32 ,3]
-                print('r', r)
+                #print('r', r)
                 x = sp
                 x = tf.layers.conv2d(x, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0') # [bs, 16, 16, 32]
                 x = tf.layers.conv2d(x, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
@@ -406,7 +406,7 @@ class RewardPartitionNetwork(object):
             #a = a_traj[:, t, :]
             sp = sp_traj[:, t, :]
             r = r_traj[:, t]
-            print('r', r)
+            #print('r', r)
             Rs = self.partitioned_reward_tf(sp, r, name, reuse=(t > 0) or (reuse == True))
             Rs_traj.append(tf.reshape(Rs, [-1, 1, self.num_partitions])) # [bs, 1, n]
         return tf.concat(Rs_traj, axis=1) # [bs, traj, n]
@@ -435,7 +435,7 @@ class RewardPartitionNetwork(object):
     def get_values(self, rs_traj, ts_traj):
         # rs_traj : [bs, traj_len, num_partitions]
         # ts_traj : [bs, traj_len]
-        print(rs_traj)
+        #print(rs_traj)
         gamma = 0.99
         gamma_sequence = tf.reshape(tf.pow(gamma, list(range(self.traj_len))), [1, self.traj_len, 1])
         t_sequence = 1.0 - tf.reshape(tf.cast(ts_traj, tf.float32), [-1, self.traj_len, 1])
@@ -443,7 +443,7 @@ class RewardPartitionNetwork(object):
         sticky_t_sequence = tf.cumprod(t_sequence, axis=1)
         #prod_reward = 0.0
         out = tf.reduce_sum(rs_traj * gamma_sequence * sticky_t_sequence, axis=1) # [bs, num_partitions]
-        print('out', out)
+        #print('out', out)
         return out
 
     def clean(self):

@@ -33,6 +33,9 @@ class AtariWrapper():
     def get_obs(self):
         return np.concatenate(self.frame_buffer, axis=2)
 
+    def get_unprocessed_obs(self):
+        return self.env._get_image()
+
     def process_obs(self, obs):
         return cv2.resize(obs, (64,64), interpolation=cv2.INTER_AREA)
 
@@ -85,7 +88,7 @@ class SeaquestWrapper(AtariWrapper):
         super().__init__('seaquest')
 
 if __name__ == '__main__':
-    env = AlienWrapper()
+    env = AssaultWrapper()
     print(env.action_space.n)
     action_mapping = {'w': 0,}
 

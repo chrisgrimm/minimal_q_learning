@@ -5,20 +5,31 @@ import numpy as np
 
 class MetaEnvironment(object):
 
-    def __init__(self, env, q_learners: List[QLearnerAgent]):
+    def __init__(self, env, q_learners: List[QLearnerAgent], repeat : int):
         self.env = env
         self.q_learners = q_learners
         self.action_space = Discrete(len(q_learners))
         self.observation_space = env.observation_space
         self.current_obs = np.copy(self.env.get_obs())
+        self.repeat = repeat
 
     def step(self, a):
-        actual_action = self.q_learners[a].get_action([self.current_obs])[0]
-        sp, r, t, info = self.env.step(actual_action)
+        total_reward = 0
+        terminal = False
+        internal_terminal = False
+        for i in range(self.repeat):
+            actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+            sp, r, t, info = self.env.step(actual_action)
+            internal_terminal = info['internal_terminal'] or internal_terminal
+            total_reward += r
+            terminal = terminal or t
+            if terminal:
+                break
         self.current_obs = np.copy(sp)
         assert 'a' not in info
         info['a'] = actual_action
-        return sp, r, t, info
+        info['internal_terminal'] = internal_terminal
+        return sp, total_reward, terminal, info
 
     def reset(self):
         obs = self.env.reset()
