@@ -79,7 +79,7 @@ class PacmanWrapper(AtariWrapper):
         ram = self.env.ale.getRAM()
         y_coord = ram[16]
         x_coord = ram[10]
-        print(x_coord, y_coord)
+        #print(x_coord, y_coord)
         return y_coord >= 98
         #y_coord = ram[0x]
         #print(x_coord, y_coord)
