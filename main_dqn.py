@@ -33,6 +33,7 @@ parser.add_argument('--meta', action='store_true')
 parser.add_argument('--meta-repeat', type=int, default=1)
 parser.add_argument('--num-partitions', type=int, default=None)
 parser.add_argument('--restore-path', type=str, default=None)
+parser.add_argument('--restricted-reward', action='store_true')
 parser.add_argument('--run-dir', type=str, default='runs')
 
 args = parser.parse_args()
@@ -48,7 +49,7 @@ if mode == 'ASSAULT':
     base_env = AssaultWrapper()
 elif mode == 'PACMAN':
     num_visual_channels = 9
-    base_env = PacmanWrapper()
+    base_env = PacmanWrapper(remove_reward_mode=args.restricted_reward)
 elif mode == 'QBERT':
     num_visual_channels = 9
     base_env = QBertWrapper()

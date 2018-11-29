@@ -6,7 +6,7 @@ import cv2
 #env = gym.make('MsPacman-v0')
 class AtariWrapper():
 
-    def __init__(self, game):
+    def __init__(self, game, remove_reward_mode=False):
         self.env = AtariEnv(game=game, obs_type='image', frameskip=5)
         self.action_space = self.env.action_space
         self.image_size = 64
@@ -18,6 +18,7 @@ class AtariWrapper():
         self.spec = self.env.spec
         self.max_steps = 10000
         self.step_counter = 0
+        self.remove_reward_mode = remove_reward_mode
 
     def get_current_state(self):
         state = self.env.clone_full_state()
@@ -41,7 +42,11 @@ class AtariWrapper():
 
     def step(self, a):
         sp, r, t, info = self.env.step(a)
-        r = 1 if r > 0 else 0
+        if self.remove_reward_mode and self.remove_reward():
+            r = 0
+        else:
+            r = 1 if r > 0 else 0
+
         self.frame_buffer = self.frame_buffer[1:] + [self.process_obs(sp)]
         obs = self.get_obs()
         if t:
@@ -60,12 +65,26 @@ class AtariWrapper():
         self.step_counter = 0
         return obs
 
+    def remove_reward(self):
+        return False
+
     def render(self):
         return self.env.render()
 
 class PacmanWrapper(AtariWrapper):
-    def __init__(self):
-        super().__init__('ms_pacman')
+    def __init__(self, remove_reward_mode=False):
+        super().__init__('ms_pacman', remove_reward_mode=remove_reward_mode)
+
+    def remove_reward(self):
+        ram = self.env.ale.getRAM()
+        y_coord = ram[16]
+        x_coord = ram[10]
+        print(x_coord, y_coord)
+        return y_coord >= 98
+        #y_coord = ram[0x]
+        #print(x_coord, y_coord)
+
+
 
 class QBertWrapper(AtariWrapper):
     def __init__(self):
@@ -88,14 +107,17 @@ class SeaquestWrapper(AtariWrapper):
         super().__init__('seaquest')
 
 if __name__ == '__main__':
-    env = AssaultWrapper()
+    env = PacmanWrapper(remove_reward_mode=True)
     print(env.action_space.n)
-    action_mapping = {'w': 0,}
+    #action_mapping = {'w': 0,}
 
     s = env.reset()
     i = 0
     while True:
         sp, r, t, info = env.step(np.random.randint(0, env.action_space.n))
+        if r == 1:
+            print('Got reward!')
+        #print(env.remove_reward())
         cv2.imshow('pacman', cv2.resize(sp[:, :, 6:9], (400, 400)))
         cv2.waitKey(1)
         env.render()
