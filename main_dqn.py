@@ -46,7 +46,7 @@ observation_mode = 'image' if visual else 'vector'
 
 if mode == 'ASSAULT':
     num_visual_channels = 9
-    base_env = AssaultWrapper()
+    base_env = AssaultWrapper(remove_reward_mode=args.restricted_reward)
 elif mode == 'PACMAN':
     num_visual_channels = 9
     base_env = PacmanWrapper(remove_reward_mode=args.restricted_reward)

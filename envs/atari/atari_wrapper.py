@@ -91,8 +91,24 @@ class QBertWrapper(AtariWrapper):
         super().__init__('qbert')
 
 class AssaultWrapper(AtariWrapper):
-    def __init__(self):
-        super().__init__('assault')
+    def __init__(self, remove_reward_mode=False):
+        super().__init__('assault', remove_reward_mode=remove_reward_mode)
+        self.last_known_position = 100
+
+    def remove_reward(self):
+        ram = self.env.ale.getRAM()
+        # the position idx only appears to hold the position when the agent is moving
+        position_idx = 5*18+4 - 1
+        position_opt = ram[position_idx]
+        # 60 means no new position data.
+        # 0 means you just shot something.
+        if position_opt not in [60, 0]:
+            self.last_known_position = position_opt
+        # no reward if last_known_position > 100
+        print(self.last_known_position)
+        return self.last_known_position > 100
+
+
 
 class BreakoutWrapper(AtariWrapper):
     def __init__(self):
@@ -107,14 +123,17 @@ class SeaquestWrapper(AtariWrapper):
         super().__init__('seaquest')
 
 if __name__ == '__main__':
-    env = PacmanWrapper(remove_reward_mode=True)
+    env = AssaultWrapper(remove_reward_mode=True)
     print(env.action_space.n)
     #action_mapping = {'w': 0,}
-
+    action_set = {' ': 2, 'd': 3, 'a': 4, '': 0}
     s = env.reset()
     i = 0
     while True:
-        sp, r, t, info = env.step(np.random.randint(0, env.action_space.n))
+        a = input()
+        if a not in action_set:
+            continue
+        sp, r, t, info = env.step(action_set[a])
         if r == 1:
             print('Got reward!')
         #print(env.remove_reward())

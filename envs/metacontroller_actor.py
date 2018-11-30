@@ -18,10 +18,10 @@ class MetaEnvironment(object):
         terminal = False
         internal_terminal = False
         for i in range(self.repeat):
-            if a < len(self.q_learners):
-                actual_action = self.q_learners[a].get_action([self.current_obs])[0]
-            else:
-                actual_action = a - len(self.q_learners)
+            #if a < len(self.q_learners):
+            actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+            #else:
+            #    actual_action = a - len(self.q_learners)
             sp, r, t, info = self.env.step(actual_action)
             self.current_obs = np.copy(sp)
             internal_terminal = info['internal_terminal'] or internal_terminal
