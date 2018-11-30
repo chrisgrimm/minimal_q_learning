@@ -105,7 +105,7 @@ class AssaultWrapper(AtariWrapper):
         if position_opt not in [60, 0]:
             self.last_known_position = position_opt
         # no reward if last_known_position > 100
-        print(self.last_known_position)
+        #print(self.last_known_position)
         return self.last_known_position > 100
 
 
