@@ -61,7 +61,7 @@ elif mode == 'ALIEN':
     base_env = AlienWrapper()
 elif mode == 'SEAQUEST':
     num_visual_channels = 9
-    base_env = SeaquestWrapper()
+    base_env = SeaquestWrapper(remove_reward_mode=args.restricted_reward)
 elif mode == 'SOKOBAN':
     num_visual_channels = 3
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard')

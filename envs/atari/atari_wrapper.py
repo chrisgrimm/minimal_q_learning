@@ -119,21 +119,34 @@ class AlienWrapper(AtariWrapper):
         super().__init__('alien')
 
 class SeaquestWrapper(AtariWrapper):
-    def __init__(self):
-        super().__init__('seaquest')
+    def __init__(self, remove_reward_mode=False):
+        super().__init__('seaquest', remove_reward_mode=remove_reward_mode)
+
+    def remove_reward(self):
+        ram = self.env.ale.getRAM()
+        y_idx = 5*18+8-1
+        x_idx = 3*18 + 17 - 1
+        #print('y', ram[y_idx], 'x', ram[x_idx])
+        #print(ram)
+        # only reward when in the bottom half of the env.
+        return ram[y_idx] <= 65
 
 if __name__ == '__main__':
-    env = AssaultWrapper(remove_reward_mode=True)
+    env = SeaquestWrapper(remove_reward_mode=True)
     print(env.action_space.n)
+    print(env.env.get_action_meanings())
     #action_mapping = {'w': 0,}
-    action_set = {' ': 2, 'd': 3, 'a': 4, '': 0}
+    action_set = {'w': 2, 'd': 3, 'a': 4, 's': 5, '': 0, ' ': 1}
+    print('n', env.action_space.n)
     s = env.reset()
     i = 0
     while True:
         a = input()
         if a not in action_set:
             continue
-        sp, r, t, info = env.step(action_set[a])
+        a = action_set[a]
+        print('a', a)
+        sp, r, t, info = env.step(a)
         if r == 1:
             print('Got reward!')
         #print(env.remove_reward())
