@@ -8,7 +8,7 @@ class MetaEnvironment(object):
     def __init__(self, env, q_learners: List[QLearnerAgent], repeat : int):
         self.env = env
         self.q_learners = q_learners
-        self.action_space = Discrete(len(q_learners) + env.action_space.n)
+        self.action_space = Discrete(len(q_learners))
         self.observation_space = env.observation_space
         self.current_obs = np.copy(self.env.get_obs())
         self.repeat = repeat
