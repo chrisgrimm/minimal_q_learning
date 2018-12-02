@@ -5,10 +5,11 @@ import numpy as np
 
 class MetaEnvironment(object):
 
-    def __init__(self, env, q_learners: List[QLearnerAgent], repeat : int):
+    def __init__(self, env, q_learners: List[QLearnerAgent], repeat : int, allow_base_actions : bool = False):
         self.env = env
+        self.allow_base_actions = allow_base_actions
         self.q_learners = q_learners
-        self.action_space = Discrete(len(q_learners))
+        self.action_space = Discrete(len(q_learners) + (env.action_space.n if allow_base_actions else 0))
         self.observation_space = env.observation_space
         self.current_obs = np.copy(self.env.get_obs())
         self.repeat = repeat
@@ -18,10 +19,15 @@ class MetaEnvironment(object):
         terminal = False
         internal_terminal = False
         for i in range(self.repeat):
-            #if a < len(self.q_learners):
-            actual_action = self.q_learners[a].get_action([self.current_obs])[0]
-            #else:
-            #    actual_action = a - len(self.q_learners)
+            if self.allow_base_actions:
+                # if we allow base actions the first len(self.q_learners) actions are meta-actions, rest are base.
+                if a < len(self.q_learners):
+                    actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+                else:
+                    actual_action = a - len(self.q_learners)
+            else:
+                actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+
             sp, r, t, info = self.env.step(actual_action)
             self.current_obs = np.copy(sp)
             internal_terminal = info['internal_terminal'] or internal_terminal

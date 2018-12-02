@@ -34,6 +34,7 @@ parser.add_argument('--meta-repeat', type=int, default=1)
 parser.add_argument('--num-partitions', type=int, default=None)
 parser.add_argument('--restore-path', type=str, default=None)
 parser.add_argument('--restricted-reward', action='store_true')
+parser.add_argument('--allow-base-actions', action='store_true')
 parser.add_argument('--run-dir', type=str, default='runs')
 
 args = parser.parse_args()
@@ -78,7 +79,7 @@ if args.meta:
                                         base_env.action_space.n, 'reward_net', traj_len=10,
                                         num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
     reward_net.restore(args.restore_path, 'reward_net.ckpt')
-    env = MetaEnvironment(base_env, reward_net.Q_networks, args.meta_repeat)
+    env = MetaEnvironment(base_env, reward_net.Q_networks, args.meta_repeat, allow_base_actions=args.allow_base_actions)
 else:
     env = base_env
 

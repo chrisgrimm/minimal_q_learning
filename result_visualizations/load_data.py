@@ -20,13 +20,13 @@ def load_tb_data(file_path, fields):
                 data[v.tag].append((step, v.simple_value))
     return data
 
-def cut_down_meta_data():
-    meta_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/no_top_sokoban_runs/'
-    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_no_top'
+def cut_down_meta_data(source_name, dest_name, regex):
+    meta_runs_path = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{source_name}/'
+    cut_down_path = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{dest_name}'
     dirs = os.listdir(meta_runs_path)
     for dir in dirs:
         #match = re.match(r'^meta\_(.+?)\_(\d)reward\_10mult\_(\d)$', dir)
-        match = re.match(r'^.+?\_no\_top.+?$', dir)
+        match = re.match(regex, dir)
         if not match:
             continue
         #(game, reward_partitions, run_num) = match.groups()
@@ -109,9 +109,9 @@ def load_cutdown_data(filter_regex=None):
             all_data[name] = data
     return all_data
 
-def load_metacontroller_and_baseline_data(single_game=None):
-    baselines = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_baselines'
-    meta = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/cut_down_meta'
+def load_metacontroller_and_baseline_data(baseline_name, meta_name, single_game=None):
+    baselines = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{baseline_name}'
+    meta = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{meta_name}'
     meta_runs = dict()
     baseline_runs = dict()
     for name in tqdm.tqdm(os.listdir(baselines)):
@@ -130,7 +130,7 @@ def load_metacontroller_and_baseline_data(single_game=None):
         else:
             baseline_runs[game] = [data]
     for name in tqdm.tqdm(os.listdir(meta)):
-        match = re.match(r'^meta\_(.+?)\_(\d)reward\_.+?\_(\d)$', name)
+        match = re.match(r'^meta\_(.+?)\_(\d)reward.*?\_(\d)$', name)
         if not match:
             print(f'{name} didnt match. Skipping...')
             continue
@@ -308,30 +308,33 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=1, y_range=None):
             print(len(data))
             print(len(data['cum_reward']))
             x = [time for time, J in data['cum_reward']]
-            y = smooth([J for time, J in data['cum_reward']], weight=0.99)
+            y = smooth([J for time, J in data['cum_reward']], weight=0.95)
             print('shapes', len(data['cum_reward']), np.shape(y))
             all_ys.append(y)
 
         min_len = min([len(y) for y in all_ys])
-        all_ys = [y[-min_len:] for y in all_ys]
+        all_ys = [y[:min_len] for y in all_ys]
 
         mean = np.mean(all_ys, axis=0)
         err = np.std(all_ys, axis=0)
-        plt.plot(x[-min_len:], mean, color='blue', label=f'baseline')
+        plt.plot(x[:min_len], mean, color='blue', label=f'baseline')
         if y_range is not None:
             plt.ylim(y_range[0], y_range[1])
         plt.ylim()
-        plt.fill_between(x[-min_len:], mean-err, mean+err, color='blue', alpha=0.5)
+        plt.fill_between(x[:min_len], mean-err, mean+err, color='blue', alpha=0.5)
 
         color_mapping = {'2': 'red', '3': 'green', '4': 'orange'}
         for reward, data_runs in meta_runs[game].items():
             all_ys = []
             for data in data_runs:
                 x = [time for time, J in data['cum_reward']]
-                y = smooth([J for time, J in data['cum_reward']], weight=0.99)
+                y = smooth([J for time, J in data['cum_reward']], weight=0.95)
                 all_ys.append(y)
                 #plt.plot(x, y, color=color_mapping[reward], label=f'{reward} rewards')
             print(np.shape(all_ys))
+            min_len = min([len(y) for y in all_ys])
+            x = x[:min_len]
+            all_ys = [y[:min_len] for y in all_ys]
             err = np.std(all_ys, axis=0)
             mean = np.mean(all_ys, axis=0)
             plt.plot(x, mean, color=color_mapping[reward], label=f'{reward} rewards')
@@ -347,7 +350,11 @@ if __name__ == '__main__':
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #data = cut_down_baseline_data()
-    meta_runs, baseline_runs = load_metacontroller_and_baseline_data('sokoban_no_top')
+    #data = cut_down_meta_data('baselines_restricted', 'cut_down_baselines_restricted', '^baseline.+?$')
+    #data = cut_down_meta_data('meta_restricted_runs', 'cut_down_meta_restricted', '^meta.+?$')
+    meta_runs, baseline_runs = load_metacontroller_and_baseline_data('cut_down_baselines_restricted',
+                                                                     'cut_down_meta_restricted',
+                                                                     single_game='seaquest_restricted')
     make_meta_controller_plots(meta_runs, baseline_runs)
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
     #merged_data = load_and_merge_data()

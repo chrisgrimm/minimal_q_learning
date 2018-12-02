@@ -132,7 +132,7 @@ class SeaquestWrapper(AtariWrapper):
         return ram[y_idx] <= 65
 
 if __name__ == '__main__':
-    env = SeaquestWrapper(remove_reward_mode=True)
+    env = AssaultWrapper(remove_reward_mode=True)
     print(env.action_space.n)
     print(env.env.get_action_meanings())
     #action_mapping = {'w': 0,}
@@ -153,7 +153,10 @@ if __name__ == '__main__':
         cv2.imshow('pacman', cv2.resize(sp[:, :, 6:9], (400, 400)))
         cv2.waitKey(1)
         env.render()
-        env.env.ale.saveScreenPNG(b'test_image2.png')
+        image = env.get_unprocessed_obs()
+        image = np.tile(np.reshape(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), list(image.shape[:2]) + [1]), [1,1,3])
+        cv2.imwrite('./test_image2.png', image)
+        #env.env.ale.saveScreenPNG(b'test_image2.png')
 
         print(i, r, t, info)
         input()

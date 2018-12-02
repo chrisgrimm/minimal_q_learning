@@ -249,7 +249,7 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
-meta_env = MetaEnvironment(env, reward_net.Q_networks)
+meta_env = MetaEnvironment(env, reward_net.Q_networks, 1)
 meta_controller_buffer = ReplayBuffer(10000)
 reward_meta_controller_buffer = ReplayBuffer(10000)
 meta_controller = QLearnerAgent(meta_env.observation_space.shape[0], meta_env.action_space.n, 'meta_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
