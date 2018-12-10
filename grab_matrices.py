@@ -44,6 +44,7 @@ for run_folder in run_folders:
     files_to_grab += grabber(stat_files)
     files_to_grab += grabber(matrix_files)
     files_to_grab += grabber(behavior_files)
+    files_to_grab += grabber(image_files)
     relative_paths = [os.path.join(path_to_runs, '.', run_folder, 'images', x) for x in files_to_grab]
 
     for source_path in relative_paths:
