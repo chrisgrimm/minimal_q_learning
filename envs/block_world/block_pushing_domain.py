@@ -37,6 +37,7 @@ class BlockPushingDomain(object):
 
         self.observation_mode = observation_mode
         assert self.observation_mode in ['vector', 'image', 'encoding']
+
         self.DOWN, self.UP, self.RIGHT, self.LEFT, self.NOOP = 0, 1, 2, 3, 4
         self.action_mapping = {self.DOWN: (0, 1), self.UP: (0, -1),
                                self.RIGHT: (1, 0), self.LEFT: (-1, 0), self.NOOP: (0, 0)}
@@ -135,7 +136,10 @@ class BlockPushingDomain(object):
         self.goal_size = 2*len(self.goal_blocks)
         self.max_timesteps = 100
         self.timestep = 0
-        self.action_space = Discrete(5)
+        if self.reward_always_one:
+            self.action_space = Discrete(4)
+        else:
+            self.action_space = Discrete(5)
         if self.observation_mode == 'image':
             self.observation_space = Box(0, 255, shape=[64, 64, 3], dtype=np.uint8)
         else:
