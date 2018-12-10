@@ -19,20 +19,23 @@ for run_folder in run_folders:
     stat_files = []
     matrix_files = []
     behavior_files = []
+    image_files = []
     for x in files:
         print(x)
-        match = re.match(r'^policy\_vis\_(\d+)\_(.+?)\..+?$', x)
+        match = re.match(r'^policy\_vis\_(\d+)(.*?)\..+?$', x)
         if not match:
             continue
         (iteration_num, file_type) = match.groups()
         print(iteration_num, file_type)
         iteration_num = int(iteration_num)
-        if file_type == 'statistics':
+        if file_type == '_statistics':
             stat_files.append((iteration_num, x))
-        elif file_type == 'value_matrix':
+        elif file_type == '_value_matrix':
             matrix_files.append((iteration_num, x))
-        elif file_type == 'behavior_file':
+        elif file_type == '_behavior_file':
             behavior_files.append((iteration_num, x))
+        elif file_type == '':
+            image_files.append((iteration_num, x))
         else:
             raise Exception(f'Unrecognized filetype {file_type} on iteration {iteration_num}')
     grabber = lambda file_list: [y for (x,y) in sorted(file_list, key=lambda x: x[0])[-num_to_take:]]
