@@ -13,9 +13,15 @@ BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
 class BlockPushingDomain(object):
 
     def __init__(self, observation_mode='vector', configuration='obstacle', only_bottom_half=False):
-        assert configuration in ['standard', 'obstacle', 'four_room']
+        assert configuration in ['standard', 'obstacle', 'four_room', 'standard_all_reward']
+        self.reward_always_one = False
+        if configuration == 'standard_all_reward':
+            self.reward_always_one = True
+            configuration = 'standard'
+
         self.configuration = configuration
         self.grid_size = {'standard': 5,
+                          'standard_all_reward': 5,
                           'obstacle': 7,
                           'four_room': 13}[configuration]
         self.block_size = 8
@@ -373,10 +379,14 @@ class BlockPushingDomain(object):
         # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
         #   this should make plots of the cumulative reward more meaningful.
         info = {'internal_terminal': terminal}
+
         terminate_on_reward = (self.configuration != 'four_room')
+        # dont terminate_on_reward if self.reward_always_one is on.
+        terminate_on_reward = terminate_on_reward and (not self.reward_always_one)
         if terminal or (reward == 1.0 and terminate_on_reward):
             self.reset(reset_timestep=terminal)
         # TODO use old_obs for hindsight.
+        reward = 1.0 if self.reward_always_one else reward
         return new_obs, reward, False, info
 
     def render(self):
@@ -414,7 +424,7 @@ def block_info(block):
     return (block.get_position(), block.get_initialization_type().get_unique_name())
 
 if __name__ == '__main__':
-    env = BlockPushingDomain(observation_mode='image', configuration='standard', only_bottom_half=True)
+    env = BlockPushingDomain(observation_mode='image', configuration='standard')
     s = env.reset()
     env.render()
     action_map = {'w': onehot(1, 5),
