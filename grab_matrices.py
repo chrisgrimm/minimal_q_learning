@@ -27,6 +27,7 @@ for run_folder in run_folders:
             continue
         (iteration_num, file_type) = match.groups()
         print(iteration_num, file_type)
+        print('file_type', file_type)
         iteration_num = int(iteration_num)
         if file_type == '_statistics':
             stat_files.append((iteration_num, x))
