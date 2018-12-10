@@ -50,7 +50,8 @@ def produce_two_goal_visualization(network, env, value_matrix, name):
     for (x,y), state in state_pairs:
         #print('state', state)
         #print(cv2.imwrite(f'./temp/{x}_{y}.png', state))
-        state_reward = network.get_reward(state, 1 if (x,y) in goal_positions else 0)
+
+        state_reward = network.get_reward(state, 1 if (x,y) in goal_positions or env.reward_always_one else 0)
         for i in range(network.num_partitions):
             data[i].append(((x,y), state_reward[i]))
     images = []
