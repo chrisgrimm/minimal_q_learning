@@ -1,6 +1,7 @@
 import os, re, tensorflow as tf
 import pickle, numpy as np, tqdm
 import matplotlib.pyplot as plt
+from multiprocessing import Pool, cpu_count
 
 def load_mapping(command_file='/Users/chris/projects/q_learning/result_visualizations/new_commands'):
     with open(command_file, 'r') as f:
@@ -10,21 +11,55 @@ def load_mapping(command_file='/Users/chris/projects/q_learning/result_visualiza
     paths = {event_name: run_name for (run_name, event_name) in paths}
     return paths
 
-def load_tb_data(file_path, fields):
+def load_tb_data(file_path, fields, iter=-1, orig_offset=10000):
+    # infer the iteration of the files.
+    if iter == -1:
+        mean_iter = get_mean_iter(file_path, 'cum_reward')
+        print(f'Got mean_iter {mean_iter}')
+        if mean_iter > 10000:
+            iter = 10000
+        else:
+            iter = 1000
     data = {f: [] for f in fields}
     fields_set = set(fields)
-    for s in tf.train.summary_iterator(file_path):
-        step = s.step
+    for i, s in enumerate(tf.train.summary_iterator(file_path)):
+        #print(i, s.step, )
         for v in s.summary.value:
             if v.tag in fields_set:
-                data[v.tag].append((step, v.simple_value))
+                if v.tag == 'cum_reward':
+                    print(i, s.step)
+                data[v.tag].append((s.step * iter + orig_offset, v.simple_value))
     return data
 
-def cut_down_meta_data(source_name, dest_name, regex):
-    meta_runs_path = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{source_name}/'
-    cut_down_path = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{dest_name}'
-    dirs = os.listdir(meta_runs_path)
+def get_mean_iter(file_path, field):
+    num_to_track = 10
+    i_list = []
+    for i, s in enumerate(tf.train.summary_iterator(file_path)):
+        for v in s.summary.value:
+            #print(v.tag)
+            if v.tag == field:
+                i_list.append(i)
+        if len(i_list) >= num_to_track:
+            break
+    i_list = np.array(i_list)
+    mean_diff = np.mean(i_list[1:] - i_list[:-1])
+    return mean_diff
+
+
+def cut_down_meta_single_file(file_path, cut_down_path, dir):
+    data = load_tb_data(file_path, ['cum_reward', 'time'])
+    with open(os.path.join(cut_down_path, dir), 'wb') as f:
+        pickle.dump(data, f)
+    print(f'Finished {file_path} {dir}!')
+
+def cut_down_meta(source_dir, dest_dir, regex):
+    dirs = os.listdir(source_dir)
+    print(f'Found {cpu_count()} devices... Creating pool.')
+    pool = Pool(processes=cpu_count())
     for dir in dirs:
+        if os.path.isfile(os.path.join(dest_dir, dir)):
+            print(f'Found existing file {os.path.join(dest_dir, dir)}. Skipping.')
+            continue
         #match = re.match(r'^meta\_(.+?)\_(\d)reward\_10mult\_(\d)$', dir)
         match = re.match(regex, dir)
         if not match:
@@ -32,17 +67,22 @@ def cut_down_meta_data(source_name, dest_name, regex):
         #(game, reward_partitions, run_num) = match.groups()
         #print(game, reward_partitions, run_num)
         print(dir)
+
         # get the events file
-        event_files = [x for x in os.listdir(os.path.join(meta_runs_path, dir)) if 'events' in x]
+        event_files = [x for x in os.listdir(os.path.join(source_dir, dir)) if 'events' in x]
         if len(event_files) != 1:
             error = f'Found {len(event_files)} event files in {dir}. Skipping.'
             print(error)
             continue
         event_file = event_files[0]
-        file_path = os.path.join(meta_runs_path, dir, event_file)
-        data = load_tb_data(file_path, ['cum_reward', 'time'])
-        with open(os.path.join(cut_down_path, dir), 'wb') as f:
-            pickle.dump(data, f)
+        file_path = os.path.join(source_dir, dir, event_file)
+        #args_list.append((file_path, cut_down_path, dir))
+        pool.apply_async(cut_down_meta_single_file, args=(file_path, dest_dir, dir))
+        #data = load_tb_data(file_path, ['cum_reward', 'time'])
+        #with open(os.path.join(cut_down_path, dir), 'wb') as f:
+        #    pickle.dump(data, f)
+    pool.join()
+
 
 def cut_down_baseline_data():
     baseline_runs_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/'
@@ -123,7 +163,9 @@ def load_metacontroller_and_baseline_data(baseline_name, meta_name, single_game=
         if single_game is not None and single_game != game:
             continue
         with open(os.path.join(baselines, name), 'rb') as f:
-            data = replace_step_with_time(pickle.load(f))
+            data = pickle.load(f)
+            print(name, len(data['cum_reward']))
+            data = replace_step_with_time(data)
             print(data.keys())
         if game in baseline_runs:
             baseline_runs[game].append(data)
@@ -326,10 +368,11 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=1, y_range=None):
         color_mapping = {'2': 'red', '3': 'green', '4': 'orange'}
         for reward, data_runs in meta_runs[game].items():
             all_ys = []
-            for data in data_runs:
+            for i, data in enumerate(data_runs):
                 x = [time for time, J in data['cum_reward']]
                 y = smooth([J for time, J in data['cum_reward']], weight=0.95)
                 all_ys.append(y)
+                print('meta_run', i, reward, np.shape(y))
                 #plt.plot(x, y, color=color_mapping[reward], label=f'{reward} rewards')
             print(np.shape(all_ys))
             min_len = min([len(y) for y in all_ys])
@@ -347,15 +390,21 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=1, y_range=None):
 
 
 if __name__ == '__main__':
+    #path_assault = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_assault_2/events.out.tfevents.1542562453.rldl11'
+    #path_breakout = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_breakout_1/events.out.tfevents.1542677889.rldl11'
+    #path_pacman = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_pacman_1/events.out.tfevents.1542562393.rldl11'
+    #path_seaquest = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_seaquest_1/events.out.tfevents.1542562406.rldl11'
+    #load_tb_data(path_pacman, ['time', 'cum_reward'])
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
+    cut_down_meta('/home/crgrimm/minimal_q_learning/all_meta_runs', '/home/crgrimm/minimal_q_learning/all_cut_down_meta')
     #data = cut_down_baseline_data()
     #data = cut_down_meta_data('baselines_restricted', 'cut_down_baselines_restricted', '^baseline.+?$')
-    #data = cut_down_meta_data('meta_restricted_runs', 'cut_down_meta_restricted', '^meta.+?$')
-    meta_runs, baseline_runs = load_metacontroller_and_baseline_data('cut_down_baselines_restricted',
-                                                                     'cut_down_meta_restricted',
-                                                                     single_game='seaquest_restricted')
-    make_meta_controller_plots(meta_runs, baseline_runs)
+    #data = cut_down_meta_data('baselines_restricted', 'cut_down_baselines_restricted', '^.+?restricted.+?$')
+    #meta_runs, baseline_runs = load_metacontroller_and_baseline_data('cut_down_baselines_restricted',
+    #                                                                 'cut_down_meta_restricted',
+    #                                                                 single_game='seaquest_restricted')
+    #make_meta_controller_plots(meta_runs, baseline_runs)
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
     #merged_data = load_and_merge_data()
     #make_J_disentangled_plots(merged_data)
