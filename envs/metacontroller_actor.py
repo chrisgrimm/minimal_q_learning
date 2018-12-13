@@ -39,9 +39,10 @@ class MetaEnvironment(object):
                 total_reward += r
                 terminal = terminal or t
                 if self.stop_at_reward and r == 1:
-                    reward_part = self.r_net.get_reward(sp, 1)[a]
-                    if reward_part > 0.99:
-                        break
+                    break
+                    #reward_part = self.r_net.get_reward(sp, 1)[a]
+                    #if reward_part > 0.99:
+                    #    break
                 if terminal:
                     break
         else:
