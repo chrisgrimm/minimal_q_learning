@@ -1,5 +1,7 @@
 import os, re, tensorflow as tf
 import pickle, numpy as np, tqdm
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 
@@ -15,7 +17,7 @@ def load_tb_data(file_path, fields, iter=-1, orig_offset=10000):
     # infer the iteration of the files.
     if iter == -1:
         mean_iter = get_mean_iter(file_path, 'cum_reward')
-        print(f'Got mean_iter {mean_iter}')
+        #print(f'Got mean_iter {mean_iter}')
         if mean_iter > 10000:
             iter = 10000
         else:
@@ -26,8 +28,8 @@ def load_tb_data(file_path, fields, iter=-1, orig_offset=10000):
         #print(i, s.step, )
         for v in s.summary.value:
             if v.tag in fields_set:
-                if v.tag == 'cum_reward':
-                    print(i, s.step)
+                #if v.tag == 'cum_reward':
+                #    print(i, s.step)
                 data[v.tag].append((s.step * iter + orig_offset, v.simple_value))
     return data
 
@@ -81,6 +83,7 @@ def cut_down_meta(source_dir, dest_dir, regex):
         #data = load_tb_data(file_path, ['cum_reward', 'time'])
         #with open(os.path.join(cut_down_path, dir), 'wb') as f:
         #    pickle.dump(data, f)
+    pool.close()
     pool.join()
 
 
@@ -149,38 +152,39 @@ def load_cutdown_data(filter_regex=None):
             all_data[name] = data
     return all_data
 
-def load_metacontroller_and_baseline_data(baseline_name, meta_name, single_game=None):
-    baselines = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{baseline_name}'
-    meta = f'/Users/chris/projects/q_learning/new_dqn_results/completed_runs/{meta_name}'
+def load_metacontroller_and_baseline_data(baselines, baseline_regex, meta, meta_regex, baseline_name, meta_name):
     meta_runs = dict()
     baseline_runs = dict()
     for name in tqdm.tqdm(os.listdir(baselines)):
-        match = re.match(r'^baseline\_(.+?)\_(\d)$', name)
+        match = re.match(baseline_regex, name)
         if not match:
             print(f'{name} didnt match. Skipping...')
             continue
         (game, run_num) = match.groups()
-        if single_game is not None and single_game != game:
+        if baseline_name != game:
+            print(f'{game} did not match baseline_name {baseline_name}. Skipping...')
             continue
         with open(os.path.join(baselines, name), 'rb') as f:
             data = pickle.load(f)
             print(name, len(data['cum_reward']))
-            data = replace_step_with_time(data)
+            #data = replace_step_with_time(data)
             print(data.keys())
         if game in baseline_runs:
             baseline_runs[game].append(data)
         else:
             baseline_runs[game] = [data]
     for name in tqdm.tqdm(os.listdir(meta)):
-        match = re.match(r'^meta\_(.+?)\_(\d)reward.*?\_(\d)$', name)
+        match = re.match(meta_regex, name)
         if not match:
             print(f'{name} didnt match. Skipping...')
             continue
         (game, num_rewards, run_num) = match.groups()
-        if single_game is not None and single_game != game:
+        if meta_name != game:
+            print(f'{game} did not match meta_name {meta_name}. Skipping...')
             continue
         with open(os.path.join(meta, name), 'rb') as f:
-            data = replace_step_with_time(pickle.load(f))
+            data = pickle.load(f)
+            #data = replace_step_with_time(pickle.load(f))
             print(data.keys())
 
         if game in meta_runs:
@@ -338,15 +342,15 @@ def smooth(scalars, weight):  # Weight between 0 and 1
 
     return smoothed
 
-def make_meta_controller_plots(meta_runs, baseline_runs, n=1, y_range=None):
-    path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/meta_plots'
-    all_keys = set(list(meta_runs.keys()) + list(baseline_runs.keys()))
+def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None, meta_to_baseline_mapping=None):
+    all_keys = set(list(meta_runs.keys()))
     for game in all_keys:
         plt.clf()
         plt.hold(True)
         # baselines
         all_ys = []
-        for data in baseline_runs[game]:
+        bl_game = game if meta_to_baseline_mapping is None else meta_to_baseline_mapping[game]
+        for data in baseline_runs[bl_game]:
             print(len(data))
             print(len(data['cum_reward']))
             x = [time for time, J in data['cum_reward']]
@@ -381,6 +385,8 @@ def make_meta_controller_plots(meta_runs, baseline_runs, n=1, y_range=None):
             err = np.std(all_ys, axis=0)
             mean = np.mean(all_ys, axis=0)
             plt.plot(x, mean, color=color_mapping[reward], label=f'{reward} rewards')
+            plt.xlabel('Timesteps')
+            plt.ylabel('Score')
             plt.fill_between(x, mean-err, mean+err, color=color_mapping[reward], alpha=0.5)
         plt.legend()
         plt.hold(False)
@@ -397,14 +403,24 @@ if __name__ == '__main__':
     #load_tb_data(path_pacman, ['time', 'cum_reward'])
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
-    cut_down_meta('/home/crgrimm/minimal_q_learning/all_meta_runs', '/home/crgrimm/minimal_q_learning/all_cut_down_meta')
-    #data = cut_down_baseline_data()
-    #data = cut_down_meta_data('baselines_restricted', 'cut_down_baselines_restricted', '^baseline.+?$')
-    #data = cut_down_meta_data('baselines_restricted', 'cut_down_baselines_restricted', '^.+?restricted.+?$')
-    #meta_runs, baseline_runs = load_metacontroller_and_baseline_data('cut_down_baselines_restricted',
-    #                                                                 'cut_down_meta_restricted',
-    #                                                                 single_game='seaquest_restricted')
-    #make_meta_controller_plots(meta_runs, baseline_runs)
+    #cut_down_meta(
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/restricted_with_base_runs', 
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs', 
+    #  '^.+?with\_base_.+?$')
+    meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines_restricted',
+       r'^baseline\_(.+)\_(\d+)$',
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs',
+       r'^(.+)\_(\d+)reward\_(\d+)$',
+      meta_name='seaquest_restricted_with_base',
+      baseline_name='seaquest_restricted')
+    make_meta_controller_plots(
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
+      meta_runs, 
+      baseline_runs,
+      meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
+                                'pacman_restricted_with_base': 'pacman_restricted',
+                                'seaquest_restricted_with_base': 'seaquest_restricted'})
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
     #merged_data = load_and_merge_data()
     #make_J_disentangled_plots(merged_data)
