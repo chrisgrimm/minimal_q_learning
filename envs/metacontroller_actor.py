@@ -12,16 +12,27 @@ class MetaEnvironment(object):
                  q_learners: List[QLearnerAgent],
                  stop_at_reward : bool,
                  repeat : int,
-                 allow_base_actions : bool = False):
+                 allow_base_actions : bool = False,
+                 icf_policies=None,
+                 num_icf_policies=None):
         self.env = env
         self.allow_base_actions = allow_base_actions
-        self.q_learners = q_learners
-        self.action_space = Discrete(len(q_learners) + (env.action_space.n if allow_base_actions else 0))
+        self.icf_policies = icf_policies
+        if icf_policies is None:
+            self.q_learners = q_learners
+            self.action_space = Discrete(len(q_learners) + (env.action_space.n if allow_base_actions else 0))
+            self.r_net = r_net
+        else:
+            self.num_icf_policies = num_icf_policies
+            self.action_space = Discrete(num_icf_policies + (env.action_space.n if allow_base_actions else 0))
         self.observation_space = env.observation_space
         self.current_obs = np.copy(self.env.get_obs())
         self.stop_at_reward = stop_at_reward
         self.repeat = repeat
-        self.r_net = r_net
+        # should protect us against accidentally passing in both modes.
+        assert not ((self.icf_policies is not None) and (self.q_learners is not None))
+        self.offset = self.num_icf_policies if self.icf_policies is not None else len(self.q_learners)
+
 
     def step(self, a):
         total_reward = 0
@@ -29,10 +40,15 @@ class MetaEnvironment(object):
         internal_terminal = False
 
         # when we allow base actions, the base actions have a repeat on them.
-        if self.allow_base_actions and a < len(self.q_learners):
+        if self.allow_base_actions and a < self.offset:
             for i in range(self.repeat):
                 # if we allow base actions the first len(self.q_learners) actions are meta-actions, rest are base.
-                actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+                if self.icf_policies is not None:
+                    actual_action = self.q_learners[a].get_action([self.current_obs])[0]
+                else:
+                    action_probs = self.icf_policies([self.current_obs.flatten() / 255.])[0] # [num_factors, num_actions]
+                    policy = action_probs[a]
+                    actual_action = np.random.choice(list(range(self.env.action_space.n)), p=policy)
                 sp, r, t, info = self.env.step(actual_action)
                 self.current_obs = np.copy(sp)
                 internal_terminal = info['internal_terminal'] or internal_terminal
@@ -40,15 +56,12 @@ class MetaEnvironment(object):
                 terminal = terminal or t
                 if self.stop_at_reward and r == 1:
                     break
-                    #reward_part = self.r_net.get_reward(sp, 1)[a]
-                    #if reward_part > 0.99:
-                    #    break
                 if terminal:
                     break
         else:
 
             if self.allow_base_actions:
-                actual_action = a - len(self.q_learners)
+                actual_action = a - self.offset
             else:
                 actual_action = a
             sp, r, t, info = self.env.step(actual_action)

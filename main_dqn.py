@@ -14,6 +14,7 @@ import argparse
 from random import choice
 import cv2
 import os
+import dill
 
 import numpy as np
 from envs.atari.threaded_environment import ThreadedEnvironment
@@ -38,7 +39,8 @@ parser.add_argument('--allow-base-actions', action='store_true')
 parser.add_argument('--stop-at-reward', action='store_true')
 parser.add_argument('--run-dir', type=str, default='runs')
 parser.add_argument('--augment-trajectories', action='store_true')
-
+parser.add_argument('--use-icf-policy', action='store_true')
+parser.add_argument('--icf-policy-path', type=str, default=None)
 args = parser.parse_args()
 
 mode = args.mode
@@ -74,21 +76,43 @@ elif mode == 'SOKOBAN_NO_TOP':
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
+def load_icf_policies(icf_policy_path):
+    with open(os.path.join(icf_policy_path, 'policy.pickle'), 'rb') as f:
+        policy = dill.load(f)
+    return policy
+
 if args.meta:
-    assert args.num_partitions is not None
-    assert args.restore_path is not None
-    reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
-                                        base_env.action_space.n, 'reward_net', traj_len=10,
-                                        num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
-    reward_net.restore(args.restore_path, 'reward_net.ckpt')
-    env = MetaEnvironment(base_env, reward_net, reward_net.Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions)
+
+    if not args.use_icf_policy:
+        assert args.num_partitions is not None
+        assert args.restore_path is not None
+        reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
+                                            base_env.action_space.n, 'reward_net', traj_len=10,
+                                            num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
+        reward_net.restore(args.restore_path, 'reward_net.ckpt')
+        icf_policies = None
+    else:
+        assert args.num_partitions is not None
+        assert args.icf_policy_path is not None
+        icf_policies = load_icf_policies(args.icf_policy_path)
+        reward_net = None
+        Q_networks = None
+
+    env = MetaEnvironment(base_env, reward_net, reward_net.Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, icf_policies=icf_policies, num_icf_policies=2*args.num_partitions)
 elif args.augment_trajectories:
-    assert args.num_partitions is not None
-    assert args.restore_path is not None
-    reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
-                                        base_env.action_space.n, 'reward_net', traj_len=10,
-                                        num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
-    reward_net.restore(args.restore_path, 'reward_net.ckpt')
+
+    if not args.use_icf_policy:
+        assert args.num_partitions is not None
+        assert args.restore_path is not None
+        reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
+                                            base_env.action_space.n, 'reward_net', traj_len=10,
+                                            num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
+        reward_net.restore(args.restore_path, 'reward_net.ckpt')
+    else:
+        assert args.num_partitions is not None
+        assert args.icf_policy_path is not None
+        icf_policies = load_icf_policies(args.icf_policy_path)
+
     env = base_env
 else:
     env = base_env
