@@ -169,7 +169,7 @@ for time in range(start_time, num_steps):
 
     if args.augment_trajectories and (time % augment_frequency == 0):
         s = env.reset()
-        policy = np.random.randint(0, len(reward_net.num_partitions))
+        policy = np.random.randint(0, reward_net.num_partitions)
         for i in range(augment_steps):
             a = reward_net.Q_networks[policy].get_action([s])[0]
             sp, r, t, _ = env.step(a)
