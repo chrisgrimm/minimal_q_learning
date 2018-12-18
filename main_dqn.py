@@ -37,6 +37,7 @@ parser.add_argument('--restricted-reward', action='store_true')
 parser.add_argument('--allow-base-actions', action='store_true')
 parser.add_argument('--stop-at-reward', action='store_true')
 parser.add_argument('--run-dir', type=str, default='runs')
+parser.add_argument('--augment-trajectories', action='store_true')
 
 args = parser.parse_args()
 
@@ -81,6 +82,14 @@ if args.meta:
                                         num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
     reward_net.restore(args.restore_path, 'reward_net.ckpt')
     env = MetaEnvironment(base_env, reward_net, reward_net.Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions)
+elif args.augment_trajectories:
+    assert args.num_partitions is not None
+    assert args.restore_path is not None
+    reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
+                                        base_env.action_space.n, 'reward_net', traj_len=10,
+                                        num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
+    reward_net.restore(args.restore_path, 'reward_net.ckpt')
+    env = base_env
 else:
     env = base_env
 
@@ -114,6 +123,8 @@ num_epsilon_steps = 1000000
 num_steps = 10000000
 evaluation_frequency = 1000
 start_time = 0
+augment_frequency = 10000
+augment_steps = 100
 
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 
@@ -155,6 +166,19 @@ for time in range(start_time, num_steps):
         s = env.reset()
     else:
         s = sp
+
+    if args.augment_trajectories and (time % augment_frequency == 0):
+        s = env.reset()
+        policy = np.random.randint(0, len(reward_net.num_partitions))
+        for i in range(augment_steps):
+            a = reward_net.Q_networks[policy].get_action([s])[0]
+            sp, r, t, _ = env.step(a)
+            buffer.append(s, a, r, sp, t)
+            if t:
+                s = env.reset()
+            else:
+                s = sp
+
 
     if time >= learning_starts:
 
