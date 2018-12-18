@@ -137,7 +137,6 @@ epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 def get_action(s, eval=False, augmented=False, augment_policy=None):
     global epsilon
     if augmented:
-        print('AUGMENTED!')
         return reward_net.Q_networks[augment_policy].get_action([s])[0]
     effective_epsilon = min_epsilon if eval else epsilon
     is_random = np.random.uniform(0, 1) < effective_epsilon
