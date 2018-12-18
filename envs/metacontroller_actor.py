@@ -25,12 +25,12 @@ class MetaEnvironment(object):
         else:
             self.num_icf_policies = num_icf_policies
             self.action_space = Discrete(num_icf_policies + (env.action_space.n if allow_base_actions else 0))
+            self.q_learners = None
         self.observation_space = env.observation_space
         self.current_obs = np.copy(self.env.get_obs())
         self.stop_at_reward = stop_at_reward
         self.repeat = repeat
         # should protect us against accidentally passing in both modes.
-        assert not ((self.icf_policies is not None) and (self.q_learners is not None))
         self.offset = self.num_icf_policies if self.icf_policies is not None else len(self.q_learners)
 
 
