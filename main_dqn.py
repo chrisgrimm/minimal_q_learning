@@ -211,17 +211,6 @@ for time in range(start_time, num_steps):
         should_augment = np.random.uniform(0, 1) < prob_augment
         augment_policy_num = np.random.randint(0, policy_num_offset)
 
-    if args.augment_trajectories and (time % augment_frequency == 0):
-        s = env.reset()
-        policy = np.random.randint(0, reward_net.num_partitions)
-        for i in range(augment_steps):
-            a = reward_net.Q_networks[policy].get_action([s])[0]
-            sp, r, t, _ = env.step(a)
-            buffer.append(s, a, r, sp, t)
-            if t:
-                s = env.reset()
-            else:
-                s = sp
 
 
     if time >= learning_starts:
