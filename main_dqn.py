@@ -153,7 +153,7 @@ augment_steps = 100
 
 prob_augment = 0.1
 should_augment = False
-augment_policy_num = np.random.randint(0, len(reward_net.Q_networks))
+augment_policy_num = np.random.randint(0, env.offset)
 
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 
@@ -203,7 +203,7 @@ for time in range(start_time, num_steps):
 
     if args.augment_trajectories and info['internal_terminal']:
         should_augment = np.random.uniform(0, 1) < prob_augment
-        augment_policy_num = np.random.randint(0, len(reward_net.Q_networks))
+        augment_policy_num = np.random.randint(0, env.offset)
 
     if args.augment_trajectories and (time % augment_frequency == 0):
         s = env.reset()
