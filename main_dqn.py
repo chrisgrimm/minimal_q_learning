@@ -90,6 +90,7 @@ if args.meta:
                                             base_env.action_space.n, 'reward_net', traj_len=10,
                                             num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
         reward_net.restore(args.restore_path, 'reward_net.ckpt')
+        Q_networks = reward_net.Q_networks
         icf_policies = None
     else:
         assert args.num_partitions is not None
@@ -98,7 +99,7 @@ if args.meta:
         reward_net = None
         Q_networks = None
 
-    env = MetaEnvironment(base_env, reward_net, reward_net.Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, icf_policies=icf_policies, num_icf_policies=2*args.num_partitions)
+    env = MetaEnvironment(base_env, reward_net, Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, icf_policies=icf_policies, num_icf_policies=2*args.num_partitions)
 elif args.augment_trajectories:
 
     if not args.use_icf_policy:
