@@ -126,12 +126,19 @@ start_time = 0
 augment_frequency = 10000
 augment_steps = 100
 
+prob_augment = 0.1
+should_augment = False
+augment_policy_num = np.random.randint(0, len(reward_net.Q_networks))
+
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 
 # indices of current policy
 
-def get_action(s, eval=False):
+def get_action(s, eval=False, augmented=False, augment_policy=None):
     global epsilon
+    if augmented:
+        print('AUGMENTED!')
+        return reward_net.Q_networks[augment_policy].get_action([s])[0]
     effective_epsilon = min_epsilon if eval else epsilon
     is_random = np.random.uniform(0, 1) < effective_epsilon
     if is_random:
@@ -139,6 +146,8 @@ def get_action(s, eval=False):
     else:
         action = dqn.get_action([s])[0]
     return action
+
+
 
 # this is a better performance metric. assesses the reward gained over an episode rather than for an arbitrary number of steps.
 def evaluate_performance(env, q_network: QLearnerAgent):
@@ -157,15 +166,20 @@ def evaluate_performance(env, q_network: QLearnerAgent):
 
 for time in range(start_time, num_steps):
 
-    a = get_action(s)
-    sp, r, t, _ = env.step(a)
+    a = get_action(s, augmented=should_augment, augment_policy=augment_policy_num)
+    sp, r, t, info = env.step(a)
 
     buffer.append(s, a, r, sp, t)
+
 
     if t:
         s = env.reset()
     else:
         s = sp
+
+    if args.augment_trajectories and info['internal_terminal']:
+        should_augment = np.random.uniform(0, 1) < prob_augment
+        augment_policy_num = np.random.randint(0, len(reward_net.Q_networks))
 
     if args.augment_trajectories and (time % augment_frequency == 0):
         s = env.reset()
