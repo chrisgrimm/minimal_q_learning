@@ -158,7 +158,7 @@ try:
     policy_num_offset = env.offset
 except AttributeError:
     policy_num_offset = len(reward_net.Q_networks)
-except AttributeError:
+except:
     policy_num_offset=1
 
 augment_policy_num = np.random.randint(0, policy_num_offset)
