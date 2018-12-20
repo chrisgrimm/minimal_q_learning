@@ -68,7 +68,7 @@ class MetaEnvironment(object):
 
     def step(self, a):
         # if we are allowing base actions and we have selected a base-action, perform it
-        if self.allow_base_actions and a > self.offset:
+        if self.allow_base_actions and a >= self.offset:
             actual_action = a - self.offset
             sp, r, t, info = self.env.step(actual_action)
         else:
