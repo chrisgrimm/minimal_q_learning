@@ -237,4 +237,3 @@ for time in range(start_time, num_steps):
         LOG.add_line(f'time', time)
         # decrement epsilon appropriately
         epsilon = max(min_epsilon, epsilon - epsilon_delta)
-

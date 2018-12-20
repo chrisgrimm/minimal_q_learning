@@ -34,45 +34,47 @@ class MetaEnvironment(object):
         self.offset = self.num_icf_policies if self.icf_policies is not None else len(self.q_learners)
 
 
-    def step(self, a):
+
+    # get the corresponding base action for the meta action: either using learned reward policies or ICF
+    def get_base_action(self, meta_action):
+        if self.icf_policies is not None:
+            action_probs = self.icf_policies([self.current_obs.flatten() / 255.])[0]  # [num_factors, num_actions]
+            policy = action_probs[meta_action]
+            return np.random.choice(list(range(self.env.action_space.n)), p=policy)
+        else:
+            return self.q_learners[meta_action].get_action([self.current_obs])[0]
+
+
+    # here meta_actions are 0-len(Q_learners)
+    def do_repeated_meta_action(self, meta_action):
         total_reward = 0
         terminal = False
         internal_terminal = False
-
-        # when we allow base actions, the base actions have a repeat on them.
-        if self.allow_base_actions and a < self.offset:
-            for i in range(self.repeat):
-                # if we allow base actions the first len(self.q_learners) actions are meta-actions, rest are base.
-                if self.icf_policies is not None:
-                    actual_action = self.q_learners[a].get_action([self.current_obs])[0]
-                else:
-                    action_probs = self.icf_policies([self.current_obs.flatten() / 255.])[0] # [num_factors, num_actions]
-                    policy = action_probs[a]
-                    actual_action = np.random.choice(list(range(self.env.action_space.n)), p=policy)
-                sp, r, t, info = self.env.step(actual_action)
-                self.current_obs = np.copy(sp)
-                internal_terminal = info['internal_terminal'] or internal_terminal
-                total_reward += r
-                terminal = terminal or t
-                if self.stop_at_reward and r == 1:
-                    break
-                if terminal:
-                    break
-        else:
-
-            if self.allow_base_actions:
-                actual_action = a - self.offset
-            else:
-                actual_action = a
-            sp, r, t, info = self.env.step(actual_action)
+        for i in range(self.repeat):
+            a = self.get_base_action(meta_action)
+            sp, r, t, info = self.env.step(a)
             self.current_obs = np.copy(sp)
             internal_terminal = info['internal_terminal'] or internal_terminal
             total_reward += r
             terminal = terminal or t
-        assert 'a' not in info
-        info['a'] = actual_action
-        info['internal_terminal'] = internal_terminal
+            if self.stop_at_reward and r == 1:
+                break
+            if terminal:
+                break
+
+        # TODO : is this going to be a problem
         return sp, total_reward, terminal, info
+
+
+    def step(self, a):
+        # if we are allowing base actions and we have selected a base-action, perform it
+        if self.allow_base_actions and a > self.offset:
+            actual_action = a - self.offset
+            sp, r, t, info = self.env.step(actual_action)
+        else:
+        # otherwise we have not selected a base action and need to execute the meta_action logic.
+            sp, r, t, info = self.do_repeated_meta_action(a)
+        return sp, r, t, info
 
     def reset(self):
         obs = self.env.reset()
