@@ -115,7 +115,30 @@ def cut_down_baseline_data():
         with open(os.path.join(cut_down_path, dir), 'wb') as f:
             pickle.dump(data, f)
 
+def cut_down_data_new(fields, base_path, dest_path, regex, dont_repeat_work=True):
+    pool = Pool(processes=cpu_count())
+    files = [x for x in os.listdir(base_path) 
+             if re.match(regex, x) and os.path.isdir(os.path.join(base_path, x))]
+    for f in files:
+        run_path = os.path.join(base_path, f)
+        event_files = [x for x in os.listdir(run_path) if x.startswith('events')]
+        if len(event_files) != 1:
+            raise Exception(f'Found {len(event_files)} event files in {run_path}.')
+        event_file = event_files[0]
+        if os.path.isdir(os.path.join(dest_path, f)):
+            print(f'skipping {f}') 
+            continue
+        pool.apply_async(load_data_thread, args=(run_path, event_file, f, fields, dest_path))
+    pool.close()
+    pool.join()
 
+
+def load_data_thread(run_path, event_file, name, fields, dest_path):
+    print(f'Starting {name}!')
+    data = load_tb_data(os.path.join(run_path, event_file), fields)
+    with open(os.path.join(dest_path, name), 'wb') as f:
+        pickle.dump(data, f)
+    print(f'Finished {name}!')
 
 def cut_down_data(fields, dont_repeat_work=True,
                   base_path='/Users/chris/projects/q_learning/new_dqn_results/completed_runs/',
@@ -140,8 +163,7 @@ def cut_down_data(fields, dont_repeat_work=True,
 
 
 
-def load_cutdown_data(filter_regex=None):
-    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
+def load_cutdown_data(cut_down_path, filter_regex=None):
     names = os.listdir(cut_down_path)
     all_data = {}
     for name in tqdm.tqdm(names):
@@ -288,8 +310,8 @@ def merge_data(bin):
 
 
 
-def load_and_merge_data(filter_regex=None):
-    data = load_cutdown_data(filter_regex=filter_regex)
+def load_and_merge_data(cut_down_path, filter_regex=None):
+    data = load_cutdown_data(cut_down_path, filter_regex=filter_regex)
     bins = create_merging_bins(data)
     merged_data = {}
     for name, bin in bins.items():
@@ -303,8 +325,7 @@ def moving_average(a, n=3):
     return ret[n - 1:] / n
 
 
-def make_J_disentangled_plots(merged_data, n=2000):
-    path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/j_disentangled_plots'
+def make_J_disentangled_plots(path, merged_data, n=2000):
     game_bins = {}
     for (name, num_rewards, mult, run_num), data in merged_data.items():
         if (name, num_rewards) not in game_bins:
@@ -325,7 +346,7 @@ def make_J_disentangled_plots(merged_data, n=2000):
             y = moving_average(loss, n=n)
             #y = moving_average([J for time, J in data['J_disentangled']], n=n)
             plt.plot(x, y, label=f'A{run_num}', color=colors[run_num])
-        #plt.legend()
+        plt.legend()
         #plt.title('Disentanglement Score')
         plt.xlabel('Timesteps')
         plt.ylabel('Disentanglement Score')
@@ -401,26 +422,32 @@ if __name__ == '__main__':
     #path_pacman = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_pacman_1/events.out.tfevents.1542562393.rldl11'
     #path_seaquest = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_baselines2/baseline_seaquest_1/events.out.tfevents.1542562406.rldl11'
     #load_tb_data(path_pacman, ['time', 'cum_reward'])
+#def cut_down_data_new(fields, base_path, dest_path, regex, dont_repeat_work=True):
+    #cut_down_data_new(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'],
+    #                  '/home/crgrimm/minimal_q_learning/ALL_DATA/reward_learning_runs/',
+    #                  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down',
+    #                  '^.+?[58]reward.+?$',
+    #                  dont_repeat_work=False)
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #cut_down_meta(
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/restricted_with_base_runs', 
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs', 
     #  '^.+?with\_base_.+?$')
-    meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
-      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines_restricted',
-       r'^baseline\_(.+)\_(\d+)$',
-      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs',
-       r'^(.+)\_(\d+)reward\_(\d+)$',
-      meta_name='seaquest_restricted_with_base',
-      baseline_name='seaquest_restricted')
-    make_meta_controller_plots(
-      '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
-      meta_runs, 
-      baseline_runs,
-      meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
-                                'pacman_restricted_with_base': 'pacman_restricted',
-                                'seaquest_restricted_with_base': 'seaquest_restricted'})
+    #meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines_restricted',
+    #   r'^baseline\_(.+)\_(\d+)$',
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs',
+    #   r'^(.+)\_(\d+)reward\_(\d+)$',
+    #  meta_name='seaquest_restricted_with_base',
+    #  baseline_name='seaquest_restricted')
+    #make_meta_controller_plots(
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
+    #  meta_runs, 
+    #  baseline_runs,
+    #  meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
+    #                            'pacman_restricted_with_base': 'pacman_restricted',
+    #                            'seaquest_restricted_with_base': 'seaquest_restricted'})
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
-    #merged_data = load_and_merge_data()
-    #make_J_disentangled_plots(merged_data)
+    merged_data = load_and_merge_data('/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down')
+    make_J_disentangled_plots('/home/crgrimm/minimal_q_learning/ALL_DATA/disentangled_plots', merged_data)

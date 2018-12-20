@@ -32,6 +32,24 @@ def get_event_files_rsync(base_dir, regex):
     command = '; '.join(command_list)
     print(command)
 
+def get_weight_files_rsync(base_dir, regex):
+    hostname = subprocess.check_output('hostname').decode('utf-8').strip()
+    ssh_path = f'crgrimm@{hostname}.eecs.umich.edu:'
+    run_dirs = [x for x in os.listdir(base_dir)
+                if re.match(regex, x)]
+    command_list = []
+    for run_dir in run_dirs:
+        weights_path = os.path.join(base_dir, '.', run_dir, 'best_weights', '*')
+        rel_path = ssh_path + weights_path
+        command = f'rsync -r --relative {rel_path} .'
+        command_list.append(command)
+    command = '; '.join(command_list)
+    print(command)
 
-base_dir, regex = sys.argv[1], sys.argv[2]
-get_event_files_rsync(base_dir, regex)
+mode, base_dir, regex = sys.argv[1], sys.argv[2], sys.argv[3]
+if mode == 'events':
+    get_event_files_rsync(base_dir, regex)
+elif mode == 'weights':
+    get_weight_files_rsync(base_dir, regex)
+else:
+    raise Exception(f'Mode {mode} not in supported modes: "events", "weights".')
