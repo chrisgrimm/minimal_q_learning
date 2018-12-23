@@ -59,9 +59,9 @@ class MetaEnvironment(object):
             terminal = terminal or t
             if self.stop_at_reward and r == 1:
                 break
-            if terminal:
+            if terminal or internal_terminal:
                 break
-
+        info['internal_terminal'] = internal_terminal
         # TODO : is this going to be a problem
         return sp, total_reward, terminal, info
 
