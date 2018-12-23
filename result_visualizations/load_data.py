@@ -365,6 +365,7 @@ def smooth(scalars, weight):  # Weight between 0 and 1
 
 def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None, meta_to_baseline_mapping=None):
     all_keys = set(list(meta_runs.keys()))
+    resolution = 10000
     for game in all_keys:
         plt.clf()
         plt.hold(True)
@@ -374,14 +375,14 @@ def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None
         for data in baseline_runs[bl_game]:
             print(len(data))
             print(len(data['cum_reward']))
-            x = [time for time, J in data['cum_reward']]
-            y = smooth([J for time, J in data['cum_reward']], weight=0.95)
+            x = [time for time, J in data['cum_reward'] if time % resolution == 0][1:]
+            y = smooth([J for time, J in data['cum_reward'] if time % resolution == 0][1:], weight=0.95)
             print('shapes', len(data['cum_reward']), np.shape(y))
             all_ys.append(y)
 
         min_len = min([len(y) for y in all_ys])
         all_ys = [y[:min_len] for y in all_ys]
-
+        
         mean = np.mean(all_ys, axis=0)
         err = np.std(all_ys, axis=0)
         plt.plot(x[:min_len], mean, color='blue', label=f'baseline')
@@ -390,12 +391,12 @@ def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None
         plt.ylim()
         plt.fill_between(x[:min_len], mean-err, mean+err, color='blue', alpha=0.5)
 
-        color_mapping = {'2': 'red', '3': 'green', '4': 'orange'}
+        color_mapping = {'2': 'red', '3': 'green', '4': 'orange', '5': 'purple', '8': 'orange'}
         for reward, data_runs in meta_runs[game].items():
             all_ys = []
             for i, data in enumerate(data_runs):
-                x = [time for time, J in data['cum_reward']]
-                y = smooth([J for time, J in data['cum_reward']], weight=0.95)
+                x = [time for time, J in data['cum_reward'] if time % resolution == 0][1:]
+                y = smooth([J for time, J in data['cum_reward'] if time % resolution == 0][1:], weight=0.95)
                 all_ys.append(y)
                 print('meta_run', i, reward, np.shape(y))
                 #plt.plot(x, y, color=color_mapping[reward], label=f'{reward} rewards')
@@ -431,23 +432,23 @@ if __name__ == '__main__':
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #cut_down_meta(
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/restricted_with_base_runs', 
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs', 
-    #  '^.+?with\_base_.+?$')
-    #meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines_restricted',
-    #   r'^baseline\_(.+)\_(\d+)$',
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_restricted_with_base_runs',
-    #   r'^(.+)\_(\d+)reward\_(\d+)$',
-    #  meta_name='seaquest_restricted_with_base',
-    #  baseline_name='seaquest_restricted')
-    #make_meta_controller_plots(
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
-    #  meta_runs, 
-    #  baseline_runs,
-    #  meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
-    #                            'pacman_restricted_with_base': 'pacman_restricted',
-    #                            'seaquest_restricted_with_base': 'seaquest_restricted'})
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/meta_runs', 
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta', 
+    #  '^.+?[58]reward.+?')
+    meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines',
+       r'^baseline\_(.+)\_(\d+)$',
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta',
+       r'^meta\_(.+)\_(\d+)reward\_10mult\_(\d+)$',
+      meta_name='seaquest',
+      baseline_name='seaquest')
+    make_meta_controller_plots(
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
+      meta_runs, 
+      baseline_runs)
+      #meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
+      #                          'pacman_restricted_with_base': 'pacman_restricted',
+      #                          'seaquest_restricted_with_base': 'seaquest_restricted'})
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
-    merged_data = load_and_merge_data('/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down')
-    make_J_disentangled_plots('/home/crgrimm/minimal_q_learning/ALL_DATA/disentangled_plots', merged_data)
+    #merged_data = load_and_merge_data('/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down')
+    #make_J_disentangled_plots('/home/crgrimm/minimal_q_learning/ALL_DATA/disentangled_plots', merged_data)
