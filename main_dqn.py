@@ -186,8 +186,9 @@ def evaluate_performance(env, q_network: QLearnerAgent):
     s = env.reset()
     cumulative_reward = 0
     internal_terminal = False
-    max_timesteps = 10000
-    for _ in range(max_timesteps):
+    #max_timesteps = 10000
+    #for _ in range(max_timesteps):
+    while True:
         a = get_action(s, eval=True)
         #a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, info = env.step(a)
