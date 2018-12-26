@@ -187,7 +187,7 @@ def get_action(s, eval=False, augmented=False, augment_policy=None):
             ratio = args.hierarchical_eps_greedy_meta_ratio
             num_base_actions = env.env.action_space.n
             probs = ([ratio * 1/num_meta_actions] * num_meta_actions) + ([(1 - ratio) * 1/num_base_actions] * num_base_actions)
-            action = np.random.choice(list(range(env.action_space)), p=probs)
+            action = np.random.choice(list(range(env.action_space.n)), p=probs)
         else:
             action = np.random.randint(0, env.action_space.n)
     else:
