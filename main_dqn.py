@@ -42,7 +42,13 @@ parser.add_argument('--augment-trajectories', action='store_true')
 parser.add_argument('--prob-augment', type=float, default=0.1)
 parser.add_argument('--use-icf-policy', action='store_true')
 parser.add_argument('--icf-policy-path', type=str, default=None)
+parser.add_argument('--hierarchical-eps-greedy', action='store_true')
+parser.add_argument('--hierarchical-eps-greedy-meta-ratio', type=float, default=0.5)
 args = parser.parse_args()
+
+if args.hierarchical_eps_greedy:
+    # must use meta controller with base actions.
+    assert args.meta and args.allow_base_actions
 
 mode = args.mode
 visual = args.visual
@@ -176,9 +182,17 @@ def get_action(s, eval=False, augmented=False, augment_policy=None):
     effective_epsilon = min_epsilon if eval else epsilon
     is_random = np.random.uniform(0, 1) < effective_epsilon
     if is_random:
-        action = np.random.randint(0, env.action_space.n)
+        if args.hierarchical_eps_greedy:
+            num_meta_actions = args.num_partitions
+            ratio = args.hierarchical_eps_greedy_meta_ratio
+            num_base_actions = env.env.action_space
+            probs = ([ratio * 1/num_meta_actions] * num_meta_actions) + ([(1 - ratio) * 1/num_base_actions] * num_base_actions)
+            action = np.random.choice(list(range(env.action_space)), p=probs)
+        else:
+            action = np.random.randint(0, env.action_space.n)
     else:
         action = dqn.get_action([s])[0]
+
     return action
 
 
