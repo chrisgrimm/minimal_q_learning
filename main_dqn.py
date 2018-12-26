@@ -39,6 +39,7 @@ parser.add_argument('--allow-base-actions', action='store_true')
 parser.add_argument('--stop-at-reward', action='store_true')
 parser.add_argument('--run-dir', type=str, default='runs')
 parser.add_argument('--augment-trajectories', action='store_true')
+parser.add_argument('--prob-augment', type=float, default=0.1)
 parser.add_argument('--use-icf-policy', action='store_true')
 parser.add_argument('--icf-policy-path', type=str, default=None)
 args = parser.parse_args()
@@ -151,7 +152,7 @@ start_time = 0
 augment_frequency = 10000
 augment_steps = 100
 
-prob_augment = 0.1
+prob_augment = args.prob_augment
 should_augment = False
 
 try:
