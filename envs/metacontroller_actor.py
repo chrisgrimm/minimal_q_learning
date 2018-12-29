@@ -38,7 +38,8 @@ class MetaEnvironment(object):
     # get the corresponding base action for the meta action: either using learned reward policies or ICF
     def get_base_action(self, meta_action):
         if self.icf_policies is not None:
-            action_probs = self.icf_policies([self.current_obs.flatten() / 255.])[0]  # [num_factors, num_actions]
+            processed_state = np.array([self.current_obs.flatten() / 255.]).astype(np.float32)
+            action_probs = self.icf_policies(processed_state)[0]  # [num_factors, num_actions]
             policy = action_probs[meta_action]
             return np.random.choice(list(range(self.env.action_space.n)), p=policy)
         else:
