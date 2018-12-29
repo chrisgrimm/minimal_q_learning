@@ -183,7 +183,7 @@ def get_action(s, eval=False, augmented=False, augment_policy=None):
     is_random = np.random.uniform(0, 1) < effective_epsilon
     if is_random:
         if args.hierarchical_eps_greedy:
-            num_meta_actions = args.num_partitions
+            num_meta_actions = env.offset
             ratio = args.hierarchical_eps_greedy_meta_ratio
             num_base_actions = env.env.action_space.n
             probs = ([ratio * 1/num_meta_actions] * num_meta_actions) + ([(1 - ratio) * 1/num_base_actions] * num_base_actions)
