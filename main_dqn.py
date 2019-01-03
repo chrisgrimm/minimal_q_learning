@@ -253,6 +253,6 @@ for time in range(start_time, num_steps):
 
         log_string = f'({time}) Q_loss: {q_loss}, ({epsilon})'
         print(log_string)
-        LOG.add_line(f'time', time)
+        #LOG.add_line(f'time', time)
         # decrement epsilon appropriately
         epsilon = max(min_epsilon, epsilon - epsilon_delta)
