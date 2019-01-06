@@ -142,7 +142,7 @@ buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
-config = tf.ConfigProto(allow_soft_placement=True, device_count={'GPU': args.num_gpu})
+config = tf.ConfigProto(allow_soft_placement=True, device_count={'GPU': args.gpu_num})
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 with sess.as_default():
