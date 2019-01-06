@@ -141,6 +141,9 @@ reward_buffer = ReplayBuffer(100000)
 
 with sess.as_default():
     dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
+
+sess.run(tf.global_variables_initializer())
+
 batch_size = 32
 s = env.reset()
 episode_reward = 0
