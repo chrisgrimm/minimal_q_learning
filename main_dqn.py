@@ -14,6 +14,7 @@ import argparse
 from random import choice
 import cv2
 import os
+import tensorflow as tf
 import dill
 
 import numpy as np
@@ -141,7 +142,11 @@ buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
-dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
+config = tf.ConfigProto(allow_soft_placement=True, device_count={'GPU': args.num_gpu})
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+with sess.as_default():
+    dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
 batch_size = 32
 s = env.reset()
 episode_reward = 0
