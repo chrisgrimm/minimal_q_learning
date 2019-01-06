@@ -1,18 +1,7 @@
-from random import choice
-import numpy as np
-from replay_buffer import ReplayBuffer
-from envs.block_world.block_pushing_domain import BlockPushingDomain
-from envs.atari.simple_assault import SimpleAssault
-from reward_network import RewardPartitionNetwork
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization
-import argparse
-from utils import LOG, build_directory_structure, add_implicit_name_arg
-from baselines.deepq.experiments.training_wrapper import make_dqn
+from utils import add_implicit_name_arg
 from envs.atari.atari_wrapper import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
 from envs.metacontroller_actor import MetaEnvironment
 import argparse
-from random import choice
-import cv2
 import os
 import tensorflow as tf
 import dill
@@ -55,6 +44,13 @@ mode = args.mode
 visual = args.visual
 
 observation_mode = 'image' if visual else 'vector'
+
+config = tf.ConfigProto(allow_soft_placement=True, device_count={'GPU': args.gpu_num})
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+with sess.as_default():
+    from baselines.deepq.experiments.training_wrapper import make_dqn
+
 
 
 if mode == 'ASSAULT':
@@ -142,9 +138,7 @@ buffer = ReplayBuffer(100000)
 
 reward_buffer = ReplayBuffer(100000)
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
-config = tf.ConfigProto(allow_soft_placement=True, device_count={'GPU': args.gpu_num})
-config.gpu_options.allow_growth = True
-sess = tf.Session(config=config)
+
 with sess.as_default():
     dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
 batch_size = 32
