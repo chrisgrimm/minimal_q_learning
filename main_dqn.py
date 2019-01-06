@@ -139,10 +139,14 @@ buffer = ReplayBuffer(100000)
 reward_buffer = ReplayBuffer(100000)
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
+sess.run(tf.global_variables_initializer())
+sess.run(tf.local_variables_initializer())
 with sess.as_default():
     dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
 
 sess.run(tf.global_variables_initializer())
+sess.run(tf.local_variables_initializer())
+
 
 batch_size = 32
 s = env.reset()
