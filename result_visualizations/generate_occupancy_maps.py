@@ -8,6 +8,7 @@ from envs.atari.atari_wrapper import PacmanWrapper, AssaultWrapper, QBertWrapper
 from baselines.deepq.experiments.training_wrapper import QNetworkTrainingWrapper
 from reward_network import RewardPartitionNetwork
 import gc
+import dill
 
 
 def match_by_color(frame: np.ndarray, colors, threshold):
@@ -52,7 +53,34 @@ seaquest_colors = [
 seaquest_threshold = 0.005
 
 
-def compute_policy_histogram(agent: QNetworkTrainingWrapper, env: AtariWrapper, target_colors, target_threshold):
+class Agent(object):
+    def get_action(self, s):
+        raise NotImplemented
+
+class RD_Agent(Agent):
+
+    def __init__(self, q_net : QNetworkTrainingWrapper):
+        self.q_net = q_net
+
+    def get_action(self, s):
+        return self.q_net.get_action([s])[0]
+
+class ICF_Agent(Agent):
+
+    def __init__(self, icf_policies, policy_index, num_env_actions):
+        self.icf_policies = icf_policies
+        self.policy_index = policy_index
+        self.num_env_actions = num_env_actions
+
+    def get_action(self, s):
+        processed_state = np.array([s / 255.]).astype(np.float32)
+        action_probs = self.icf_policies(processed_state)[0]  # [num_factors, num_actions]
+        policy = action_probs[self.policy_index]
+        return np.random.choice(list(range(self.num_env_actions)), p=policy)
+
+
+
+def compute_policy_histogram(agent: Agent, env: AtariWrapper, target_colors, target_threshold):
     s = env.reset()
     s_unprocessed = env.get_unprocessed_obs()
     histogram = np.zeros(shape=s_unprocessed.shape[:2], dtype=np.float32)
@@ -63,7 +91,7 @@ def compute_policy_histogram(agent: QNetworkTrainingWrapper, env: AtariWrapper, 
         if np.random.uniform(0,1) < 0.01:
             a = np.random.randint(0, env.action_space.n)
         else:
-            a = agent.get_action([s])[0]
+            a = agent.get_action(s)
         s, r, t, info = env.step(a)
         s_unprocessed = env.get_unprocessed_obs()
         if t:
@@ -149,6 +177,61 @@ def compute_occupancy_maps(run_name):
         cv2.imwrite(name, merged)
     #reward_net.clean()
 
+
+def compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward):
+    num_rewards = get_num_rewards(run_name)
+    game = get_game(run_name)
+    (colors, threshold, EnvClass) = game_binding[game]
+    for reward_idx in range(num_rewards):
+        env = EnvClass()
+        agent = get_agent_for_env_and_reward(env, num_rewards, reward_idx)
+        histogram = compute_policy_histogram(agent, env, colors, threshold)
+        image = get_environment_image(env)
+        merged = merge_histogram_and_env_image(histogram, image)
+        write_path = os.path.join(dest_path, run_name+f'_reward{reward_idx}_occupancy.png')
+        cv2.imwrite(write_path, merged)
+
+def compute_occupancy_RD(run_dir, run_name, dest_path, game):
+    def get_num_rewards(name):
+        return int(re.match(r'^.+?(\d+)reward.+?$', name).groups()[0])
+
+
+    # TODO
+    def get_game(run_name):
+        return re.match()
+
+    def get_agent_for_env_and_reward(env,  num_rewards, reward_idx):
+        weights_path = os.path.join(run_dir, run_name, 'best_weights')
+        reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
+                                            env.action_space.n, 'reward_net', traj_len=10, gpu_num=-1,
+                                            use_gpu=False, num_visual_channels=9, visual=True)
+        reward_net.restore(weights_path, 'reward_net.ckpt')
+        return RD_Agent(reward_net.Q_networks[reward_idx])
+
+    compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward)
+
+def compute_occupancy_ICF(run_dir, run_name, dest_path):
+    def get_num_rewards(name):
+        return int(re.match(r'^.+?(\d+)reward.+?$', name).groups()[0])
+
+    # TODO
+    def get_game(run_name):
+        return re.match('^(.+?)\_\d.+?$', run_name).groups()[0]
+
+    def get_agent_for_env_and_reward(env, num_rewards, reward_idx):
+        icf_policy_path = os.path.join(run_dir, run_name)
+        with open(os.path.join(icf_policy_path, 'policy.pickle'), 'rb') as f:
+            policy = dill.load(f)
+        return ICF_Agent(policy, reward_idx, env.action_space.n)
+
+    compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward)
+
+
+
+
+
+
+
 def get_environment_image(env):
     env.reset()
     num_steps = 100
@@ -181,24 +264,33 @@ def compute_all_occupancy_maps():
 
 
 
-def generate_command(regex):
-    weights_path = '/Users/chris/projects/q_learning/new_dqn_results/new_weights'
-    all_runs = [x for x in os.listdir(weights_path)
-                if re.match(regex, x)]
+def generate_command(run_dir, regex, mode, dest_path):
+    assert mode in ['ICF', 'RD']
+    all_runs = [x for x in os.listdir(run_dir) if re.match(regex, x)]
+
     command = ''
-    for run in all_runs:
-        command += f'PYTHONPATH=.:~/projects/baselines python result_visualizations/generate_occupancy_maps.py {run}; '
+    for name in all_runs:
+        command += f'PYTHONPATH=.:~/baselines:~/ICF_copy/DL/ICF_simple/ python result_visualizations/generate_occupancy_maps.py {name} {run_dir} {regex} {mode} {dest_path}; '
     print(command)
 
 
 if __name__ == '__main__':
     import sys
     name = sys.argv[1]
+    run_dir = sys.argv[2]
+    regex = sys.argv[3]
+    mode = sys.argv[4]
+    dest_path = sys.argv[5]
     if name == 'make_command':
-        regex = sys.argv[2]
-        generate_command(regex)
+        generate_command(run_dir, regex, mode, dest_path)
     else:
-        compute_occupancy_maps(name)
+        if mode == 'ICF':
+            compute_occupancy_ICF(run_dir, name, dest_path)
+        elif mode == 'RD':
+            compute_occupancy_RD(run_dir, name, dest_path)
+        else:
+            raise Exception(f'Unrecognized mode {mode}.')
+
     #compute_occupancy_maps('assault_2reward_10mult_1')
     #compute_all_occupancy_maps()
     #env = QBertWrapper()
