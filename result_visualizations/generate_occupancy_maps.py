@@ -73,9 +73,9 @@ class ICF_Agent(Agent):
         self.num_env_actions = num_env_actions
 
     def get_action(self, s):
-        processed_state = np.array([s / 255.]).flatten().astype(np.float32)
+        processed_state = np.array([s.flatten() / 255.]).astype(np.float32)
         print('processed_state', processed_state.shape)
-        action_probs = self.icf_policies(processed_state)[0]  # [num_factors, num_actions]
+        action_probs = self.icf_policies([processed_state])[0]  # [num_factors, num_actions]
         policy = action_probs[self.policy_index]
         return np.random.choice(list(range(self.num_env_actions)), p=policy)
 
