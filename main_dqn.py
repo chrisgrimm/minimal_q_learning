@@ -100,8 +100,9 @@ if args.meta:
     else:
         assert args.num_partitions is not None
         assert args.icf_policy_path is not None
-        icf_policies = load_icf_policies(args.icf_policy_path)
+        #icf_policies = load_icf_policies(args.icf_policy_path)
         tf_icf_agent = ICF_Policy(2*args.num_partitions, base_env.action_space.n, 'tf_icf')
+        tf_icf_agent.restore(os.path.join(args.icf_policy_path, 'converted_weights.ckpt'))
         reward_net = None
         Q_networks = None
 
