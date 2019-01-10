@@ -13,12 +13,12 @@ class MetaEnvironment(object):
                  stop_at_reward : bool,
                  repeat : int,
                  allow_base_actions : bool = False,
-                 icf_policies=None,
+                 tf_icf_agent=None,
                  num_icf_policies=None):
         self.env = env
         self.allow_base_actions = allow_base_actions
-        self.icf_policies = icf_policies
-        if icf_policies is None:
+        self.tf_icf_agent = tf_icf_agent
+        if tf_icf_agent is None:
             self.q_learners = q_learners
             self.action_space = Discrete(len(q_learners) + (env.action_space.n if allow_base_actions else 0))
             self.r_net = r_net
@@ -31,15 +31,15 @@ class MetaEnvironment(object):
         self.stop_at_reward = stop_at_reward
         self.repeat = repeat
         # should protect us against accidentally passing in both modes.
-        self.offset = self.num_icf_policies if self.icf_policies is not None else len(self.q_learners)
+        self.offset = self.num_icf_policies if self.tf_icf_agent is not None else len(self.q_learners)
 
 
 
     # get the corresponding base action for the meta action: either using learned reward policies or ICF
     def get_base_action(self, meta_action):
-        if self.icf_policies is not None:
-            processed_state = np.array([self.current_obs.flatten() / 255.]).astype(np.float32)
-            action_probs = self.icf_policies(processed_state)[0]  # [num_factors, num_actions]
+        if self.tf_icf_agent is not None:
+            #processed_state = np.array([self.current_obs.flatten() / 255.]).astype(np.float32)
+            action_probs = self.tf_icf_agent.get_probs([self.current_obs])[0]  # [num_factors, num_actions]
             policy = action_probs[meta_action]
             return np.random.choice(list(range(self.env.action_space.n)), p=policy)
         else:

@@ -132,7 +132,7 @@ class SeaquestWrapper(AtariWrapper):
         return ram[y_idx] <= 65
 
 if __name__ == '__main__':
-    env = PacmanWrapper(remove_reward_mode=True)
+    env = AssaultWrapper(remove_reward_mode=True)
     print(env.action_space.n)
     print(env.env.get_action_meanings())
     #action_mapping = {'w': 0,}

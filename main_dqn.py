@@ -13,6 +13,7 @@ from replay_buffer import ReplayBuffer
 from q_learner_agent import QLearnerAgent
 from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
+from theano_converter import ICF_Policy
 
 parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
@@ -100,10 +101,11 @@ if args.meta:
         assert args.num_partitions is not None
         assert args.icf_policy_path is not None
         icf_policies = load_icf_policies(args.icf_policy_path)
+        tf_icf_agent = ICF_Policy(2*args.num_partitions, base_env.action_space.n, 'tf_icf')
         reward_net = None
         Q_networks = None
 
-    env = MetaEnvironment(base_env, reward_net, Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, icf_policies=icf_policies, num_icf_policies=2*args.num_partitions)
+    env = MetaEnvironment(base_env, reward_net, Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
 elif args.augment_trajectories:
 
     if not args.use_icf_policy:
