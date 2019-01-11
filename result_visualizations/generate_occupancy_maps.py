@@ -9,6 +9,7 @@ from baselines.deepq.experiments.training_wrapper import QNetworkTrainingWrapper
 from reward_network import RewardPartitionNetwork
 import gc
 import dill
+from theano_converter import ICF_Policy
 
 
 def match_by_color(frame: np.ndarray, colors, threshold):
@@ -67,17 +68,16 @@ class RD_Agent(Agent):
 
 class ICF_Agent(Agent):
 
-    def __init__(self, icf_policies, policy_index, num_env_actions):
-        self.icf_policies = icf_policies
+    def __init__(self, tf_icf_agent, policy_index, num_env_actions):
+        self.tf_icf_agent = tf_icf_agent
         self.policy_index = policy_index
         self.num_env_actions = num_env_actions
 
     def get_action(self, s):
-        processed_state = np.array([s.flatten() / 255.]).astype(np.float32)
-        print('processed_state', processed_state.shape)
-        action_probs = self.icf_policies(processed_state)[0]  # [num_factors, num_actions]
+        action_probs = self.tf_icf_agent.get_probs([s])[0]  # [num_factors, num_actions]
         policy = action_probs[self.policy_index]
         return np.random.choice(list(range(self.num_env_actions)), p=policy)
+
 
 
 
@@ -221,9 +221,9 @@ def compute_occupancy_ICF(run_dir, run_name, dest_path):
 
     def get_agent_for_env_and_reward(env, num_rewards, reward_idx):
         icf_policy_path = os.path.join(run_dir, run_name)
-        with open(os.path.join(icf_policy_path, 'policy.pickle'), 'rb') as f:
-            policy = dill.load(f)
-        return ICF_Agent(policy, reward_idx, env.action_space.n)
+        tf_icf_policy = ICF_Policy(num_rewards*2, env.action_space.n, 'tf_icf')
+        tf_icf_policy.restore(os.path.join(icf_policy_path, 'converted_weights.ckpt')
+        return ICF_Agent(tf_icf_policy, reward_idx, env.action_space.n)
 
     compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward)
 
