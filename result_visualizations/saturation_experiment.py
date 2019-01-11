@@ -82,7 +82,7 @@ def make_command(run_dir, regex):
     matched_runs = [x for x in os.listdir(run_dir) if re.match(regex, x)]
 
     path_variables = [
-        '~/q_learning',
+        '~/minimal_q_learning',
         '~/baselines'
     ]
     preamble = f'PYTHONPATH={":".join(path_variables)} '
