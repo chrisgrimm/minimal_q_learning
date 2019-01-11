@@ -183,9 +183,10 @@ def compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_
     num_rewards = get_num_rewards(run_name)
     game = get_game(run_name)
     (colors, threshold, EnvClass) = game_binding[game]
+    agent = None
     for reward_idx in range(num_rewards):
         env = EnvClass()
-        agent = get_agent_for_env_and_reward(env, num_rewards, reward_idx)
+        agent = get_agent_for_env_and_reward(env, num_rewards, reward_idx, agent=agent)
         histogram = compute_policy_histogram(agent, env, colors, threshold)
         image = get_environment_image(env)
         merged = merge_histogram_and_env_image(histogram, image)
@@ -201,7 +202,7 @@ def compute_occupancy_RD(run_dir, run_name, dest_path, game):
     def get_game(run_name):
         return re.match()
 
-    def get_agent_for_env_and_reward(env,  num_rewards, reward_idx):
+    def get_agent_for_env_and_reward(env,  num_rewards, reward_idx, agent=None):
         weights_path = os.path.join(run_dir, run_name, 'best_weights')
         reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
                                             env.action_space.n, 'reward_net', traj_len=10, gpu_num=-1,
@@ -219,9 +220,12 @@ def compute_occupancy_ICF(run_dir, run_name, dest_path):
     def get_game(run_name):
         return re.match('^(.+?)\_\d.+?$', run_name).groups()[0]
 
-    def get_agent_for_env_and_reward(env, num_rewards, reward_idx):
+    def get_agent_for_env_and_reward(env, num_rewards, reward_idx, agent=None):
         icf_policy_path = os.path.join(run_dir, run_name)
-        tf_icf_policy = ICF_Policy(num_rewards*2, env.action_space.n, 'tf_icf')
+        if agent is None:
+            tf_icf_policy = ICF_Policy(num_rewards*2, env.action_space.n, 'tf_icf')
+        else:
+            tf_icf_policy = agent.tf_icf_agent
         tf_icf_policy.restore(os.path.join(icf_policy_path, 'converted_weights.ckpt'))
         return ICF_Agent(tf_icf_policy, reward_idx, env.action_space.n)
 
