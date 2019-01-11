@@ -223,7 +223,7 @@ def compute_occupancy_ICF(run_dir, run_name, dest_path):
     def get_agent_for_env_and_reward(env, num_rewards, reward_idx, agent=None):
         icf_policy_path = os.path.join(run_dir, run_name)
         if agent is None:
-            tf_icf_policy = ICF_Policy(num_rewards*2, env.action_space.n, 'tf_icf')
+            tf_icf_policy = ICF_Policy(num_rewards, env.action_space.n, 'tf_icf')
         else:
             tf_icf_policy = agent.tf_icf_agent
         tf_icf_policy.restore(os.path.join(icf_policy_path, 'converted_weights.ckpt'))
