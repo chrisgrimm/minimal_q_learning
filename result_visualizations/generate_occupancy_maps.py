@@ -214,7 +214,7 @@ def compute_occupancy_RD(run_dir, run_name, dest_path, game):
 
 def compute_occupancy_ICF(run_dir, run_name, dest_path):
     def get_num_rewards(name):
-        return int(re.match(r'^.+?(\d+)reward.+?$', name).groups()[0])
+        return 2*int(re.match(r'^.+?(\d+)reward.+?$', name).groups()[0])
 
     # TODO
     def get_game(run_name):
