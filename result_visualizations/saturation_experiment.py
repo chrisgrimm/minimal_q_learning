@@ -33,9 +33,16 @@ def distance_from_saturated(p):
         dist = min(earth_movers(p, q), dist)
     return dist
 
+def distance_from_saturated2(p):
+    p = p
+    n = p.shape[0]
+    return (np.max(p) - 1/n) / (1 - 1/n)
+
+
+
 def collect_reward_stats_for_trajectory(env: AtariWrapper, reward_net: RewardPartitionNetwork):
     num_rewarding = 0
-    required_rewarding = 100
+    required_rewarding = 1000
     all_saturations = []
     s = env.reset()
     pbar = tqdm.tqdm(total=required_rewarding)
@@ -45,7 +52,7 @@ def collect_reward_stats_for_trajectory(env: AtariWrapper, reward_net: RewardPar
         if r != 0:
             partitioned_reward = reward_net.get_reward(s, r)
             distr = (partitioned_reward / np.sum(partitioned_reward)).astype(np.float64)
-            saturation = distance_from_saturated(distr)
+            saturation = distance_from_saturated2(distr)
             all_saturations.append(saturation)
             num_rewarding += 1
             pbar.update(1)
@@ -59,7 +66,11 @@ game_mapping = {
 }
 
 def collect_reward_stats_for_single(run_dir, run_name):
-    game = re.match(r'^(.+?)\_\d.+?$', run_name).groups()[0]
+    try:
+        game = re.match(r'^(.+?)\_\d.+?$', run_name).groups()[0]
+    except AttributeError:
+        print(f'{run_name} didnt match regex.')
+        return
     env = game_mapping[game]()
     reward_net = build_reward_net(env, run_dir, run_name)
     saturation_score = collect_reward_stats_for_trajectory(env, reward_net)
@@ -76,15 +87,10 @@ def make_command(run_dir, regex):
     preamble = f'PYTHONPATH={":".join(path_variables)} '
     all_commands = []
     for run_name in matched_runs:
-        file_path = '/Users/chris/projects/q_learning/result_visualizations/saturation_experiment.py'
+        file_path = os.path.abspath(__file__)
         command = preamble + f'python {file_path} {run_dir} {regex} {run_name}'
         all_commands.append(command)
     print('; '.join(all_commands))
-
-def collect_reward_stats_for_all(run_dir, regex):
-    matched_runs = [x for x in os.listdir(run_dir) if re.match(regex, x)]
-    for run_name in matched_runs:
-        pass
 
 
 
