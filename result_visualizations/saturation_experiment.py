@@ -80,9 +80,10 @@ def collect_reward_stats_for_single(run_dir, run_name):
 
 def make_command(run_dir, regex):
     matched_runs = [x for x in os.listdir(run_dir) if re.match(regex, x)]
+
     path_variables = [
-        '/Users/chris/projects/q_learning',
-        '/Users/chris/projects/baselines'
+        '~/q_learning',
+        '~/baselines'
     ]
     preamble = f'PYTHONPATH={":".join(path_variables)} '
     all_commands = []
