@@ -363,6 +363,50 @@ def smooth(scalars, weight):  # Weight between 0 and 1
 
     return smoothed
 
+
+def make_plot(curve_sets, colors, names, output_path):
+    plt.clf()
+    resolution = 10000
+    for curve_set, color, name in zip(curve_sets, colors, names):
+        all_ys = []
+        for curve in curve_set:
+            x = [time for time, J in curve['cum_reward'] if time % resolution == 0][1:]
+            y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][1:], weight=0.95)
+            all_ys.append(y)
+        min_len = min([len(y) for y in all_ys])
+        all_ys = [y[:min_len] for y in all_ys]
+        mean = np.mean(all_ys)
+        plt.plot(x[:min_len], mean, color=color, label=name)
+    plt.legend()
+    plt.savefig(output_path)
+
+def make_repeat_plots(run_dir, dest_dir):
+    games = ['assault', 'pacman', 'seaquest']
+    reward_numbers = [2, 3, 5, 8]
+    repeat_numbers = [1,2,4,8]
+    trials = [1,2,3,4]
+    for mode in ['', 'icf_']:
+        for game in games:
+            for reward_number in reward_numbers:
+                plot_name = f'{mode}{game}_{reward_number}reward_plot.pdf'
+                print(f'making {plot_name}...')
+                curve_sets = []
+                names = []
+                colors = ['red', 'blue', 'green', 'orange']
+                for repeat_number in repeat_numbers:
+                    curve_set = []
+                    rd_run_name = f'{mode}{game}_{reward_number}reward_{repeat_number}repeat'
+                    for trial in trials:
+                        full_name = rd_run_name+f'_{trial}'
+                        with open(os.path.join(run_dir, full_name), 'rb') as f:
+                            data = pickle.load(f)
+                        curve_set.append(data)
+                    curve_sets.append(curve_set)
+                    names.append(f'{repeat_number} Repeats')
+                make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name))
+
+
+
 def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None, meta_to_baseline_mapping=None):
     all_keys = set(list(meta_runs.keys()))
     resolution = 10000
