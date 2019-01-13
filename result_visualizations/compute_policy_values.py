@@ -74,7 +74,7 @@ def compute_all_values_icf(run_dir, name):
     env = mapping[game]()
     icf = ICF_Policy(2*num_rewards, env.action_space.n, 'tf_icf')
     icf.restore(os.path.join(run_dir, name, 'converted_weights.ckpt'))
-    for i in range(num_rewards):
+    for i in range(2*num_rewards):
         agent = ICF_Agent(icf, i, env.action_space.n)
         value = compute_value(env, agent)
         with open('values.txt', 'a') as f:
