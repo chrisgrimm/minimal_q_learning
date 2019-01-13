@@ -81,7 +81,7 @@ def compute_all_values_icf(run_dir, name):
             f.write(f'icf,{game},{num_rewards},{value}\n')
 
 def make_command(run_dir, mode):
-    files = [x for x in os.listdir(run_dir) if x.contains('reward')]
+    files = [x for x in os.listdir(run_dir) if 'reward' in x]
     path_variables = [
         '~/minimal_q_learning',
         '~/baselines',
