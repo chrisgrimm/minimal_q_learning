@@ -34,7 +34,7 @@ class ICF_Agent(Agent):
         return np.random.choice(list(range(self.num_env_actions)), p=policy)
 
 
-def compute_value(env, agent, rollout=1000, repeats=10):
+def compute_value(env, agent, rollout=500, repeats=10):
     gamma = 0.99
     all_V = []
     for _ in range(repeats):
@@ -65,7 +65,7 @@ def compute_all_values_rd(run_dir, name):
         agent = RD_Agent(reward_net.Q_networks[i])
         value = compute_value(env, agent)
         with open('values.txt', 'a') as f:
-            f.write(f'rd,{game},{num_rewards},{value}\n')
+            f.write(f'rd,{name},{i},{value}\n')
 
 
 def compute_all_values_icf(run_dir, name):
@@ -78,7 +78,7 @@ def compute_all_values_icf(run_dir, name):
         agent = ICF_Agent(icf, i, env.action_space.n)
         value = compute_value(env, agent)
         with open('values.txt', 'a') as f:
-            f.write(f'icf,{game},{num_rewards},{value}\n')
+            f.write(f'icf,{name},{i},{value}\n')
 
 def make_command(run_dir, mode):
     files = [x for x in os.listdir(run_dir) if 'reward' in x]
