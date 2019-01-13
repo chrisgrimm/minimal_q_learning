@@ -60,11 +60,11 @@ def compute_all_values_rd(run_dir, name):
     reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
                                         env.action_space.n, 'reward_net', traj_len=10,  gpu_num=-1,
                                         use_gpu=False, num_visual_channels=9, visual=True)
-    reward_net.restore(os.path.join(run_dir, name), 'reward_net.ckpt')
+    reward_net.restore(os.path.join(run_dir, name, 'best_weights'), 'reward_net.ckpt')
     for i in range(num_rewards):
         agent = RD_Agent(reward_net.Q_networks[i])
         value = compute_value(env, agent)
-        with open('values.txt', 'a') as f:
+        with open('rd_values.txt', 'a') as f:
             f.write(f'rd,{name},{i},{value}\n')
 
 
