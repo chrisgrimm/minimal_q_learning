@@ -13,13 +13,20 @@ class Agent(object):
     def get_action(self, s):
         raise NotImplemented
 
+    def get_action_no_stoch(self, s):
+        raise NotImplemented
+
 class RD_Agent(Agent):
 
     def __init__(self, q_net : QNetworkTrainingWrapper):
         self.q_net = q_net
 
     def get_action(self, s):
-        return self.q_net.get_action([s])[0]
+        action = self.q_net.get_action([s])[0]
+        action_prob = np.zeros(shape=[self.q_net.env.action_space.n])
+        action_prob[action] = 1.0
+        return action, action_prob
+
 
 class ICF_Agent(Agent):
 
@@ -31,21 +38,28 @@ class ICF_Agent(Agent):
     def get_action(self, s):
         action_probs = self.tf_icf_agent.get_probs([s])[0]  # [num_factors, num_actions]
         policy = action_probs[self.policy_index]
-        return np.random.choice(list(range(self.num_env_actions)), p=policy)
+        action = np.random.choice(list(range(self.num_env_actions)), p=policy)
+        return action, policy
 
 
-def compute_value(env, agent, rollout=500, repeats=10):
+
+def compute_value_and_action_stats(env, agent, rollout=500, repeats=10):
     gamma = 0.99
     all_V = []
+    probabilities = []
     for _ in range(repeats):
         s = env.reset()
         V = 0
         for t in tqdm.tqdm(range(rollout)):
-            a = agent.get_action(s)
+            a, probs = agent.get_action(s)
+            probabilities.append(probs)
             s, r, _, _ = env.step(a)
             V += gamma**t * r
         all_V.append(V)
-    return np.mean(all_V)
+    average_variance = np.mean(np.std(probabilities, axis=0),axis=0)
+    return np.mean(all_V), average_variance
+
+
 
 mapping = {
     'seaquest': SeaquestWrapper,
@@ -66,9 +80,9 @@ def compute_all_values_rd(run_dir, name):
     reward_net.restore(os.path.join(run_dir, name, 'best_weights'), 'reward_net.ckpt')
     for i in range(num_rewards):
         agent = RD_Agent(reward_net.Q_networks[i])
-        value = compute_value(env, agent)
-        with open('rd_values.txt', 'a') as f:
-            f.write(f'rd,{name},{i},{value}\n')
+        value, avg_variance = compute_value_and_action_stats(env, agent)
+        with open('rd_values_stats.txt', 'a') as f:
+            f.write(f'rd,{name},{i},{value},{avg_variance}\n')
 
 
 def compute_all_values_icf(run_dir, name):
@@ -79,12 +93,25 @@ def compute_all_values_icf(run_dir, name):
     icf.restore(os.path.join(run_dir, name, 'converted_weights.ckpt'))
     for i in range(2*num_rewards):
         agent = ICF_Agent(icf, i, env.action_space.n)
-        value = compute_value(env, agent)
-        with open('values.txt', 'a') as f:
-            f.write(f'icf,{name},{i},{value}\n')
+        value, avg_variance = compute_value_and_action_stats(env, agent)
+        with open('icf_values_stats.txt', 'a') as f:
+            f.write(f'icf,{name},{i},{value},{avg_variance}\n')
 
 def make_command(run_dir, mode):
-    files = [x for x in os.listdir(run_dir) if 'reward' in x]
+    icf_policies = ['assault_2reward_3', 'assault_3reward_2', 'assault_5reward_2', 'assault_8reward_1',
+                    'seaquest_2reward_2', 'seaquest_3reward_3', 'seaquest_5reward_1', 'seaquest_8reward_3',
+                    'pacman_2reward_3', 'pacman_3reward_3', 'pacman_5reward_3', 'pacman_8reward_2']
+
+    rd_policies = ['assault_2reward_10mult_1', 'assault_3reward_10mult_2', 'assault_5reward_10mult_3',
+                   'assault_8reward_10mult_3',
+                   'seaquest_2reward_10mult_3', 'seaquest_3reward_10mult_4', 'seaquest_5reward_10mult_4',
+                   'seaquest_8reward_10mult_2',
+                   'pacman_2reward_10mult_2', 'pacman_3reward_10mult_3', 'pacman_5reward_10mult_1',
+                   'pacman_8reward_10mult_2',
+                   ]
+    selected_policies = icf_policies if mode == 'icf' else rd_policies
+    files = [x for x in os.listdir(run_dir) if x in selected_policies]
+
     path_variables = [
         '~/minimal_q_learning',
         '~/baselines',
