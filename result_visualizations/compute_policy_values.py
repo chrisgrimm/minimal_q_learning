@@ -59,7 +59,7 @@ def compute_all_values_rd(run_dir, name):
     try:
         env = mapping[game]()
     except KeyError:
-        return 
+        return
     reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
                                         env.action_space.n, 'reward_net', traj_len=10,  gpu_num=-1,
                                         use_gpu=False, num_visual_channels=9, visual=True)
