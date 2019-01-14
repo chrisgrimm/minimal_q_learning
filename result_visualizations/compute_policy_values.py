@@ -56,7 +56,10 @@ mapping = {
 def compute_all_values_rd(run_dir, name):
     game, num_rewards = re.match(r'^(.+?)\_(\d+)reward.+?$', name).groups()
     num_rewards = int(num_rewards)
-    env = mapping[game]()
+    try:
+        env = mapping[game]()
+    except KeyError:
+        return 
     reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
                                         env.action_space.n, 'reward_net', traj_len=10,  gpu_num=-1,
                                         use_gpu=False, num_visual_channels=9, visual=True)
