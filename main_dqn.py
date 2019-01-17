@@ -97,6 +97,7 @@ if args.meta:
         reward_net.restore(args.restore_path, 'reward_net.ckpt')
         Q_networks = reward_net.Q_networks
         icf_policies = None
+        tf_icf_agent = None 
     else:
         assert args.num_partitions is not None
         assert args.icf_policy_path is not None
