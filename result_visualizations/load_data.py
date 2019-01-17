@@ -410,10 +410,10 @@ def make_repeat_plots(run_dir, dest_dir):
 
 def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None, meta_to_baseline_mapping=None):
     all_keys = set(list(meta_runs.keys()))
-    resolution = 10000
+    resolution = 1000
     for game in all_keys:
         plt.clf()
-        plt.hold(True)
+        #plt.hold(True)
         # baselines
         all_ys = []
         bl_game = game if meta_to_baseline_mapping is None else meta_to_baseline_mapping[game]
@@ -421,6 +421,7 @@ def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None
             print(len(data))
             print(len(data['cum_reward']))
             x = [time for time, J in data['cum_reward'] if time % resolution == 0][1:]
+            print('last time', x[-1])
             y = smooth([J for time, J in data['cum_reward'] if time % resolution == 0][1:], weight=0.95)
             print('shapes', len(data['cum_reward']), np.shape(y))
             all_ys.append(y)
@@ -440,8 +441,9 @@ def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None
         for reward, data_runs in meta_runs[game].items():
             all_ys = []
             for i, data in enumerate(data_runs):
-                x = [time for time, J in data['cum_reward'] if time % resolution == 0][1:]
+                #x = [time for time, J in data['cum_reward'] if time % resolution == 0][1:]
                 y = smooth([J for time, J in data['cum_reward'] if time % resolution == 0][1:], weight=0.95)
+                print('last time', x[-1])
                 all_ys.append(y)
                 print('meta_run', i, reward, np.shape(y))
                 #plt.plot(x, y, color=color_mapping[reward], label=f'{reward} rewards')
@@ -456,7 +458,7 @@ def make_meta_controller_plots(path, meta_runs, baseline_runs, n=1, y_range=None
             plt.ylabel('Score')
             plt.fill_between(x, mean-err, mean+err, color=color_mapping[reward], alpha=0.5)
         plt.legend()
-        plt.hold(False)
+        #plt.hold(False)
         plt.savefig(os.path.join(path, f'{game}_meta.pdf'))
 
 
