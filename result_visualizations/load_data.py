@@ -485,8 +485,8 @@ if __name__ == '__main__':
     meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
       '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines',
        r'^baseline\_(.+)\_(\d+)$',
-      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_icf_comparison_repeat',
-       r'^(.+)\_(\d+)reward\_1repeat\_(\d+)$',
+      '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_repeat',
+       r'^meta\_(.+)\_(\d+)reward\_10mult\_(\d+)$',
       meta_name='seaquest',
       baseline_name='seaquest')
     make_meta_controller_plots(

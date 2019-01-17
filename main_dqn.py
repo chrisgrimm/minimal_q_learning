@@ -208,6 +208,7 @@ def get_action(s, eval=False, augmented=False, augment_policy=None):
 def evaluate_performance(env, q_network: QLearnerAgent):
     s = env.reset()
     cumulative_reward = 0
+    cumulative_reward_env = 0
     internal_terminal = False
     #max_timesteps = 10000
     #for _ in range(max_timesteps):
@@ -215,13 +216,15 @@ def evaluate_performance(env, q_network: QLearnerAgent):
         a = get_action(s, eval=True)
         #a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, info = env.step(a)
+        r_env = info['r_env']
+        cumulative_reward_env += r_env
         cumulative_reward += r
         internal_terminal = info['internal_terminal']
         if internal_terminal:
             break
 
     #quick_visualize_policy(env, q_network)
-    return cumulative_reward
+    return cumulative_reward, cumulative_reward_env
 
 for time in range(start_time, num_steps):
 
@@ -253,9 +256,10 @@ for time in range(start_time, num_steps):
                 LOG.add_line(f'q_loss', q_loss)
 
         if time % evaluation_frequency == 0:
-            cum_reward = evaluate_performance(env, dqn)
+            cum_reward, cum_reward_env = evaluate_performance(env, dqn)
             print(f'({time}) EVAL: {cum_reward}')
             LOG.add_line('cum_reward', cum_reward)
+            LOG.add_line('cum_reward_env', cum_reward_env)
 
 
         log_string = f'({time}) Q_loss: {q_loss}, ({epsilon})'
