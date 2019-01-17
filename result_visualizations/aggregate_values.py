@@ -5,21 +5,23 @@ import re
 def read_in_values(txt):
     mapping = dict()
     for line in txt:
-        [mode, name, reward_num, value] = line.split(',')
+        [mode, name, reward_num, value, variance] = line.split(',')
         if name in mapping:
-            mapping[name].append(float(value))
+            mapping[name].append((float(value), float(variance)))
         else:
-            mapping[name] = [float(value)]
-    for key, value in mapping.items():
-        mapping[key] = np.mean(value)
+            mapping[name] = [(float(value), float(variance))]
+    for key, pairs in mapping.items():
+        value = [p[0] for p in pairs]
+        variance = [p[1] for p in pairs]
+        mapping[key] = (np.mean(value), np.mean(variance))
     return mapping
 
 
-with open('values.txt', 'r') as f:
+with open('icf_values_stats.txt', 'r') as f:
     icf_values = f.readlines()
     icf_values = read_in_values(icf_values)
 
-with open('rd_values.txt', 'r') as f:
+with open('rd_values_stats.txt', 'r') as f:
     rd_values = f.readlines()
     rd_values = read_in_values(rd_values)
 

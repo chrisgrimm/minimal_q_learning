@@ -44,7 +44,9 @@ class AtariWrapper():
         sp, r, t, info = self.env.step(a)
         if self.remove_reward_mode and self.remove_reward():
             r = 0
+            info['r_env'] = 0
         else:
+            info['r_env'] = r
             r = 1 if r > 0 else 0
 
         self.frame_buffer = self.frame_buffer[1:] + [self.process_obs(sp)]
