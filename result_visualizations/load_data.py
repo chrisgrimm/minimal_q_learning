@@ -749,9 +749,9 @@ if __name__ == '__main__':
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #cut_down_meta(
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/meta_runs', 
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta', 
-    #  '^.+?[58]reward.+?')
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/meta_restricted', 
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta_restricted', 
+    #  '^baseline.+?')
     #meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines',
     #   r'^baseline\_(.+)\_(\d+)$',
