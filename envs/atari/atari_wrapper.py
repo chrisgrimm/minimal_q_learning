@@ -86,6 +86,12 @@ class PacmanWrapper(AtariWrapper):
         #y_coord = ram[0x]
         #print(x_coord, y_coord)
 
+    def get_agent_position(self):
+        ram = self.env.ale.getRAM()
+        y_coord = ram[16]
+        x_coord = ram[10]
+        return x_coord, y_coord
+
 
 
 class QBertWrapper(AtariWrapper):
@@ -96,6 +102,8 @@ class AssaultWrapper(AtariWrapper):
     def __init__(self, remove_reward_mode=False):
         super().__init__('assault', remove_reward_mode=remove_reward_mode)
         self.last_known_position = 100
+        self.last_known_shot_position = 100
+        self.last_shot_status = 127
 
     def remove_reward(self):
         ram = self.env.ale.getRAM()
@@ -109,6 +117,21 @@ class AssaultWrapper(AtariWrapper):
         # no reward if last_known_position > 100
         #print(self.last_known_position)
         return self.last_known_position > 100
+
+    def get_agent_position(self):
+        ram = self.env.ale.getRAM()
+        position_idx = 5*18+4 - 1
+        position_opt = ram[position_idx]
+        shot_height = ram[67]
+        #print('RAM', ram)
+        #print('shot height?', ram[67])
+        if position_opt not in [60, 0, 1, 2]:
+            self.last_known_position = position_opt
+        if self.last_shot_status == 127 and shot_height != 127:
+            #print('Fired Shot!')
+            self.last_known_shot_position = self.last_known_position
+        self.last_shot_status = shot_height
+        return self.last_known_shot_position, 0
 
 
 
@@ -132,6 +155,12 @@ class SeaquestWrapper(AtariWrapper):
         #print(ram)
         # only reward when in the bottom half of the env.
         return ram[y_idx] <= 65
+
+    def get_agent_position(self):
+        ram = self.env.ale.getRAM()
+        y_idx = 5 * 18 + 8 - 1
+        x_idx = 3 * 18 + 17 - 1
+        return ram[x_idx], ram[y_idx]
 
 if __name__ == '__main__':
     env = AssaultWrapper(remove_reward_mode=True)

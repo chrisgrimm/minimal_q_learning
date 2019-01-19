@@ -53,8 +53,9 @@ def compute_value_and_action_stats(env, agent, rollout=500, repeats=10):
         for t in tqdm.tqdm(range(rollout)):
             a, probs = agent.get_action(s)
             probabilities.append(probs)
-            s, r, _, _ = env.step(a)
-            V += gamma**t * r
+            s, r, _, info = env.step(a)
+            r_env = r_env['r_env']
+            V += gamma**t * r_env
         all_V.append(V)
     average_variance = np.mean(np.std(probabilities, axis=0),axis=0)
     return np.mean(all_V), average_variance
@@ -81,7 +82,7 @@ def compute_all_values_rd(run_dir, name):
     for i in range(num_rewards):
         agent = RD_Agent(reward_net.Q_networks[i])
         value, avg_variance = compute_value_and_action_stats(env, agent)
-        with open('rd_values_stats.txt', 'a') as f:
+        with open('rd_env_values_stats.txt', 'a') as f:
             f.write(f'rd,{name},{i},{value},{avg_variance}\n')
 
 
@@ -94,7 +95,7 @@ def compute_all_values_icf(run_dir, name):
     for i in range(2*num_rewards):
         agent = ICF_Agent(icf, i, env.action_space.n)
         value, avg_variance = compute_value_and_action_stats(env, agent)
-        with open('icf_values_stats.txt', 'a') as f:
+        with open('icf_env_values_stats.txt', 'a') as f:
             f.write(f'icf,{name},{i},{value},{avg_variance}\n')
 
 def make_command(run_dir, mode):

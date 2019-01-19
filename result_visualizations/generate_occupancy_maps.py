@@ -60,8 +60,9 @@ class Agent(object):
 
 class RD_Agent(Agent):
 
-    def __init__(self, q_net : QNetworkTrainingWrapper):
+    def __init__(self, q_net : QNetworkTrainingWrapper, reward_net : RewardPartitionNetwork):
         self.q_net = q_net
+        self.reward_net = reward_net
 
     def get_action(self, s):
         return self.q_net.get_action([s])[0]
@@ -193,24 +194,29 @@ def compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_
         write_path = os.path.join(dest_path, run_name+f'_reward{reward_idx}_occupancy.png')
         cv2.imwrite(write_path, merged)
 
-def compute_occupancy_RD(run_dir, run_name, dest_path, game):
+def compute_occupancy_RD(run_dir, run_name, dest_path):
     def get_num_rewards(name):
         return int(re.match(r'^.+?(\d+)reward.+?$', name).groups()[0])
 
-
     # TODO
     def get_game(run_name):
-        return re.match()
+        return re.match('^(.+?)\_\d.+?$', run_name).groups()[0]
 
     def get_agent_for_env_and_reward(env,  num_rewards, reward_idx, agent=None):
+
         weights_path = os.path.join(run_dir, run_name, 'best_weights')
-        reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
+        if agent is None:
+            reward_net = RewardPartitionNetwork(env, None, None, num_rewards, env.observation_space.shape[0],
                                             env.action_space.n, 'reward_net', traj_len=10, gpu_num=-1,
                                             use_gpu=False, num_visual_channels=9, visual=True)
+        else:
+            reward_net = agent.reward_net
         reward_net.restore(weights_path, 'reward_net.ckpt')
-        return RD_Agent(reward_net.Q_networks[reward_idx])
+        return RD_Agent(reward_net.Q_networks[reward_idx], reward_net)
 
     compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward)
+
+
 
 def compute_occupancy_ICF(run_dir, run_name, dest_path):
     def get_num_rewards(name):
@@ -232,11 +238,6 @@ def compute_occupancy_ICF(run_dir, run_name, dest_path):
     compute_occupancy_maps2(run_name, get_num_rewards, get_game, dest_path, get_agent_for_env_and_reward)
 
 
-
-
-
-
-
 def get_environment_image(env):
     env.reset()
     num_steps = 100
@@ -245,12 +246,12 @@ def get_environment_image(env):
     return env.get_unprocessed_obs()
 
 
-def merge_histogram_and_env_image(histogram, env_image):
+def merge_histogram_and_env_image(histogram, env_image, blur_size=10, heatmap_color=(0,119,255)):
     histogram = histogram[:, :, [0]]
-    heatmap_color = (0, 119, 255)
+    #heatmap_color = (0, 119, 255)
     heatmap = np.tile([[list(heatmap_color)]], list(env_image.shape[:2]) + [1])
-    heatmap_alpha = cv2.applyColorMap(histogram, cv2.COLORMAP_BONE)[:, :, [0]] / 255.
-    heatmap_alpha = np.reshape(cv2.blur(heatmap_alpha, (10,10)), list(env_image.shape[:2]) + [1])
+    heatmap_alpha = cv2.applyColorMap(histogram.astype(np.uint8), cv2.COLORMAP_BONE)[:, :, [0]] / 255.
+    heatmap_alpha = np.reshape(cv2.blur(heatmap_alpha, (blur_size,blur_size)), list(env_image.shape[:2]) + [1])
     min_image = 0.1
     max_histogram = 1 - min_image
     histogram = np.minimum(histogram / 255., max_histogram)
@@ -269,30 +270,35 @@ def compute_all_occupancy_maps():
 
 
 
-def generate_command(run_dir, regex, mode, dest_path):
+def generate_command():
     assert mode in ['ICF', 'RD']
-    all_runs = [x for x in os.listdir(run_dir) if re.match(regex, x)]
-
+    paths = ['/Users/chris/projects/q_learning', '/Users/chris/git_downloads/implementations/DL/ICF_simple',
+             '/Users/chris/projects/baselines']
+    runs = ['assault_2reward_10mult_1', 'assault_3reward_10mult_2', 'assault_5reward_10mult_3',
+            'assault_8reward_10mult_2',
+            'seaquest_2reward_10mult_3', 'seaquest_3reward_10mult_4', 'seaquest_5reward_10mult_4',
+            'seaquest_8reward_10mult_3',
+            'pacman_2reward_10mult_2', 'pacman_3reward_10mult_3', 'pacman_5reward_10mult_1', 'pacman_8reward_10mult_2']
+    pypath = f'PYTHONPATH={":".join(paths)}'
     command = ''
-    for name in all_runs:
-        command += f'PYTHONPATH=.:~/baselines:~/ICF_copy/DL/ICF_simple/ python result_visualizations/generate_occupancy_maps.py {name} {run_dir} {regex} {mode} {dest_path}; '
+    for run in runs:
+        command += f'{pypath} python result_visualizations/generate_occupancy_maps.py {run}; '
     print(command)
 
 
 if __name__ == '__main__':
     import sys
-    name = sys.argv[1]
-    run_dir = sys.argv[2]
-    regex = sys.argv[3]
-    mode = sys.argv[4]
-    dest_path = sys.argv[5]
-    if name == 'make_command':
-        generate_command(run_dir, regex, mode, dest_path)
+    weights = '/Users/chris/projects/q_learning/new_dqn_results/new_weights'
+    run = sys.argv[1]
+    mode = 'RD'
+    dest_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/occupancy_maps2'
+    if run == 'make_command':
+        generate_command()
     else:
         if mode == 'ICF':
-            compute_occupancy_ICF(run_dir, name, dest_path)
+            compute_occupancy_ICF(weights, run, dest_path)
         elif mode == 'RD':
-            compute_occupancy_RD(run_dir, name, dest_path)
+            compute_occupancy_RD(weights, run, dest_path)
         else:
             raise Exception(f'Unrecognized mode {mode}.')
 
