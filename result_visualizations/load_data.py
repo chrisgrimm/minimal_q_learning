@@ -550,7 +550,7 @@ def make_new_meta_controller_plots(dest_dir):
             'ALL_DATA/cut_down_baselines/baseline_seaquest_4',
         ],
     ]
-    colors = ['red', 'blue', 'green', 'orange']
+    colors = ['red', 'blue', 'green', 'orange', 'black']
     make_plots_curve_sets(sokoban, colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf')
     make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault.pdf')
     make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest.pdf')
