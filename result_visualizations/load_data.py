@@ -364,12 +364,13 @@ def smooth(scalars, weight):  # Weight between 0 and 1
     return smoothed
 
 
-def make_plot(curve_sets, colors, names, output_path):
+def make_plot(curve_sets, colors, names, output_path, ):
     plt.clf()
     resolution = 10000
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
         for curve in curve_set:
+            print(x)
             x = [time for time, J in curve['cum_reward'] if time % resolution == 0][1:]
             y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][1:], weight=0.95)
             print(len(x), len(y))
