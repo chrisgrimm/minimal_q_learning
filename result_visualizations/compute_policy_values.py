@@ -54,7 +54,7 @@ def compute_value_and_action_stats(env, agent, rollout=500, repeats=10):
             a, probs = agent.get_action(s)
             probabilities.append(probs)
             s, r, _, info = env.step(a)
-            r_env = r_env['r_env']
+            r_env = info['r_env']
             V += gamma**t * r_env
         all_V.append(V)
     average_variance = np.mean(np.std(probabilities, axis=0),axis=0)
