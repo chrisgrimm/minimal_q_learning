@@ -376,7 +376,7 @@ def make_plot(curve_sets, colors, names, output_path):
             all_ys.append(y)
         min_len = min([len(y) for y in all_ys])
         all_ys = [y[:min_len] for y in all_ys]
-        mean = np.mean(all_ys)
+        mean = np.mean(all_ys, axis=0)
         plt.plot(x[:min_len], mean, color=color, label=name)
 
     # should sort the data
