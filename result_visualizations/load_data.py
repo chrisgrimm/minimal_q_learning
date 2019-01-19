@@ -432,137 +432,111 @@ def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name, t
 
 
 def make_new_meta_controller_plots(dest_dir):
-    sokoban = [
-        [
-            'ALL_DATA/cut_down_meta/meta_sokoban_2reward_10mult_1',
-            'ALL_DATA/cut_down_meta/meta_sokoban_2reward_10mult_2',
-            'ALL_DATA/cut_down_meta/meta_sokoban_2reward_10mult_3',
-            'ALL_DATA/cut_down_meta/meta_sokoban_2reward_10mult_4'
-        ],
-        [
-            'ALL_DATA/cut_down_meta/meta_sokoban_3reward_10mult_1',
-            'ALL_DATA/cut_down_meta/meta_sokoban_3reward_10mult_2',
-            'ALL_DATA/cut_down_meta/meta_sokoban_3reward_10mult_3',
-            'ALL_DATA/cut_down_meta/meta_sokoban_3reward_10mult_4'
-        ],
-        [
-            'ALL_DATA/cut_down_meta/meta_sokoban_4reward_10mult_1',
-            'ALL_DATA/cut_down_meta/meta_sokoban_4reward_10mult_2',
-            'ALL_DATA/cut_down_meta/meta_sokoban_4reward_10mult_3',
-            'ALL_DATA/cut_down_meta/meta_sokoban_4reward_10mult_4'
-        ],
-        [
-            'ALL_DATA/cut_down_baselines/baseline_sokoban_1',
-            'ALL_DATA/cut_down_baselines/baseline_sokoban_2',
-            'ALL_DATA/cut_down_baselines/baseline_sokoban_3',
-            'ALL_DATA/cut_down_baselines/baseline_sokoban_4'
-        ]
-    ]
 
     assault = [
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_2reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_2reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_2reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_2reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_2reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_2reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_2reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_2reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_3reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_3reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_3reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_3reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_3reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_3reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_3reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_3reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_5reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_5reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_5reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_5reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_5reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_5reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_5reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_5reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_8reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_8reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_8reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/assault_8reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_8reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_8reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_8reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/assault_8reward_4',
         ],
         [
-            'ALL_DATA/cut_down_baselines/baseline_assault_1',
-            'ALL_DATA/cut_down_baselines/baseline_assault_2',
-            'ALL_DATA/cut_down_baselines/baseline_assault_3',
-            'ALL_DATA/cut_down_baselines/baseline_assault_4',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_assault_1',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_assault_2',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_assault_3',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_assault_4',
         ],
     ]
 
     pacman = [
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_2reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_2reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_2reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_2reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_2reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_2reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_2reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_2reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_3reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_3reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_3reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_3reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_3reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_3reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_3reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_3reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_5reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_5reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_5reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_5reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_5reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_5reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_5reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_5reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_8reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_8reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_8reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/pacman_8reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_8reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_8reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_8reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/pacman_8reward_4',
         ],
         [
-            'ALL_DATA/cut_down_baselines/baseline_pacman_1',
-            'ALL_DATA/cut_down_baselines/baseline_pacman_2',
-            'ALL_DATA/cut_down_baselines/baseline_pacman_3',
-            'ALL_DATA/cut_down_baselines/baseline_pacman_4',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_pacman_1',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_pacman_2',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_pacman_3',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_pacman_4',
         ],
     ]
 
     seaquest = [
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_2reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_2reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_2reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_2reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_2reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_2reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_2reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_2reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_3reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_3reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_3reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_3reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_3reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_3reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_3reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_3reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_5reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_5reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_5reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_5reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_5reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_5reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_5reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_5reward_4',
         ],
         [
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_8reward_1repeat_1',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_8reward_1repeat_2',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_8reward_1repeat_3',
-            'ALL_DATA/cut_down_icf_comparison_repeat/seaquest_8reward_1repeat_4',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_8reward_1',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_8reward_2',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_8reward_3',
+            'ALL_DATA/cut_down_meta_unrestricted/seaquest_8reward_4',
         ],
         [
-            'ALL_DATA/cut_down_baselines/baseline_seaquest_1',
-            'ALL_DATA/cut_down_baselines/baseline_seaquest_2',
-            'ALL_DATA/cut_down_baselines/baseline_seaquest_3',
-            'ALL_DATA/cut_down_baselines/baseline_seaquest_4',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_seaquest_1',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_seaquest_2',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_seaquest_3',
+            'ALL_DATA/cut_down_meta_unrestricted/baseline_seaquest_4',
         ],
     ]
     sokoban_colors = ['red', 'blue', 'green', 'black']
     colors = ['red', 'blue', 'green', 'orange', 'black']
-    make_plots_curve_sets(sokoban, sokoban_colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
-    make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault.pdf', 4)
-    make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest.pdf', 4)
-    make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman.pdf', 4)
+    #make_plots_curve_sets(sokoban, sokoban_colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
+    make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault_unrestricted.pdf', 4)
+    make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest_unrestricted.pdf', 4)
+    make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman_unrestricted.pdf', 4)
 
 
 def meta_generalization_plots(dest_dir):
