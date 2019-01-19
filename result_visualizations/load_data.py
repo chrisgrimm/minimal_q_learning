@@ -370,9 +370,10 @@ def make_plot(curve_sets, colors, names, output_path, ):
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
         for curve in curve_set:
-            print(x)
             x = [time for time, J in curve['cum_reward'] if time % resolution == 0][1:]
             y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][1:], weight=0.95)
+            print(x[:10], x[-10:])
+
             print(len(x), len(y))
             all_ys.append(y)
         min_len = min([len(y) for y in all_ys])
