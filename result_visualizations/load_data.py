@@ -49,7 +49,7 @@ def get_mean_iter(file_path, field):
 
 
 def cut_down_meta_single_file(file_path, cut_down_path, dir):
-    data = load_tb_data(file_path, ['cum_reward', 'time'])
+    data = load_tb_data(file_path, ['cum_reward', 'cum_reward_env', 'time'])
     with open(os.path.join(cut_down_path, dir), 'wb') as f:
         pickle.dump(data, f)
     print(f'Finished {file_path} {dir}!')
@@ -368,14 +368,15 @@ def make_plot(curve_sets, colors, names, output_path, time_curve_idx=0, error_ba
     print('time_curve_idx', time_curve_idx)
     plt.clf()
     resolution = 1000
-    start_idx = 0
-    true_x = [time for time, J in curve_sets[time_curve_idx][0]['cum_reward'] if time % resolution == 0][start_idx:]
+    start_idx = 1
+    curve_field = 'cum_reward_env'
+    true_x = [time for time, J in curve_sets[time_curve_idx][0][curve_field] if time % resolution == 0][start_idx:]
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
         for curve in curve_set:
             print(len(curve['cum_reward']))
-            x = [time for time, J in curve['cum_reward'] if time % resolution == 0][start_idx:]
-            y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][start_idx:], weight=0.95)
+            x = [time for time, J in curve[curve_field] if time % resolution == 0][start_idx:]
+            y = smooth([J for time, J in curve[curve_field] if time % resolution == 0][start_idx:], weight=0.95)
             #print(x[:10], x[-10:])
 
             print(len(x), len(y))
@@ -726,8 +727,8 @@ if __name__ == '__main__':
     #data = cut_down_data(['J_disentangled', 'J_indep', 'J_nontrivial', 'max_value_constraint', 'time'], dont_repeat_work=False)
     #data = cut_down_meta_data()
     #cut_down_meta(
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/meta_restricted', 
-    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta_restricted', 
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/meta_unrestricted', 
+    #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_meta_unrestricted', 
     #  '^baseline.+?')
     #meta_runs, baseline_runs = load_metacontroller_and_baseline_data(
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down_baselines',
@@ -740,8 +741,8 @@ if __name__ == '__main__':
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
     #  meta_runs,
     #  baseline_runs)
-    make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots',error_bars=True)
-    #meta_generalization_plots('ALL_DATA/plots/new_meta_plots')
+    make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots',error_bars=False)
+    meta_generalization_plots('ALL_DATA/plots/new_meta_plots', error_bars=False)
       #meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
       #                          'pacman_restricted_with_base': 'pacman_restricted',
       #                          'seaquest_restricted_with_base': 'seaquest_restricted'})
