@@ -416,7 +416,7 @@ def make_repeat_plots(run_dir, dest_dir):
                     names.append(f'{repeat_number} Repeats')
                 make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name))
 
-def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name):
+def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name, true_x=0):
     curve_sets = []
     for path_curve_set in path_curve_sets:
         curve_set = []
@@ -425,7 +425,7 @@ def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name):
                 print(f'Loading {path}...')
                 curve_set.append(pickle.load(f))
         curve_sets.append(curve_set)
-    make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name))
+    make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name), true_x=true_x)
 
 
 def make_new_meta_controller_plots(dest_dir):
@@ -555,10 +555,10 @@ def make_new_meta_controller_plots(dest_dir):
         ],
     ]
     colors = ['red', 'blue', 'green', 'orange', 'black']
-    make_plots_curve_sets(sokoban, colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf')
-    make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault.pdf')
-    make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest.pdf')
-    make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman.pdf')
+    make_plots_curve_sets(sokoban, colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
+    make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault.pdf', 4)
+    make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest.pdf', 4)
+    make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman.pdf', 4)
 
 
 
