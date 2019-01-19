@@ -368,13 +368,14 @@ def make_plot(curve_sets, colors, names, output_path, time_curve_idx=0):
     print('time_curve_idx', time_curve_idx)
     plt.clf()
     resolution = 1000
-    true_x = [time for time, J in curve_sets[time_curve_idx][0]['cum_reward'] if time % resolution == 0][1:]
+    start_idx = 0
+    true_x = [time for time, J in curve_sets[time_curve_idx][0]['cum_reward'] if time % resolution == 0][start_idx:]
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
         for curve in curve_set:
             print(len(curve['cum_reward']))
-            x = [time for time, J in curve['cum_reward'] if time % resolution == 0][1:]
-            y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][1:], weight=0.95)
+            x = [time for time, J in curve['cum_reward'] if time % resolution == 0][start_idx:]
+            y = smooth([J for time, J in curve['cum_reward'] if time % resolution == 0][start_idx:], weight=0.95)
             #print(x[:10], x[-10:])
 
             print(len(x), len(y))
@@ -556,8 +557,9 @@ def make_new_meta_controller_plots(dest_dir):
             'ALL_DATA/cut_down_baselines/baseline_seaquest_4',
         ],
     ]
+    sokoban_colors = ['red', 'blue', 'green', 'black']
     colors = ['red', 'blue', 'green', 'orange', 'black']
-    make_plots_curve_sets(sokoban, colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
+    make_plots_curve_sets(sokoban, sokoban_colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
     make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault.pdf', 4)
     make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest.pdf', 4)
     make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman.pdf', 4)
