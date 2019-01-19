@@ -17,11 +17,11 @@ def read_in_values(txt):
     return mapping
 
 
-with open('icf_values_stats.txt', 'r') as f:
+with open('icf_env_values_stats.txt', 'r') as f:
     icf_values = f.readlines()
     icf_values = read_in_values(icf_values)
 
-with open('rd_values_stats.txt', 'r') as f:
+with open('rd_env_values_stats.txt', 'r') as f:
     rd_values = f.readlines()
     rd_values = read_in_values(rd_values)
 
