@@ -364,9 +364,10 @@ def smooth(scalars, weight):  # Weight between 0 and 1
     return smoothed
 
 
-def make_plot(curve_sets, colors, names, output_path, ):
+def make_plot(curve_sets, colors, names, output_path, time_curve_idx=0):
     plt.clf()
     resolution = 10000
+    true_x = [time for time, J in curve_sets[time_curve_idx][0]['cum_reward'] if time % resolution == 0][1:]
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
         for curve in curve_set:
@@ -379,7 +380,8 @@ def make_plot(curve_sets, colors, names, output_path, ):
         min_len = min([len(y) for y in all_ys])
         all_ys = [y[:min_len] for y in all_ys]
         mean = np.mean(all_ys, axis=0)
-        plt.plot(x[:min_len], mean, color=color, label=name)
+
+        plt.plot(true_x[:min_len], mean, color=color, label=name)
 
     # should sort the data
     handles, labels = plt.gca().get_legend_handles_labels()
