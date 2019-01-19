@@ -565,6 +565,113 @@ def make_new_meta_controller_plots(dest_dir):
     make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman.pdf', 4)
 
 
+def meta_generalization_plots(dest_dir):
+    assault = [
+        [
+            'ALL_DATA/meta_restricted/assault_2reward_1',
+            'ALL_DATA/meta_restricted/assault_2reward_2',
+            'ALL_DATA/meta_restricted/assault_2reward_3',
+            'ALL_DATA/meta_restricted/assault_2reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/assault_3reward_1',
+            'ALL_DATA/meta_restricted/assault_3reward_2',
+            'ALL_DATA/meta_restricted/assault_3reward_3',
+            'ALL_DATA/meta_restricted/assault_3reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/assault_5reward_1',
+            'ALL_DATA/meta_restricted/assault_5reward_2',
+            'ALL_DATA/meta_restricted/assault_5reward_3',
+            'ALL_DATA/meta_restricted/assault_5reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/assault_8reward_1',
+            'ALL_DATA/meta_restricted/assault_8reward_2',
+            'ALL_DATA/meta_restricted/assault_8reward_3',
+            'ALL_DATA/meta_restricted/assault_8reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/baseline_assault_1',
+            'ALL_DATA/meta_restricted/baseline_assault_2',
+            'ALL_DATA/meta_restricted/baseline_assault_3',
+            'ALL_DATA/meta_restricted/baseline_assault_4',
+        ],
+    ]
+
+    pacman = [
+        [
+            'ALL_DATA/meta_restricted/pacman_2reward_1',
+            'ALL_DATA/meta_restricted/pacman_2reward_2',
+            'ALL_DATA/meta_restricted/pacman_2reward_3',
+            'ALL_DATA/meta_restricted/pacman_2reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/pacman_3reward_1',
+            'ALL_DATA/meta_restricted/pacman_3reward_2',
+            'ALL_DATA/meta_restricted/pacman_3reward_3',
+            'ALL_DATA/meta_restricted/pacman_3reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/pacman_5reward_1',
+            'ALL_DATA/meta_restricted/pacman_5reward_2',
+            'ALL_DATA/meta_restricted/pacman_5reward_3',
+            'ALL_DATA/meta_restricted/pacman_5reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/pacman_8reward_1',
+            'ALL_DATA/meta_restricted/pacman_8reward_2',
+            'ALL_DATA/meta_restricted/pacman_8reward_3',
+            'ALL_DATA/meta_restricted/pacman_8reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/baseline_pacman_1',
+            'ALL_DATA/meta_restricted/baseline_pacman_2',
+            'ALL_DATA/meta_restricted/baseline_pacman_3',
+            'ALL_DATA/meta_restricted/baseline_pacman_4',
+        ],
+    ]
+
+    seaquest = [
+        [
+            'ALL_DATA/meta_restricted/seaquest_2reward_1',
+            'ALL_DATA/meta_restricted/seaquest_2reward_2',
+            'ALL_DATA/meta_restricted/seaquest_2reward_3',
+            'ALL_DATA/meta_restricted/seaquest_2reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/seaquest_3reward_1',
+            'ALL_DATA/meta_restricted/seaquest_3reward_2',
+            'ALL_DATA/meta_restricted/seaquest_3reward_3',
+            'ALL_DATA/meta_restricted/seaquest_3reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/seaquest_5reward_1',
+            'ALL_DATA/meta_restricted/seaquest_5reward_2',
+            'ALL_DATA/meta_restricted/seaquest_5reward_3',
+            'ALL_DATA/meta_restricted/seaquest_5reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/seaquest_8reward_1',
+            'ALL_DATA/meta_restricted/seaquest_8reward_2',
+            'ALL_DATA/meta_restricted/seaquest_8reward_3',
+            'ALL_DATA/meta_restricted/seaquest_8reward_4',
+        ],
+        [
+            'ALL_DATA/meta_restricted/baseline_seaquest_1',
+            'ALL_DATA/meta_restricted/baseline_seaquest_2',
+            'ALL_DATA/meta_restricted/baseline_seaquest_3',
+            'ALL_DATA/meta_restricted/baseline_seaquest_4',
+        ],
+    ]
+    sokoban_colors = ['red', 'blue', 'green', 'black']
+    colors = ['red', 'blue', 'green', 'orange', 'black']
+    #make_plots_curve_sets(sokoban, sokoban_colors, ['2 Reward', '3 Reward', '4 Reward', 'DQN'], dest_dir, 'sokoban.pdf', 3)
+    make_plots_curve_sets(assault, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'assault_restricted.pdf', 4)
+    make_plots_curve_sets(seaquest, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'seaquest_restricted.pdf', 4)
+    make_plots_curve_sets(pacman, colors, ['2 Reward', '3 Reward', '5 Reward', '8 Reward', 'DQN'], dest_dir, 'pacman_restricted.pdf', 4)
+
+
 
 
 
@@ -656,7 +763,8 @@ if __name__ == '__main__':
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
     #  meta_runs,
     #  baseline_runs)
-    make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots')
+    #make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots')
+    meta_generalization_plots('ALL_DATA/plots/new_meta_plots')
       #meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
       #                          'pacman_restricted_with_base': 'pacman_restricted',
       #                          'seaquest_restricted_with_base': 'seaquest_restricted'})
