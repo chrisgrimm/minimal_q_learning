@@ -416,7 +416,7 @@ def make_repeat_plots(run_dir, dest_dir):
                     names.append(f'{repeat_number} Repeats')
                 make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name))
 
-def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name, true_x=0):
+def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name, time_curve_idx=0):
     curve_sets = []
     for path_curve_set in path_curve_sets:
         curve_set = []
@@ -425,7 +425,7 @@ def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name, t
                 print(f'Loading {path}...')
                 curve_set.append(pickle.load(f))
         curve_sets.append(curve_set)
-    make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name), true_x=true_x)
+    make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name), time_curve_idx=time_curve_idx)
 
 
 def make_new_meta_controller_plots(dest_dir):
