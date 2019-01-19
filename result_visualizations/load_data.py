@@ -421,7 +421,7 @@ def make_plots_curve_sets(path_curve_sets, colors, names, dest_dir, plot_name):
                 print(f'Loading {path}...')
                 curve_set.append(pickle.load(f))
         curve_sets.append(curve_set)
-    make_plot(curve_sets, colors, names, os.path.join(plot_name))
+    make_plot(curve_sets, colors, names, os.path.join(dest_dir, plot_name))
 
 
 def make_new_meta_controller_plots(dest_dir):
