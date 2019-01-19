@@ -367,7 +367,7 @@ def smooth(scalars, weight):  # Weight between 0 and 1
 def make_plot(curve_sets, colors, names, output_path, time_curve_idx=0):
     print('time_curve_idx', time_curve_idx)
     plt.clf()
-    resolution = 10000
+    resolution = 1000
     true_x = [time for time, J in curve_sets[time_curve_idx][0]['cum_reward'] if time % resolution == 0][1:]
     for curve_set, color, name in zip(curve_sets, colors, names):
         all_ys = []
