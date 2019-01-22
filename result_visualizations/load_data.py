@@ -338,15 +338,17 @@ def make_J_disentangled_plots(path, merged_data, n=2000):
         plt.clf()
         plt.hold(True)
         for (run_num, data) in data_list:
+            if run_num == '_1':
+                continue
             print('run_num', run_num)
             x = [time for time, J in data['J_disentangled']][n-1:]
             mv = np.array([mv for _, mv in data['max_value_constraint']])
             indep = np.array([indep for _, indep in data['J_indep']])
             loss = indep - mv
-            y = moving_average(loss, n=n)
+            y = -1*moving_average(loss, n=n)
             #y = moving_average([J for time, J in data['J_disentangled']], n=n)
             plt.plot(x, y, label=f'A{run_num}', color=colors[run_num])
-        plt.legend()
+        #plt.legend()
         #plt.title('Disentanglement Score')
         plt.xlabel('Timesteps')
         plt.ylabel('Disentanglement Score')
@@ -741,11 +743,12 @@ if __name__ == '__main__':
     #  '/home/crgrimm/minimal_q_learning/ALL_DATA/plots/meta_plots',
     #  meta_runs,
     #  baseline_runs)
-    make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots',error_bars=False)
-    meta_generalization_plots('ALL_DATA/plots/new_meta_plots', error_bars=False)
+    #make_new_meta_controller_plots('ALL_DATA/plots/new_meta_plots',error_bars=False)
+    #meta_generalization_plots('ALL_DATA/plots/new_meta_plots', error_bars=False)
       #meta_to_baseline_mapping={'assault_restricted_with_base': 'assault_restricted',
       #                          'pacman_restricted_with_base': 'pacman_restricted',
       #                          'seaquest_restricted_with_base': 'seaquest_restricted'})
     #merged_data = load_and_merge_data(filter_regex=r'^.*?sokoban\_4reward.*?\_[234]$')
-    #merged_data = load_and_merge_data('/home/crgrimm/minimal_q_learning/ALL_DATA/cut_down')
-    #make_J_disentangled_plots('/home/crgrimm/minimal_q_learning/ALL_DATA/disentangled_plots', merged_data)
+    cut_down_path = '/Users/chris/projects/q_learning/new_dqn_results/completed_runs/new_cut_down'
+    merged_data = load_and_merge_data(cut_down_path, filter_regex='^sokoban\_4reward.+?$')
+    make_J_disentangled_plots('/Users/chris/projects/q_learning/new_dqn_results/completed_runs/', merged_data)
