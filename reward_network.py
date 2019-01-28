@@ -186,7 +186,7 @@ class RewardPartitionNetwork(object):
                 if regularize:
                     self.loss = (value_constraint + self.J_reg - self.max_value_mult*max_value_constraint)
                 else:
-                    self.loss = (value_constraint - self.max_value_mult*max_value_constraint)
+                    self.loss = (value_constraint + self.max_value_mult*max_value_constraint)
 
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
