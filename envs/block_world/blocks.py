@@ -312,6 +312,17 @@ class ConstantGoalBlock(GoalBlock, Block):
     def get_reward(self):
         return self.reward
 
+class ConstantInteractiveBlock(Block):
+
+    def __init__(self, position, color, reward=0.0, texture=None, id=None):
+        self.position = tuple(position)
+        self.color = tuple(color)
+        self.reward = reward
+        self.texture = texture
+        self.id = next(BLOCK_ID_GEN) if id is None else id
+
+
+
 class RandomGoalBlock(GoalBlock, Block):
 
     def __init__(self, color, reward=1.0, texture=None, id=None):

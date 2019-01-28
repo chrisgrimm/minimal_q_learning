@@ -1,45 +1,37 @@
-from random import choice
 import numpy as np
-from replay_buffer import ReplayBuffer
-from envs.block_world.block_pushing_domain import BlockPushingDomain
 from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
-from reward_network import RewardPartitionNetwork
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix
-import argparse
 from utils import LOG, build_directory_structure, add_implicit_name_arg
-from reward_prob_tracker import RewardProbTracker
 import argparse
 from random import choice
+from switch_world_visualizations.switchworld_vis_reward import switchworld_vis_reward
 import cv2
 import tqdm
 import os, re
 import tensorflow as tf
 from replay_buffer import StateReplayBuffer
-from examine_behavior import produce_all_videos
 
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
 from reward_network import RewardPartitionNetwork
+from envs.switch_world import SwitchWorld
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
-parser.add_argument('--reuse-visual', action='store_true')
+parser.add_argument('--product-mode', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST', 'SWITCHWORLD'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
-parser.add_argument('--separate-reward-repr', action='store_true')
-parser.add_argument('--bayes-reward-filter', action='store_true')
-parser.add_argument('--use-ideal-filter', action='store_true')
 parser.add_argument('--num-partitions', type=int, required=True)
 parser.add_argument('--use-meta-controller', action='store_true')
 parser.add_argument('--clip-gradient', type=float, default=-1)
@@ -159,6 +151,23 @@ elif mode == 'SOKOBAN_FOUR_ROOM':
     dummy_env_cluster('reset', args=[])
     dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env.reset()
+elif mode == 'SWITCHWORLD':
+    num_partitions = args.num_partitions
+
+    num_visual_channels = 3
+    #visualization_func = produce_two_goal_visualization
+    visualization_func = switchworld_vis_reward
+    on_reward_print_func = default_on_reward_print_func
+
+    display_freq = 1000
+    env = SwitchWorld()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: SwitchWorld(),
+                                            SwitchWorld)
+    dummy_env_cluster('reset', args=[])
+    dummy_env = SwitchWorld()
+    dummy_env.reset()
+
 elif mode == 'PACMAN':
     num_partitions = args.num_partitions
     num_visual_channels = 9
@@ -260,8 +269,7 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
-                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
-                                    use_ideal_threshold=args.use_ideal_filter, clip_gradient=args.clip_gradient,
+                                    lr=args.learning_rate, product_mode=args.product_mode,
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
@@ -271,7 +279,6 @@ reward_meta_controller_buffer = ReplayBuffer(10000)
 meta_controller = QLearnerAgent(meta_env.observation_space.shape[0], meta_env.action_space.n, 'meta_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 (height, width, depth) = env.observation_space.shape
-tracker = RewardProbTracker(height, width, depth)
 
 learning_starts = 10000
 batch_size = 32
@@ -287,7 +294,7 @@ min_reward_experiences = 500
 num_reward_steps = 30000
 save_freq = 10000
 evaluation_frequency = 10000
-current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
+current_reward_training_step = num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 time = 0
 num_steps = 10000000
@@ -371,7 +378,6 @@ def evaluate_performance(env, q_network: QLearnerAgent):
 
 current_episode_length = 0
 max_length_before_policy_switch = -1
-update_threshold_frequency = 100
 (h, w, d) = env.observation_space.shape
 last_100_scores = [np.inf]
 best_score = np.inf
@@ -382,9 +388,6 @@ if args.restore_dead_run is not None:
     starting_time, epsilon = restore_dead_run()
 
 
-ideal_threshold = (cv2.imread('./ideal_threshold.png')[:, :, [0]] / 255).astype(np.uint8)
-
-reward_tracker_zero_filter = 0
 for time in range(starting_time, num_steps):
     # take random action
     #a = np.random.randint(0, env.action_space.n)
@@ -401,26 +404,6 @@ for time in range(starting_time, num_steps):
         sp, r, t, info = env.step(a)
 
     state_replay_buffer.append(env.get_current_state())
-
-    #if r > 0:
-        #partitioned_r = reward_net.get_partitioned_reward([sp], [r])[0]
-        #print(f'{reward_buffer.length()}/{1000}')
-        #reward_buffer.append(s, a, r, sp, t)
-        #if args.use_meta_controller and meta_a != -1:
-        #    reward_meta_controller_buffer.append(s, meta_a, r, sp, t)
-        #on_reward_print_func(r, sp, info, reward_net, reward_buffer)
-        #if args.bayes_reward_filter:
-        #    tracker.add(sp, r)
-        #LOG.add_line('max_reward_on_positive', np.max(partitioned_r))
-        #image = np.concatenate([sp[:,:,0:3], sp[:,:,3:6], sp[:,:,6:9]], axis=1)
-        #cv2.imwrite(f'pos_reward_{i}.png', cv2.resize(image, (400*3, 400), interpolation=cv2.INTER_NEAREST))
-        #print(r, partitioned_r)
-    #else:
-    #    if args.bayes_reward_filter and reward_tracker_zero_filter % 100 == 0:
-    #        tracker.add(sp, r)
-
-    reward_tracker_zero_filter += 1
-
 
     episode_reward += r
     #env.render()
@@ -443,10 +426,6 @@ for time in range(starting_time, num_steps):
         s = sp
 
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
-
-    #if args.bayes_reward_filter and (reward_buffer.length() >= min_reward_experiences) and (time % update_threshold_frequency == 0):
-    #    threshold = np.max(tracker.compute_threshold_image(0.09), axis=2, keepdims=True)
-    #    reward_net.update_threshold_image(threshold)
 
     # need to  figure out what these constraints imply. They should only ever be active when we're in meta-controller mode.
     extra_meta_controller_constraints = \
@@ -506,7 +485,7 @@ for time in range(starting_time, num_steps):
         print(log_string)
 
         if time % display_freq == 0:
-            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.txt')
 
         if time % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
