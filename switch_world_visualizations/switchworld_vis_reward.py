@@ -23,6 +23,6 @@ def switchworld_vis_reward(reward_net : RewardPartitionNetwork, env : SwitchWorl
             switch_histograms[i] += int(switch_flipped)
         all_switch_histograms.append(switch_histograms)
     with open(filepath, 'a+') as f:
-        f.write('-------')
+        f.write('\n-------\n')
         for i, histogram in enumerate(all_switch_histograms):
             f.write(f'\t({i}) : {histogram}\n')
