@@ -259,9 +259,10 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(100000)
+buffer_capacities = 100000
+buffer = ReplayBuffer(buffer_capacities)
 
-state_replay_buffer = StateReplayBuffer(100000)
+state_replay_buffer = StateReplayBuffer(buffer_capacities)
 
 reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
@@ -271,10 +272,8 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
                                     )
 
-meta_env = MetaEnvironment(env, reward_net, reward_net.Q_networks, True, 1)
-meta_controller_buffer = ReplayBuffer(10000)
-reward_meta_controller_buffer = ReplayBuffer(10000)
-meta_controller = QLearnerAgent(meta_env.observation_space.shape[0], meta_env.action_space.n, 'meta_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
+
+base_controller = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'base_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 (height, width, depth) = env.observation_space.shape
 
@@ -302,65 +301,13 @@ policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
 
-def restore_dead_run():
-    run_path = os.path.join(run_dir, args.restore_dead_run)
-    # first get the models loaded up
-    reward_net.restore(os.path.join(run_path, 'weights'), 'reward_net.ckpt')
-    # get the time that we made it to in the dead run.
-    event_file_names = [x for x in os.listdir(run_path) if x.startswith('events')]
-    if len(event_file_names) > 1:
-        raise Exception('Too many event files. Disambiguation required.')
-    elif len(event_file_names) == 0:
-        raise Exception(f'Cannot find event file in directory: {run_path}')
-    event_file_name = event_file_names[0]
-    event_path = os.path.join(run_path, event_file_name)
-    largest_time = 0
-    for s in tf.train.summary_iterator(event_path):
-        for e in s.summary.value:
-            if e.tag == 'time':
-                print(e.simple_value)
-                largest_time = max(e.simple_value, largest_time)
-    # fill the replay buffer and state-buffers with experiences
-    replay_buffer_size = 100000
-    fill_steps = min(replay_buffer_size, int(largest_time))
-    epsilon = max(1.0 - largest_time * epsilon_delta, min_epsilon)
-    s = env.reset()
-    for t in tqdm.tqdm(range(fill_steps)):
-        a = get_action(s)
-        sp, r, t, _ = env.step(a)
-        buffer.append(s, a, r, sp, t)
-        state_replay_buffer.append(env.get_current_state())
-        if t:
-            s = env.reset()
-        else:
-            s = sp
-    return int(largest_time), epsilon
-
-
-
-
-
-
-
-def get_action_meta_controller(s):
-    global epsilon, meta_controller
-    is_random = np.random.uniform(0,1) < epsilon
-    if is_random:
-        # flip a coin to decide if the random action will be low-level or high-level
-        action = -1 if np.random.uniform(0,1) < 0.5 else np.random.randint(0,meta_env.action_space.n)
-    else:
-        action = meta_controller.get_action([s])[0]
-    return action
-
 
 def get_action(s):
     global epsilon
-    global current_policy
-    is_random = np.random.uniform(0, 1) < epsilon
-    if current_policy == -1 or is_random:
+    if np.random.uniform(0, 1) < epsilon:
         action = np.random.randint(0, env.action_space.n)
     else:
-        action = reward_net.get_state_actions([s])[current_policy][0]
+        action = base_controller.get_action([s])[0]
     return action
 
 def evaluate_performance(env, q_network: QLearnerAgent):
@@ -382,32 +329,18 @@ best_score = np.inf
 s = env.reset()
 
 starting_time = 0
-if args.restore_dead_run is not None:
-    starting_time, epsilon = restore_dead_run()
-
 
 for time in range(starting_time, num_steps):
     # take random action
     #a = np.random.randint(0, env.action_space.n)
-    if args.use_meta_controller:
-        meta_a = get_action_meta_controller(s)
-        if meta_a == -1:
-            a = np.random.randint(0, env.action_space.n)
-            sp, r, t, info = env.step(a)
-        else:
-            sp, r, t, info = meta_env.step(meta_a)
-            a = info['a']
-    else:
-        a = get_action(s)
-        sp, r, t, info = env.step(a)
+    a = get_action(s)
+    sp, r, t, info = env.step(a)
 
     state_replay_buffer.append(env.get_current_state())
 
     episode_reward += r
     #env.render()
     buffer.append(s, a, r, sp, t)
-    if args.use_meta_controller and meta_a != -1:
-        meta_controller_buffer.append(s, meta_a, r, sp, t)
 
     if info['internal_terminal']:
         current_episode_length = 0
@@ -426,18 +359,20 @@ for time in range(starting_time, num_steps):
     #epsilon = max(min_epsilon, epsilon - epsilon_delta)
 
     # need to  figure out what these constraints imply. They should only ever be active when we're in meta-controller mode.
-    extra_meta_controller_constraints = \
-        (current_reward_training_step >= num_reward_steps and # lets the reward predictor train before the agents start (if reward prediction is not enabled, this is always true)
-        (meta_controller_buffer.length() >= batch_size or not args.use_meta_controller) and  # wait for the meta-controller's buffer to be sufficiently full.
-        (reward_meta_controller_buffer.length() >= min_reward_experiences or not args.use_meta_controller)) # same deal but with its reward buffer.
+    # extra_meta_controller_constraints = \
+    #     (current_reward_training_step >= num_reward_steps and # lets the reward predictor train before the agents start (if reward prediction is not enabled, this is always true)
+    #     (meta_controller_buffer.length() >= batch_size or not args.use_meta_controller) and  # wait for the meta-controller's buffer to be sufficiently full.
+    #     (reward_meta_controller_buffer.length() >= min_reward_experiences or not args.use_meta_controller)) # same deal but with its reward buffer.
 
 
 
 
-    if time >= learning_starts and extra_meta_controller_constraints:
-
+    if time >= learning_starts:# and extra_meta_controller_constraints:
         if time % q_train_freq == 0:
             q_losses = reward_net.train_Q_networks(time)
+            s_batch, a_batch, r_batch, sp_batch, t_batch = buffer.sample(32)
+            base_controller.train_batch(s_batch, a_batch, r_batch, sp_batch, t_batch)
+
             # tensorboard logging.
             if time % q_loss_log_freq == 0:
                 for j in range(num_partitions):
@@ -476,10 +411,10 @@ for time in range(starting_time, num_steps):
         if time % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
 
-        if time % evaluation_frequency == 0:
+        #if time % evaluation_frequency == 0:
             # evaluate the performance and reset the environment.
-            eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
-            LOG.add_line('eval_cum_reward', eval_cum_reward)
+            #eval_cum_reward, s = evaluate_performance(meta_env, meta_controller)
+            #LOG.add_line('eval_cum_reward', eval_cum_reward)
 
         if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
             best_score = np.mean(last_100_scores)
