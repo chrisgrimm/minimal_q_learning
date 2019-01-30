@@ -1,4 +1,4 @@
-PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=0 --mode=SWITCHWORLD --visual --num-partitions=4  --softmin-temp=2.0 --product-mode
-PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=1 --mode=SWITCHWORLD --visual --num-partitions=4  --softmin-temp=2.0 --product-mode
-PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=2 --mode=SWITCHWORLD --visual --num-partitions=4  --softmin-temp=2.0 --product-mode
-PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=3 --mode=SWITCHWORLD --visual --num-partitions=4  --softmin-temp=2.0 --product-mode
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=4 --mode=SWITCHWORLD --visual --num-partitions=4 --product-mode
+CUDA_VISIBLE_DEVICES=1 PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=1 --mode=SWITCHWORLD --visual --num-partitions=4 --product-mode
+CUDA_VISIBLE_DEVICES=2 PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=2 --mode=SWITCHWORLD --visual --num-partitions=4 --product-mode
+CUDA_VISIBLE_DEVICES=3 PYTHONPATH=.:~/baselines python main.py --run-dir=switchworld_runs --gpu-num=3 --mode=SWITCHWORLD --visual --num-partitions=4 --product-mode

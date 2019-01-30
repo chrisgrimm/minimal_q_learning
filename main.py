@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
 parser.add_argument('--product-mode', action='store_true')
-parser.add_argument('--traj-len', type=int, default=10)
+parser.add_argument('--traj-len', type=int, default=20)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST', 'SWITCHWORLD'])
@@ -39,8 +39,6 @@ parser.add_argument('--restore-dead-run', type=str, default=None)
 parser.add_argument('--softmin-temp', type=float, default=1.0)
 parser.add_argument('--stop-softmin-gradient', action='store_true')
 parser.add_argument('--run-dir', type=str, default='new_runs')
-parser.add_argument('--regularize', action='store_true')
-parser.add_argument('--regularization-weight', type=float, default=1.0)
 
 
 args = parser.parse_args()
@@ -271,7 +269,7 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
                                     lr=args.learning_rate, product_mode=args.product_mode,
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
-                                    regularize=args.regularize, regularization_weight=args.regularization_weight)
+                                    )
 
 meta_env = MetaEnvironment(env, reward_net, reward_net.Q_networks, True, 1)
 meta_controller_buffer = ReplayBuffer(10000)
@@ -445,32 +443,20 @@ for time in range(starting_time, num_steps):
                 for j in range(num_partitions):
                     LOG.add_line(f'q_loss{j}', q_losses[j])
 
-        if args.use_meta_controller:
-            no_reward_S, no_reward_A, no_reward_R, no_reward_SP, no_reward_T = meta_controller_buffer.sample(batch_size // 2)
-            reward_S, reward_A, reward_R, reward_SP, reward_T = reward_meta_controller_buffer.sample(batch_size // 2)
-            S = no_reward_S + reward_S
-            A = no_reward_A + reward_A
-            R = no_reward_R + reward_R
-            SP = no_reward_SP + reward_SP
-            T = no_reward_T + reward_T
-            meta_controller_loss = meta_controller.train_batch(S, A, R, SP, T)
         if time % (q_train_freq * 5) == 0:
             for j in range(1):
-                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
-                LOG.add_line('reward_loss', reward_loss)
-                LOG.add_line('max_value_constraint', max_value_constraint)
-                LOG.add_line('value_constraint', value_constraint)
+                loss, J_indep, J_nontriv = reward_net.train_R_function(dummy_env_cluster)
+                LOG.add_line('loss', loss)
+                #LOG.add_line('value_constraint', value_constraint)
                 LOG.add_line('J_indep', J_indep)
-                LOG.add_line('J_nontrivial', J_nontrivial)
-                LOG.add_line('J_disentangled', J_indep - J_nontrivial)
-                LOG.add_line('time', time)
+                LOG.add_line('J_nontriv', J_nontriv)
+                #LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                #LOG.add_line('time', time)
                 # TODO actually log the value_partition
                 if len(last_100_scores) < 100:
-                    last_100_scores.append(J_indep - J_nontrivial)
+                    last_100_scores.append(loss)
                 else:
-                    last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
-                if args.use_meta_controller:
-                    LOG.add_line('meta_controller_loss', meta_controller_loss)
+                    last_100_scores = last_100_scores[1:] + [loss]
 
         #if args.separate_reward_repr:
         #    pred_reward_loss = reward_net.train_predicted_reward()
@@ -480,12 +466,12 @@ for time in range(starting_time, num_steps):
 
         log_string = f'({time}, eps: {epsilon}) ' + \
                      ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {reward_loss}' + \
-                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+                     f'Reward Loss: {loss}' + \
+                     f'(J_indep: {J_indep}, J_nontriv: {J_nontriv})'
         print(log_string)
 
         if time % display_freq == 0:
-            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.txt')
+            visualization_func(reward_net, dummy_env, None, f'./{run_dir}/{args.name}/images/policy_vis.txt')
 
         if time % save_freq == 0:
             reward_net.save(save_path, 'reward_net.ckpt')
