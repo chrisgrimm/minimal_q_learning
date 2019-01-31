@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
 parser.add_argument('--product-mode', action='store_true')
-parser.add_argument('--traj-len', type=int, default=20)
+parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST', 'SWITCHWORLD'])
@@ -330,7 +330,7 @@ s = env.reset()
 
 starting_time = 0
 
-def collect_trajectory(env, q_network: QLearnerAgent, steps=1000):
+def collect_trajectory(env, q_network: QLearnerAgent, steps=250):
     s = env.reset()
     eps = 0.1
     s_traj = []
