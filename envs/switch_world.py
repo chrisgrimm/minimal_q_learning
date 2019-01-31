@@ -29,11 +29,15 @@ class SwitchWorld(object):
             if (new_x_pos, new_y_pos) == switch_pos:
                 self.switch_states[i] = True
         self.agent_position = new_x_pos, new_y_pos
-        reward = 1 if all(self.switch_states) else 0
+        #print(self.switch_states)
+        all_switches = all(self.switch_states)
+
+        reward = 1 if all_switches else 0
         self.timer += 1
         internal_terminal = False
         obs = self.get_observation()
-        self.reset()
+        if all_switches:
+            self.reset()
         return obs, reward, False, {'internal_terminal': internal_terminal}
 
 
@@ -77,7 +81,12 @@ class SwitchWorld(object):
 
 if __name__ == '__main__':
     env = SwitchWorld()
+    n = 0
     while True:
         a = np.random.randint(0, 4)
         s, r, t, info = env.step(a)
-        input('...')
+        n += 1
+        print(f'{n}')
+        if r == 1:
+            print('Got Reward!!!')
+            input('...')
