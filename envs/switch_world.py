@@ -19,6 +19,7 @@ class SwitchWorld(object):
         self.observation_space = Box(0, 255, shape=[64, 64, 3], dtype=np.uint8)
         self.action_space = Discrete(4)
         self.action_mapping = {0: (0,1), 1: (1,0), 2: (0,-1), 3: (-1,0)}
+        self.human_mapping = {'a': 3, 'd': 1, 'w': 2, 's': 0}
 
     def step(self, a):
         delta_x, delta_y = self.action_mapping[a]

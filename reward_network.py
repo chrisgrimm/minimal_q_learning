@@ -45,147 +45,26 @@ class RewardPartitionNetwork(object):
         with tf.device(f'/{"gpu" if use_gpu else "cpu"}:{gpu_num}'):
             with tf.variable_scope(name, reuse=reuse):
                 #self.inp_only_rewarding_trajectories = tf.placeholder(tf.bool)
-                if self.visual:
-                    self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
-                    self.inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
-                else:
-                    self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
-                    self.inp_sp_converted = self.inp_sp
+                self.inp_sp = tf.placeholder(tf.uint8, self.obs_shape)
+                inp_sp_converted = tf.image.convert_image_dtype(self.inp_sp, dtype=tf.float32)
                 self.inp_r = tf.placeholder(tf.float32, [None])
 
-
-
-                #print('OG partitioned reward', self.inp_s, inp_a_onehot)
-                partitioned_reward = self.partitioned_reward_tf(self.inp_sp_converted, self.inp_r, 'reward_partition')
+                partitioned_reward = self.partitioned_reward_tf(inp_sp_converted, self.inp_r, 'reward_partition') # [bs, num_partitions]
                 self.partitioned_reward = partitioned_reward
+                self.combined_reward = tf.reduce_sum(tf.cumprod(self.partitioned_reward, axis=1), axis=1)
 
+                self.inp_sp_traj = tf.placeholder(tf.uint8, self.obs_shape_traj)
+                converted_inp_sp_traj = tf.image.convert_image_dtype(self.inp_sp_traj, dtype=tf.float32)
+                self.inp_r_traj = tf.placeholder(tf.float32, [None, self.traj_len])
+                self.inp_t_traj = tf.placeholder(tf.bool, [None, self.traj_len])
+                partitioned_traj = self.partition_reward_traj(converted_inp_sp_traj, self.inp_r_traj, 'reward_partition', reuse=True)
+                # partitioned_traj : [bs, traj_len, num_partitions]
 
-                # build the list of placeholders
-                self.list_inp_sp_traj = []
-                self.list_inp_r_traj = []
-                self.list_inp_t_traj = []
-                #self.list_inp_sp_traj_converted = []
-                #self.list_reward_trajs = []
-                self.list_trajectory_values = []
-                self.list_start_trajectory_values = []
-                self.list_end_trajectory_values = []
+                combined_traj = tf.reduce_sum(tf.cumprod(partitioned_traj, axis=2), axis=2) # [bs, traj_len]
 
-                #self.list_any_r = []
-
-                # collect the values for each of the partitions.
-                for i in range(self.num_partitions):
-                    if self.visual:
-                        inp_sp_trajs_i_then_i = tf.placeholder(tf.uint8, self.obs_shape_traj)
-                        self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
-                        inp_sp_trajs_i_then_i_converted = tf.image.convert_image_dtype(inp_sp_trajs_i_then_i,
-                                                                                       dtype=tf.float32)
-                    else:
-                        inp_sp_trajs_i_then_i = tf.placeholder(tf.float32, self.obs_shape_traj)
-                        self.list_inp_sp_traj.append(inp_sp_trajs_i_then_i)
-                        inp_sp_trajs_i_then_i_converted = inp_sp_trajs_i_then_i
-
-                    inp_r_trajs_i_then_i = tf.placeholder(tf.float32, [None, self.traj_len])
-                    inp_t_trajs_i_then_i = tf.placeholder(tf.bool, [None, self.traj_len])
-                    self.list_inp_r_traj.append(inp_r_trajs_i_then_i)
-                    self.list_inp_t_traj.append(inp_t_trajs_i_then_i)
-
-                    any_rewards = tf.reduce_any(tf.equal(inp_r_trajs_i_then_i, 1), axis=1)
-                    #any_rewards = tf.cast(any_rewards, tf.float32)
-                    #self.list_any_r.append(any_rewards)
-                    reward_trajs_i_then_i = self.partition_reward_traj(inp_sp_trajs_i_then_i_converted,
-                                                                       inp_r_trajs_i_then_i,
-                                                                       name='reward_partition',
-                                                                       reuse=True)
-                    # values of following policy i under each of the rewards.
-
-                    start_i_trajectory_values = self.get_values(reward_trajs_i_then_i[:, :self.traj_len//2, :], inp_t_trajs_i_then_i[:, :self.traj_len//2], self.traj_len//2)
-                    end_i_trajectory_values = self.get_values(reward_trajs_i_then_i[:, self.traj_len//2:, :], inp_t_trajs_i_then_i[:, self.traj_len//2:], self.traj_len//2)
-
-                    whole_i_trajectory_values = self.get_values(reward_trajs_i_then_i, inp_t_trajs_i_then_i, self.traj_len)
-
-                    self.list_start_trajectory_values.append(start_i_trajectory_values)
-                    self.list_end_trajectory_values.append(end_i_trajectory_values)
-                    self.list_trajectory_values.append(whole_i_trajectory_values)
-
-                J_nontriv_list = []
-                for i in range(self.num_partitions):
-                    J_nontriv_list.append(self.list_trajectory_values[i][:, i])
-                # apply weighting here if we decide to do that....
-                J_nontriv = tf.reduce_sum(J_nontriv_list, axis=0) # sum the elements
-                self.J_nontriv = J_nontriv = tf.reduce_mean(J_nontriv, axis=0) # take the means across the starting states.
-
-                J_indep_list = []
-                for i in range(self.num_partitions):
-                    for j in range(self.num_partitions):
-                        if i == j:
-                            pass
-                        diff = tf.abs(self.list_start_trajectory_values[i][:, j] - self.list_end_trajectory_values[i][:, j])
-                        J_indep_list.append(diff)
-                J_indep = tf.reduce_sum(J_indep_list, axis=0)
-                self.J_indep = J_indep = tf.reduce_mean(J_indep, axis=0)
-
-
-
-
-                #partition_constraint = 3*100*tf.reduce_mean(tf.square(self.inp_r - tf.reduce_sum(partitioned_reward, axis=1)))
-
-
-                # if self.use_dynamic_weighting_max_value:
-                #     avg_max_values = tf.identity(
-                #         [tf.reduce_mean(self.list_trajectory_values[i][:, i], axis=0) for i in range(self.num_partitions)])
-                #     pre_stopped = tf.nn.softmax(-softmin_temperature*avg_max_values)
-                #     if self.stop_softmin_gradients:
-                #         max_value_weighting = tf.stop_gradient(pre_stopped)  # [num_partitions]
-                #     else:
-                #         max_value_weighting = pre_stopped
-                # else:
-                #     max_value_weighting = tf.ones(shape=[self.num_partitions], dtype=tf.float32)
-                #
-                # self.J_nontrivial_list = []
-                # max_value_constraint = 0
-                # for i in range(self.num_partitions):
-                #     max_value_constraint += max_value_weighting[i] * self.list_trajectory_values[i][:, i]
-                #     self.J_nontrivial_list.append(self.list_trajectory_values[i][:, i])
-                # max_value_constraint = tf.reduce_mean(max_value_constraint, axis=0)
-                #
-                # self.J_nontrivial = tf.reduce_mean(tf.reduce_max(self.J_nontrivial_list, axis=0), axis=0)
-                #
-                # #max_value_constraint = tf.reduce_mean(
-                # #    tf.reduce_min([self.list_trajectory_values[i][:, i] for i in range(self.num_partitions)], axis=0))
-                #
-                #
-                # if self.use_dynamic_weighting_disentangle_value:
-                #     ordered = []
-                #     for i in range(self.num_partitions):
-                #         for j in range(self.num_partitions):
-                #             if i == j:
-                #                 continue
-                #             ordered.append(tf.reduce_mean(self.list_trajectory_values[i][:, j], axis=0))
-                #     # No negative in front of this term because we want it to be small.
-                #     dist_value_weighting = tf.stop_gradient(tf.nn.softmax(tf.identity(ordered)))
-                # else:
-                #     dist_value_weighting = tf.ones(shape=[self.num_partitions**2 - self.num_partitions], dtype=tf.float32)
-                #
-                # #build the value constraint
-                # index = 0
-                # value_constraint = 0
-                # for i in range(self.num_partitions):
-                #    for j in range(self.num_partitions):
-                #        if i == j:
-                #            continue
-                #        value_constraint += (dist_value_weighting[index] * self.list_trajectory_values[i][:, j])
-                #        index += 1
-                #
-                # value_constraint = tf.reduce_mean(value_constraint, axis=0)
-                # self.J_indep = value_constraint
-                #
-                # self.max_value_constraint = max_value_constraint
-                # self.value_constraint = value_constraint
-
-                self.loss = J_indep + J_nontriv
-
-                #self.loss = (value_constraint + self.max_value_mult*max_value_constraint)
-
+                value = self.get_values(tf.reshape(combined_traj, [-1, self.traj_len, 1]), self.inp_t_traj, self.traj_len)
+                value = tf.reshape(value, [-1])
+                self.loss = tf.reduce_mean(value)
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []
@@ -210,38 +89,45 @@ class RewardPartitionNetwork(object):
         for i, q_net in enumerate(self.Q_networks):
             q_net.restore(path, f'q_net{i}.ckpt')
 
-    def train_Q_networks(self, time):
-        Q_losses = []
-        s_batch, a_batch, r_batch, sp_batch, t_batch = self.buffer.sample(32)
-        [partitioned_reward] = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp_batch, self.inp_r: r_batch})
-        for i, network in enumerate(self.Q_networks):
-            weights, batch_idxes = np.ones_like(t_batch), None
-            loss = network.train_batch(time, s_batch, a_batch, partitioned_reward[:, i], sp_batch, t_batch, weights, batch_idxes)
-            Q_losses.append(loss)
-        return Q_losses
+    #def train_Q_network(self):
 
 
-    def train_R_function(self, dummy_env_cluster):
+    # def train_Q_networks(self, time):
+    #     Q_losses = []
+    #     s_batch, a_batch, r_batch, sp_batch, t_batch = self.buffer.sample(32)
+    #     [partitioned_reward] = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp_batch, self.inp_r: r_batch})
+    #     for i, network in enumerate(self.Q_networks):
+    #         weights, batch_idxes = np.ones_like(t_batch), None
+    #         loss = network.train_batch(time, s_batch, a_batch, partitioned_reward[:, i], sp_batch, t_batch, weights, batch_idxes)
+    #         Q_losses.append(loss)
+    #     return Q_losses
+
+
+
+
+    def train_R_function(self, inp_s_traj, inp_r_traj, inp_t_traj):
+        # inp_s_traj : [big_traj_len, 64, 64, 3]
+        # inp_r_traj : [big_traj_len]
+        big_traj_len = inp_r_traj.shape[0]
+
         batch_size = 32
+        starting_points = np.random.randint(0, big_traj_len - self.traj_len, size=[batch_size])
+        ending_points = starting_points + self.traj_len
+        batch_sp = []
+        batch_r = []
+        batch_t = []
+        for start, end in zip(starting_points, ending_points):
+            batch_sp.append(inp_s_traj[start:end, :, :, :])
+            batch_r.append(inp_r_traj[start:end])
+            batch_t.append(inp_t_traj[start:end])
 
-        feed_dict = {}
-
-        for j in range(self.num_partitions):
-            dummy_env_cluster('restore_state', sharded_args=[[x] for x in self.state_buffer.sample(32)])
-            #dummy_env_cluster('reset', args=[])
-
-            starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
-            SP_j_then_j, R_j_then_j, T_j_then_j, _ = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
-            feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
-            feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
-            feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
-
-
-        # for i in range(self.num_partitions):
-        #     feed_dict[self.list_inp_sp_traj[i]] = all_SP_traj_batches[i]
-        #     feed_dict[self.list_inp_t_traj[i]] = all_T_traj_batches[i]
-        [_, loss, J_indep, J_nontriv] = self.sess.run([self.train_op, self.loss, self.J_indep, self.J_nontriv], feed_dict=feed_dict)
-        return loss, J_indep, J_nontriv
+        feed_dict = {
+            self.inp_sp_traj: batch_sp,
+            self.inp_r_traj: batch_r,
+            self.inp_t_traj: batch_t,
+        }
+        [_, loss] = self.sess.run([self.train_op, self.loss], feed_dict=feed_dict)
+        return loss
 
 
 
@@ -324,6 +210,10 @@ class RewardPartitionNetwork(object):
     def get_partitioned_reward(self, sp, r):
         [partitioned_r]  = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp, self.inp_r: r})
         return partitioned_r
+
+    def get_combined_reward(self, sp, r):
+        [combined_reward] = self.sess.run([self.combined_reward], feed_dict={self.inp_sp: sp, self.inp_r: r})
+        return combined_reward
 
     def get_state_values(self, s):
         return [np.max(self.Q_networks[i].get_Q(s), axis=1) for i in range(self.num_partitions)]

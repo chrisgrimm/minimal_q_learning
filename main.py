@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
 parser.add_argument('--product-mode', action='store_true')
-parser.add_argument('--traj-len', type=int, default=20)
+parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST', 'SWITCHWORLD'])
@@ -330,6 +330,26 @@ s = env.reset()
 
 starting_time = 0
 
+def collect_trajectory(env, q_network: QLearnerAgent, steps=1000):
+    s = env.reset()
+    eps = 0.1
+    s_traj = []
+    r_traj = []
+    t_traj = []
+    for i in range(steps):
+        if np.random.uniform(0, 1) < eps:
+            a = np.random.randint(0, env.action_space.n)
+        else:
+            a = q_network.get_action([s])[0]
+        s, r, t, info = env.step(a)
+        s_traj.append(s)
+        r_traj.append(r)
+        t_traj.append(t)
+    return s_traj, r_traj, t_traj
+
+
+
+
 for time in range(starting_time, num_steps):
     # take random action
     #a = np.random.randint(0, env.action_space.n)
@@ -369,24 +389,19 @@ for time in range(starting_time, num_steps):
 
     if time >= learning_starts:# and extra_meta_controller_constraints:
         if time % q_train_freq == 0:
-            q_losses = reward_net.train_Q_networks(time)
             s_batch, a_batch, r_batch, sp_batch, t_batch = buffer.sample(32)
-            base_controller.train_batch(s_batch, a_batch, r_batch, sp_batch, t_batch)
+            r_combined_batch = reward_net.get_combined_reward(sp_batch, r_batch)
+            q_loss = base_controller.train_batch(s_batch, a_batch, r_combined_batch, sp_batch, t_batch)
 
             # tensorboard logging.
             if time % q_loss_log_freq == 0:
-                for j in range(num_partitions):
-                    LOG.add_line(f'q_loss{j}', q_losses[j])
+                LOG.add_line(f'q_loss', q_loss)
 
         if time % (q_train_freq * 5) == 0:
             for j in range(1):
-                loss, J_indep, J_nontriv = reward_net.train_R_function(dummy_env_cluster)
+                sp_traj, r_traj, t_traj = collect_trajectory(env, base_controller)
+                loss = reward_net.train_R_function(np.array(sp_traj), np.array(r_traj), np.array(t_traj))
                 LOG.add_line('loss', loss)
-                #LOG.add_line('value_constraint', value_constraint)
-                LOG.add_line('J_indep', J_indep)
-                LOG.add_line('J_nontriv', J_nontriv)
-                #LOG.add_line('J_disentangled', J_indep - J_nontrivial)
-                #LOG.add_line('time', time)
                 # TODO actually log the value_partition
                 if len(last_100_scores) < 100:
                     last_100_scores.append(loss)
@@ -400,9 +415,8 @@ for time in range(starting_time, num_steps):
 
 
         log_string = f'({time}, eps: {epsilon}) ' + \
-                     ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {loss}' + \
-                     f'(J_indep: {J_indep}, J_nontriv: {J_nontriv})'
+                     f'Q_loss: {q_loss}\t' + \
+                     f'Reward Loss: {loss}'
         print(log_string)
 
         if time % display_freq == 0:
