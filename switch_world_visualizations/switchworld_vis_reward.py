@@ -34,14 +34,23 @@ def switchworld_vis_reward(reward_net : RewardPartitionNetwork, env: SwitchWorld
                        's','s','s','s']#, # get bottom-right
                        #'a','a','a','a'] # get bottom-left
 
-    s = env.restore_state(([False] * 4, (2, 2), 0))
+    s = env.restore_state(([False] * 2, (2, 2), 0))
     activies = []
     for a_human in action_sequence:
         a = env.human_mapping[a_human]
         s, r, t, info = env.step(a)
+        print('pos', env.agent_position, env.switch_states)
+        print('r', r)
         num_active = np.sum(reward_net.get_partitioned_reward([s], [r])[0])
         num_active = int(np.round(num_active))
         activies.append(num_active)
     with open(filepath, 'a+') as f:
         f.write(f'{",".join([str(x) for x in activies])}\n')
 
+
+if __name__ == '__main__':
+    class DummyNet:
+        def get_partitioned_reward(self, s, r):
+            return [np.array([r[0], r[0]])]
+    env = SwitchWorld()
+    switchworld_vis_reward(DummyNet(), env, None, 'moop.txt')
