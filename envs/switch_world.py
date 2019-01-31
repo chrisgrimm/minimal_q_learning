@@ -32,10 +32,8 @@ class SwitchWorld(object):
         reward = 1 if all(self.switch_states) else 0
         self.timer += 1
         internal_terminal = False
-        if self.timer >= 1000:
-            internal_terminal = True
-            self.reset()
         obs = self.get_observation()
+        self.reset()
         return obs, reward, False, {'internal_terminal': internal_terminal}
 
 
