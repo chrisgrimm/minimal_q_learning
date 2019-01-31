@@ -59,12 +59,19 @@ class RewardPartitionNetwork(object):
                 self.inp_t_traj = tf.placeholder(tf.bool, [None, self.traj_len])
                 partitioned_traj = self.partition_reward_traj(converted_inp_sp_traj, self.inp_r_traj, 'reward_partition', reuse=True)
                 # partitioned_traj : [bs, traj_len, num_partitions]
+                assert self.num_partitions == 2
+                P = partitioned_traj
+                combined_traj_1 = P[:,:,0] + P[:,:,0]*P[:,:,1]
+                combined_traj_2 = P[:,:,1] + P[:,:,1]*P[:,:,0]
+                #combined_traj = tf.reduce_sum(tf.cumprod(partitioned_traj, axis=2), axis=2) # [bs, traj_len]
+                #combined_traj_2 =
 
-                combined_traj = tf.reduce_sum(tf.cumprod(partitioned_traj, axis=2), axis=2) # [bs, traj_len]
-
-                value = self.get_values(tf.reshape(combined_traj, [-1, self.traj_len, 1]), self.inp_t_traj, self.traj_len)
-                value = tf.reshape(value, [-1])
-                self.loss = tf.reduce_mean(value)
+                value1 = self.get_values(tf.reshape(combined_traj_1, [-1, self.traj_len, 1]), self.inp_t_traj, self.traj_len)
+                value1 = tf.reshape(value1, [-1])
+                value2 = self.get_values(tf.reshape(combined_traj_2, [-1, self.traj_len, 1]), self.inp_t_traj,
+                                         self.traj_len)
+                value2 = tf.reshape(value1, [-1])
+                self.loss = tf.reduce_mean(tf.maximum(value1, value2))
 
                 reward_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/reward_partition/')
                 visual_params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.visual_scope.name) if self.visual_scope is not None else []

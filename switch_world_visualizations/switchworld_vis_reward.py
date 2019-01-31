@@ -31,8 +31,8 @@ def switchworld_vis_reward(reward_net : RewardPartitionNetwork, env: SwitchWorld
     action_sequence = ['a','a',
                        'w','w', # get top-left
                        'd','d','d','d', # get top-right
-                       's','s','s','s', # get bottom-right
-                       'a','a','a','a'] # get bottom-left
+                       's','s','s','s']#, # get bottom-right
+                       #'a','a','a','a'] # get bottom-left
 
     s = env.restore_state(([False] * 4, (2, 2), 0))
     activies = []

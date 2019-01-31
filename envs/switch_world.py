@@ -6,8 +6,9 @@ class SwitchWorld(object):
 
     def __init__(self):
         self.w, self.h = 5, 5
-        self.switch_positions = [(0,0), (4,4), (0,4), (4,0)]
-        self.switch_states = [False, False, False, False]
+        self.switch_positions = [(0,0), (4,4)]#, (0,4), (4,0)]
+        self.initial_switch_states = [False, False]
+        self.switch_states = self.initial_switch_states[:]
         self.switch_color_off = (0, 255, 0)
         self.switch_color_on = (255, 0, 0)
         self.background_color = (255, 255, 255)
@@ -29,7 +30,6 @@ class SwitchWorld(object):
             if (new_x_pos, new_y_pos) == switch_pos:
                 self.switch_states[i] = True
         self.agent_position = new_x_pos, new_y_pos
-        #print(self.switch_states)
         all_switches = all(self.switch_states)
 
         reward = 1 if all_switches else 0
@@ -42,7 +42,7 @@ class SwitchWorld(object):
 
 
     def reset(self):
-        self.switch_states = [False, False, False, False]
+        self.switch_states = self.initial_switch_states[:]
         self.agent_position = self.get_agent_position()
         self.timer = 0
         return self.get_observation()
