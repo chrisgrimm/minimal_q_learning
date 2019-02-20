@@ -10,7 +10,7 @@ class AtariWrapper():
         self.env = AtariEnv(game=game, obs_type='image', frameskip=5)
         self.action_space = self.env.action_space
         self.image_size = 64
-        self.frame_buffer_len = 3
+        self.frame_buffer_len = 4
         self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
         self.observation_space = Box(0, 255, shape=(64,64,3*self.frame_buffer_len), dtype=np.uint8)
         self.reward_range = (0, 1)

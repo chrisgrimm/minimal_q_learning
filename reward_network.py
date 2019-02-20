@@ -424,6 +424,10 @@ class RewardPartitionNetwork(object):
     def get_state_actions(self, s):
         return [self.Q_networks[i].get_action(s) for i in range(self.num_partitions)]
 
+    def get_hybrid_actions(self, s):
+        hybrid_q = np.sum([self.Q_networks[i].get_Q(s) for i in range(self.num_partitions)], axis=0) # [bs, num_actions]
+        return np.argmax(hybrid_q, axis=1) # [bs]
+
     #def get_state_rewards(self, s):
     #    return self.get_partitioned_reward([s]*5, list(range(5)))
 
