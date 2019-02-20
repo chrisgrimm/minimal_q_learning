@@ -39,8 +39,8 @@ def switchworld_vis_reward(reward_net : RewardPartitionNetwork, env: SwitchWorld
     for a_human in action_sequence:
         a = env.human_mapping[a_human]
         s, r, t, info = env.step(a)
-        print('pos', env.agent_position, env.switch_states)
-        print('r', r)
+        #print('pos', env.agent_position, env.switch_states)
+        #print('r', r)
         num_active = np.sum(reward_net.get_partitioned_reward([s], [r])[0])
         num_active = int(np.round(num_active))
         activies.append(num_active)

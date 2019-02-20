@@ -272,7 +272,8 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
                                     )
 
-
+# This is dangerously broken. You're using the wrong QLearnerAgent.
+assert False
 base_controller = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'base_q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 (height, width, depth) = env.observation_space.shape
