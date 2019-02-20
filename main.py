@@ -94,7 +94,7 @@ def setup_atari(name):
                                             lambda i: name_class_mapping[name](),
                                             name_class_mapping[name])
     dummy_env_cluster('reset', args=[])
-    dummy_env = name_class_mapping[name](initial_states_file=None)
+    dummy_env = name_class_mapping[name]()
     dummy_env.reset()
     return {'num_partitions': num_partitions,
             'num_visual_channels': num_visual_channels,
