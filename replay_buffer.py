@@ -100,6 +100,9 @@ class ReplayBuffer2(object):
         if self.test_mode:
             return slice
         else:
+            print(i0, i1)
+            print(slice)
+
             return np.concatenate(slice, axis=2)
 
 
