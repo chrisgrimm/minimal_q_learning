@@ -49,8 +49,8 @@ class ReplayBuffer2(object):
         assert self.color_channels > 1
         self.capacity = capacity
         self.num_frames = num_frames
-        self.S = np.zeros([self.capacity, 64, 64, num_color_channels])
-        self.S = [None for _ in range(self.capacity)]
+        #self.S = [None for _ in range(self.capacity)]
+        self.S = np.zeros([1000000, 64, 64, 3], dtype=np.uint8)
         self.A = [None for _ in range(self.capacity)]
         self.R = [None for _ in range(self.capacity)]
         self.T = [None for _ in range(self.capacity)]
