@@ -300,7 +300,7 @@ for time in range(starting_time, num_steps):
 
     episode_reward += r
     while True:
-        buffer.append(np.copy(s), a, r, np.copy(sp), t)
+        buffer.append(s, a, r, np.copy(sp), t)
         print(buffer.length())
 
     if info['internal_terminal']:
