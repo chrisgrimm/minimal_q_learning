@@ -22,13 +22,17 @@ class AtariWrapper():
 
     def get_current_state(self):
         state = self.env.clone_full_state()
-        copied_framebuffer = [np.copy(x) for x in self.frame_buffer]
-        return {'state': state, 'frame_buffer': copied_framebuffer}
+        #copied_framebuffer = [np.copy(x) for x in self.frame_buffer]
+        return {'state': state}
 
 
     def restore_state(self, state):
         self.env.restore_full_state(state['state'])
-        self.frame_buffer = [np.copy(x) for x in state['frame_buffer']]
+        self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
+        # generate the framebuffer from the new state instead of storing it in a state-buffer.
+        for _ in range(self.frame_buffer_len):
+            self.step(np.random.randint(0, self.action_space.n))
+        #self.frame_buffer = [np.copy(x) for x in state['frame_buffer']]
         return self.get_obs()
 
     def get_obs(self):

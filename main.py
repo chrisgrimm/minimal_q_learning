@@ -16,7 +16,7 @@ from replay_buffer import StateReplayBuffer
 
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
-from replay_buffer import ReplayBuffer
+from replay_buffer import ReplayBuffer2
 from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
@@ -72,6 +72,9 @@ def default_on_reward_print_func(r, sp, info, network, reward_buffer):
     partitioned_r = network.get_partitioned_reward([sp], [r])[0]
     print(reward_buffer.length(), partitioned_r)
 
+ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
+num_frames = 4 if mode in ATARI_GAMES else 1
+num_color_channels = 3
 
 display_freq = 10000
 
@@ -85,7 +88,7 @@ def setup_atari(name):
         'ALIEN': AlienWrapper
     }
     num_partitions = args.num_partitions
-    num_visual_channels = 12
+    num_visual_channels = num_frames * num_color_channels
     on_reward_print_func = default_on_reward_print_func
     visualization_func = default_visualizations
     assert visual
@@ -119,7 +122,7 @@ if mode in ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']:
 
 elif mode == 'SOKOBAN':
     num_partitions = args.num_partitions
-    num_visual_channels = 3
+    num_visual_channels = num_frames * num_color_channels
     visualization_func = produce_two_goal_visualization
     on_reward_print_func = default_on_reward_print_func
 
@@ -134,7 +137,7 @@ elif mode == 'SOKOBAN':
     dummy_env.reset()
 elif mode == 'SOKOBAN_REWARD_ALWAYS_ONE':
     num_partitions = args.num_partitions
-    num_visual_channels = 3
+    num_visual_channels = num_frames * num_color_channels
     visualization_func = produce_two_goal_visualization
     on_reward_print_func = default_on_reward_print_func
 
@@ -151,7 +154,7 @@ elif mode == 'SOKOBAN_REWARD_ALWAYS_ONE':
 elif mode == 'SOKOBAN_OBSTACLE':
     num_partitions = args.num_partitions
 
-    num_visual_channels = 3
+    num_visual_channels = num_frames * num_color_channels
     visualization_func = produce_two_goal_visualization
     on_reward_print_func = default_on_reward_print_func
 
@@ -167,7 +170,7 @@ elif mode == 'SOKOBAN_OBSTACLE':
 elif mode == 'SOKOBAN_FOUR_ROOM':
     num_partitions = args.num_partitions
 
-    num_visual_channels = 3
+    num_visual_channels = num_frames * num_color_channels
     visualization_func = produce_two_goal_visualization
     on_reward_print_func = default_on_reward_print_func
 
@@ -198,7 +201,7 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(1000000)
+buffer = ReplayBuffer2(1000000, num_frames, num_color_channels)
 
 state_replay_buffer = StateReplayBuffer(1000000)
 
@@ -296,9 +299,7 @@ for time in range(starting_time, num_steps):
 
 
     episode_reward += r
-    while True:
-        buffer.append(np.copy(s), a, r, np.copy(sp), t)
-        print(buffer.length())
+    buffer.append(s, a, r, sp, t)
 
     if info['internal_terminal']:
         current_episode_length = 0
