@@ -291,15 +291,14 @@ for time in range(starting_time, num_steps):
 
     a = get_action(s)
     sp, r, t, info = env.step(a)
-    while True:
-        state_replay_buffer.append(env.get_current_state())
-        print(state_replay_buffer.length())
-        
+    state_replay_buffer.append(env.get_current_state())
+
 
 
     episode_reward += r
-
-    buffer.append(s, a, r, sp, t)
+    while True:
+        buffer.append(s, a, r, sp, t)
+        print(buffer.length())
 
     if info['internal_terminal']:
         current_episode_length = 0
