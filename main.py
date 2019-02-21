@@ -294,9 +294,8 @@ for time in range(starting_time, num_steps):
 
     a = get_action(s)
     sp, r, t, info = env.step(a)
-    while True:
-        state_replay_buffer.append(env.get_current_state())
-        print(state_replay_buffer.length())
+
+    state_replay_buffer.append(env.get_current_state())
 
 
 
