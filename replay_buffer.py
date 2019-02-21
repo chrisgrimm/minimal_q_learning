@@ -72,9 +72,10 @@ class ReplayBuffer2(object):
     def rejection_sample_indices(self, num_indices):
         indices = []
         max_sample_val = self.capacity if self.is_full else self.idx
+        min_sample_val = 0 if self.is_full else self.num_frames + 1
         num_back = self.num_frames + 1
         while len(indices) < num_indices:
-            idx = np.random.randint(0, max_sample_val)
+            idx = np.random.randint(min_sample_val, max_sample_val)
             # checks if the self.idx is going to be crossed by the sample.
             # "addition" handles the edge case when idx and idx - num_frames crosses 0 by sliding everything forward.
             # this makes checking for "between-ness" on a ring easier.
@@ -83,7 +84,7 @@ class ReplayBuffer2(object):
             lower_bound = (idx + addition - num_back) % self.capacity
             boundary = (self.idx + addition) % self.capacity
             if upper_bound > boundary > lower_bound:
-                print(f'rejected {idx}!')
+                #print(f'rejected {idx}!')
                 continue
             indices.append(idx)
         return indices
@@ -101,7 +102,7 @@ class ReplayBuffer2(object):
             return slice
         else:
             print(i0, i1)
-            print(slice)
+            #print(slice)
 
             return np.concatenate(slice, axis=2)
 
