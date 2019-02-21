@@ -61,6 +61,7 @@ class ReplayBuffer2(object):
         if self.test_mode:
             self.S[self.idx] = sp
         else:
+            print(sp[:,:, -self.color_channels:].shape, sp.dtype)
             self.S[self.idx] = sp[:, :, -self.color_channels:]
         #self.A[self.idx] = a
         #self.R[self.idx] = r
