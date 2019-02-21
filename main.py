@@ -16,7 +16,7 @@ from replay_buffer import StateReplayBuffer
 
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
-from replay_buffer import ReplayBuffer2
+from replay_buffer import ReplayBuffer
 from reward_network import RewardPartitionNetwork
 from utils import LOG, build_directory_structure
 
@@ -201,7 +201,7 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer2(1000000, num_frames, num_color_channels)
+buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
 
 state_replay_buffer = StateReplayBuffer(1000000)
 
