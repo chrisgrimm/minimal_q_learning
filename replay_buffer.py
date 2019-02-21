@@ -62,9 +62,9 @@ class ReplayBuffer2(object):
             self.S[self.idx] = sp
         else:
             self.S[self.idx] = sp[:, :, -self.color_channels:]
-        self.A[self.idx] = a
-        self.R[self.idx] = r
-        self.T[self.idx] = t
+        #self.A[self.idx] = a
+        #self.R[self.idx] = r
+        #self.T[self.idx] = t
         self.idx = (self.idx + 1) % self.capacity
         if self.idx == 0:
             self.is_full = True
