@@ -248,6 +248,7 @@ for time in range(start_time, num_steps):
 
         if time % q_train_freq == 0:
             s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
+
             weights, batch_idxes = np.ones_like(t_sample), None
 
             q_loss = dqn.train_batch(time, s_sample, a_sample, r_sample, sp_sample, t_sample, weights, batch_idxes)

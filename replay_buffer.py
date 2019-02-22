@@ -97,6 +97,8 @@ class ReplayBuffer(object):
             slice = self.S[i0:] + self.S[:i1]
         else:
             slice = self.S[i0:i1]
+        print('slice_length', len(slice))
+        print(f'i0 {i0}, i1 {i1}')
         # if len(slice) != self.num_frames:
         #     print(f'failed!, {i0}, {i1}')
         #     input('...')
@@ -117,6 +119,7 @@ class ReplayBuffer(object):
         SP = []
         T = []
         for idx in self.rejection_sample_indices(batch_size):
+            print(idx)
             S.append(self.get_S_slice(idx-1-self.num_frames, idx-1))
             SP.append(self.get_S_slice(idx-self.num_frames, idx))
             A.append(self.A[idx-1])
