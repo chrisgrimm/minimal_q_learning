@@ -74,7 +74,7 @@ def default_on_reward_print_func(r, sp, info, network, reward_buffer):
 
 ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
 num_frames = 4 if mode in ATARI_GAMES else 1
-num_color_channels = 3
+num_color_channels = 1
 
 display_freq = 10000
 

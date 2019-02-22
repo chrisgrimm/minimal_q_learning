@@ -11,8 +11,9 @@ class AtariWrapper():
         self.action_space = self.env.action_space
         self.image_size = 64
         self.frame_buffer_len = 4
-        self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
-        self.observation_space = Box(0, 255, shape=(64,64,3*self.frame_buffer_len), dtype=np.uint8)
+        self.num_channels = 1
+        self.frame_buffer = [np.zeros(shape=(self.image_size, self.image_size, self.num_channels), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
+        self.observation_space = Box(0, 255, shape=(self.image_size,self.image_size,self.num_channels*self.frame_buffer_len), dtype=np.uint8)
         self.reward_range = (0, 1)
         self.metadata = self.env.metadata
         self.spec = self.env.spec
@@ -28,7 +29,7 @@ class AtariWrapper():
 
     def restore_state(self, state):
         self.env.restore_full_state(state['state'])
-        self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
+        self.frame_buffer = [np.zeros(shape=(self.image_size, self.image_size, self.num_channels), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
         # generate the framebuffer from the new state instead of storing it in a state-buffer.
         for _ in range(self.frame_buffer_len):
             self.step(np.random.randint(0, self.action_space.n))
@@ -42,7 +43,9 @@ class AtariWrapper():
         return self.env._get_image()
 
     def process_obs(self, obs):
-        return cv2.resize(obs, (64,64), interpolation=cv2.INTER_AREA)
+        obs = cv2.resize(obs, (self.image_size,self.image_size), interpolation=cv2.INTER_AREA)
+        obs = np.reshape(cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY), (self.image_size, self.image_size, self.num_channels))
+        return obs
 
     def step(self, a):
         sp, r, t, info = self.env.step(a)
@@ -64,7 +67,7 @@ class AtariWrapper():
         return obs, r, False, info
 
     def reset(self):
-        self.frame_buffer = [np.zeros(shape=(64, 64, 3), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
+        self.frame_buffer = [np.zeros(shape=(self.image_size, self.image_size, self.num_channels), dtype=np.uint8) for _ in range(self.frame_buffer_len)]
         s = self.env.reset()
         self.frame_buffer = self.frame_buffer[1:] + [self.process_obs(s)]
         obs = self.get_obs()
