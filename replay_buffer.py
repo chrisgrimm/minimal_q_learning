@@ -45,12 +45,10 @@ class ReplayBuffer(object):
 
     def __init__(self, capacity, num_frames, num_color_channels):
         self.color_channels = num_color_channels
-        # things break in the append function if there is only 1 color channel.
-        assert self.color_channels > 1
         self.capacity = capacity
         self.num_frames = num_frames
         #self.S = [None for _ in range(self.capacity)]
-        self.S = np.zeros([1000000, 64, 64, 3], dtype=np.uint8)
+        self.S = np.zeros([1000000, 64, 64, num_color_channels], dtype=np.uint8)
         self.A = [None for _ in range(self.capacity)]
         self.R = [None for _ in range(self.capacity)]
         self.T = [None for _ in range(self.capacity)]
@@ -62,7 +60,10 @@ class ReplayBuffer(object):
         if self.test_mode:
             self.S[self.idx] = sp
         else:
-            self.S[self.idx] = sp[:, :, -self.color_channels:]
+            if self.color_channels > 1:
+                self.S[self.idx] = sp[:, :, -self.color_channels:]
+            else:
+                self.S[self.idx] = sp[:, :, [-1]]
         self.A[self.idx] = a
         self.R[self.idx] = r
         self.T[self.idx] = t
