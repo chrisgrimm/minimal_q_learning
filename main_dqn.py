@@ -132,7 +132,7 @@ LOG.setup(f'./{runs_dir}/{args.name}')
 save_path = os.path.join(runs_dir, args.name, 'weights')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer_size = 10000
+buffer_size = 1000000
 buffer = ReplayBuffer(buffer_size, num_frames, num_color_channels)
 
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
