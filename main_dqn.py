@@ -224,8 +224,9 @@ for time in range(start_time, num_steps):
 
     a = get_action(s, augmented=should_augment, augment_policy=augment_policy_num)
     sp, r, t, info = env.step(a)
-
-    buffer.append(s, a, r, sp, t)
+    while buffer.length() < buffer.capacity:
+        buffer.append(s, a, r, np.copy(sp), t)
+        print(buffer.length())
 
 
     if t:
