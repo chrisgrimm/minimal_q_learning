@@ -228,11 +228,6 @@ for time in range(start_time, num_steps):
 
     buffer.append(s, a, r, sp, t)
 
-    while buffer.length() < buffer.capacity:
-        buffer.append(s, a, r, np.copy(sp), t)
-        print(buffer.length())
-
-
     if t:
         s = env.reset()
     else:

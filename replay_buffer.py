@@ -97,9 +97,6 @@ class ReplayBuffer(object):
             slice = np.concatenate([self.S[i0:], self.S[:i1]], axis=0)
         else:
             slice = self.S[i0:i1]
-        print('slice_length', len(slice))
-        print(f'i0 {i0}, i1 {i1}')
-        assert len(slice) == 4
         # if len(slice) != self.num_frames:
         #     print(f'failed!, {i0}, {i1}')
         #     input('...')
