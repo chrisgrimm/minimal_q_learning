@@ -74,7 +74,7 @@ def default_on_reward_print_func(r, sp, info, network, reward_buffer):
 
 ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
 num_frames = 4 if mode in ATARI_GAMES else 1
-num_color_channels = 1
+num_color_channels = 1 if mode in ATARI_GAMES else 3
 
 display_freq = 10000
 
@@ -110,7 +110,7 @@ def setup_atari(name):
 
 
 
-if mode in ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']:
+if mode in ATARI_GAMES:
     settings = setup_atari(mode)
     num_partitions = settings['num_partitions']
     num_visual_channels = settings['num_visual_channels']
@@ -302,7 +302,6 @@ for time in range(starting_time, num_steps):
     episode_reward += r
     while True:
         buffer.append(s, a, r, np.copy(sp), t)
-        print(buffer.length())
 
     if info['internal_terminal']:
         current_episode_length = 0

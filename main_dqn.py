@@ -53,30 +53,24 @@ with sess.as_default():
     from baselines.deepq.experiments.training_wrapper import make_dqn
 
 
+ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
+num_frames = 4 if mode in ATARI_GAMES else 1
+num_color_channels = 1 if mode in ATARI_GAMES else 3
+num_visual_channels = num_frames * num_color_channels
 
-if mode == 'ASSAULT':
-    num_visual_channels = 9
-    base_env = AssaultWrapper(remove_reward_mode=args.restricted_reward)
-elif mode == 'PACMAN':
-    num_visual_channels = 9
-    base_env = PacmanWrapper(remove_reward_mode=args.restricted_reward)
-elif mode == 'QBERT':
-    num_visual_channels = 9
-    base_env = QBertWrapper()
-elif mode == 'BREAKOUT':
-    num_visual_channels = 9
-    base_env = BreakoutWrapper()
-elif mode == 'ALIEN':
-    num_visual_channels = 9
-    base_env = AlienWrapper()
-elif mode == 'SEAQUEST':
-    num_visual_channels = 9
-    base_env = SeaquestWrapper(remove_reward_mode=args.restricted_reward)
+name_class_mapping = {
+        'ASSAULT': AssaultWrapper,
+        'PACMAN': PacmanWrapper,
+        'SEAQUEST': SeaquestWrapper,
+        'QBERT': QBertWrapper,
+        'BREAKOUT': BreakoutWrapper,
+        'ALIEN': AlienWrapper
+    }
+if mode in ATARI_GAMES:
+    base_env = name_class_mapping[mode](remove_reward_mode=args.restricted_reward)
 elif mode == 'SOKOBAN':
-    num_visual_channels = 3
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard')
 elif mode == 'SOKOBAN_NO_TOP':
-    num_visual_channels = 3
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard', only_bottom_half=True)
 else:
     raise Exception(f'mode must be in {mode_options}.')
@@ -138,9 +132,8 @@ LOG.setup(f'./{runs_dir}/{args.name}')
 save_path = os.path.join(runs_dir, args.name, 'weights')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(100000)
+buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
 
-reward_buffer = ReplayBuffer(100000)
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 with sess.as_default():

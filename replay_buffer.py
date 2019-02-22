@@ -170,7 +170,7 @@ class StateReplayBuffer(object):
 
 
 if __name__ == '__main__':
-    buff = ReplayBuffer2(100, 4)
+    buff = ReplayBuffer(100, 4)
     buff.test_mode = True
 
     for i in range(100):
