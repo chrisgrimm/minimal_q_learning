@@ -119,7 +119,6 @@ class ReplayBuffer(object):
         SP = []
         T = []
         for idx in self.rejection_sample_indices(batch_size):
-            print(idx)
             S.append(self.get_S_slice(idx-1-self.num_frames, idx-1))
             SP.append(self.get_S_slice(idx-self.num_frames, idx))
             A.append(self.A[idx-1])
