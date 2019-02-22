@@ -17,7 +17,7 @@ class AtariWrapper():
         self.reward_range = (0, 1)
         self.metadata = self.env.metadata
         self.spec = self.env.spec
-        self.max_steps = 10000
+        self.max_steps_since_reward = 10000
         self.step_counter = 0
         self.remove_reward_mode = remove_reward_mode
 
@@ -62,7 +62,9 @@ class AtariWrapper():
             self.env.reset()
         info['internal_terminal'] = t
         self.step_counter += 1
-        if self.step_counter >= self.max_steps:
+        if r > 0:
+            self.step_counter = 0
+        if self.step_counter >= self.max_steps_since_reward:
             info['internal_terminal'] = True
         return obs, r, False, info
 
