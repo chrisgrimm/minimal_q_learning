@@ -94,7 +94,7 @@ class ReplayBuffer(object):
     def get_S_slice(self, i0, i1):
 
         if i0 < 0 and i1 >= 0:
-            slice = self.S[i0:] + self.S[:i1]
+            slice = np.concatenate([self.S[i0:], self.S[:i1]], axis=2)
         else:
             slice = self.S[i0:i1]
         print('slice_length', len(slice))
