@@ -424,8 +424,14 @@ class RewardPartitionNetwork(object):
     def get_state_actions(self, s):
         return [self.Q_networks[i].get_action(s) for i in range(self.num_partitions)]
 
-    def get_hybrid_actions(self, s):
-        hybrid_q = np.sum([self.Q_networks[i].get_Q(s) for i in range(self.num_partitions)], axis=0) # [bs, num_actions]
+    def get_hybrid_actions(self, s, mode='sum'):
+        pre_hybrid = [self.Q_networks[i].get_Q(s) for i in range(self.num_partitions)] # [num_partitions, bs, num_actions]
+        if mode == 'sum':
+            hybrid_q = np.sum(pre_hybrid, axis=0) # [bs, num_actions]
+        elif mode == 'max':
+            hybrid_q = np.max(pre_hybrid, axis=0)
+        else:
+            raise Exception(f'Unrecognized mode: {mode}')
         return np.argmax(hybrid_q, axis=1) # [bs]
 
     #def get_state_rewards(self, s):

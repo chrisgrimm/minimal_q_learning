@@ -44,6 +44,8 @@ parser.add_argument('--run-dir', type=str, default='new_runs')
 parser.add_argument('--regularize', action='store_true')
 parser.add_argument('--regularization-weight', type=float, default=1.0)
 parser.add_argument('--hybrid-reward', action='store_true')
+parser.add_argument('--hybrid-reward-mode', type=str, default='sum', choices=['sum', 'max'])
+
 
 
 args = parser.parse_args()
@@ -248,7 +250,7 @@ def get_action(s, eval=False):
         action = np.random.randint(0, env.action_space.n)
     else:
         if args.hybrid_reward:
-            action = reward_net.get_hybrid_actions([s])[0]
+            action = reward_net.get_hybrid_actions([s], mode=args.hybrid_reward_mode)[0]
         else:
             action = reward_net.get_state_actions([s])[current_policy][0]
 
