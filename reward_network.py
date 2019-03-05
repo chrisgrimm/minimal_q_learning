@@ -45,7 +45,8 @@ class RewardPartitionNetwork(object):
         self.obs_shape = [None, self.obs_size] if not self.visual else [None, 64, 64, self.num_visual_channels]
         self.obs_shape_traj = [None, self.traj_len, self.obs_size] if not self.visual else [None, self.traj_len, 64, 64, self.num_visual_channels]
         self.visual_scope = None
-
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
         self.sess = sess = tf.Session(config=config)
 
         if reuse_visual_scoping:
