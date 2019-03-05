@@ -38,7 +38,6 @@ class LinearAgent:
     def get_action(self, s):
         Q_s = self.get_Q_values(s)
         return self.sess.run([self.Q_tilde_s], feed_dict={self.inp_Q_values_s: Q_s})[0]
-        
 
 
     def get_Q_values(self, s):

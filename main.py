@@ -282,94 +282,101 @@ def evaluate_performance(env):
 
 
 
-current_episode_length = 0
-max_length_before_policy_switch = -1
-update_threshold_frequency = 100
-(h, w, d) = env.observation_space.shape
-last_100_scores = [np.inf]
-best_score = np.inf
-s = env.reset()
-
-starting_time = 0
-
-for time in range(starting_time, num_steps):
-
-    a = get_action(s)
-    sp, r, t, info = env.step(a)
-
-    state_replay_buffer.append(env.get_current_state())
 
 
+def main():
+    global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
+        num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
+        current_reward_training_step,epsilon_delta,time,num_steps
 
-    episode_reward += r
-    buffer.append(s, a, r, sp, t)
+    current_episode_length = 0
+    max_length_before_policy_switch = -1
+    update_threshold_frequency = 100
+    (h, w, d) = env.observation_space.shape
+    last_100_scores = [np.inf]
+    best_score = np.inf
+    s = env.reset()
 
-    if info['internal_terminal']:
-        current_episode_length = 0
-        current_policy = choice(policy_indices)
+    starting_time = 0
+    for time in range(starting_time, num_steps):
 
-    if t:
-        s = env.reset()
-        current_policy = choice(policy_indices)
-        current_episode_length = 0
-        print(f'Episode Reward: {episode_reward}')
-        #print(f'Epsilon {epsilon}')
-        episode_reward = 0
-    else:
-        s = sp
+        a = get_action(s)
+        sp, r, t, info = env.step(a)
 
-    if time >= learning_starts:
-
-        if time % q_train_freq == 0:
-            q_losses = reward_net.train_Q_networks(time)
-            # tensorboard logging.
-            if time % q_loss_log_freq == 0:
-                for j in range(num_partitions):
-                    LOG.add_line(f'q_loss{j}', q_losses[j])
-
-        if time % (q_train_freq * 5) == 0:
-            for j in range(1):
-                reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
-                LOG.add_line('reward_loss', reward_loss)
-                LOG.add_line('max_value_constraint', max_value_constraint)
-                LOG.add_line('value_constraint', value_constraint)
-                LOG.add_line('J_indep', J_indep)
-                LOG.add_line('J_nontrivial', J_nontrivial)
-                LOG.add_line('J_disentangled', J_indep - J_nontrivial)
-                LOG.add_line('time', time)
-                # TODO actually log the value_partition
-                if len(last_100_scores) < 100:
-                    last_100_scores.append(J_indep - J_nontrivial)
-                else:
-                    last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
-
-        log_string = f'({time}, eps: {epsilon}) ' + \
-                     ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                     f'Reward Loss: {reward_loss}' + \
-                     f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
-        print(log_string)
-
-        if time % display_freq == 0:
-            visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
-
-        if time % save_freq == 0:
-            reward_net.save(save_path, 'reward_net.ckpt')
-
-        if time % evaluation_frequency == 0:
-            cum_reward, cum_reward_env = evaluate_performance(env)
-            print(f'({time}) EVAL: {cum_reward}')
-            LOG.add_line('cum_reward', cum_reward)
-            LOG.add_line('cum_reward_env', cum_reward_env)
-
-        if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
-            best_score = np.mean(last_100_scores)
-            reward_net.save(best_save_path, 'reward_net.ckpt')
+        state_replay_buffer.append(env.get_current_state())
 
 
 
-        epsilon = max(min_epsilon, epsilon - epsilon_delta)
+        episode_reward += r
+        buffer.append(s, a, r, sp, t)
 
-    current_episode_length += 1
+        if info['internal_terminal']:
+            current_episode_length = 0
+            current_policy = choice(policy_indices)
+
+        if t:
+            s = env.reset()
+            current_policy = choice(policy_indices)
+            current_episode_length = 0
+            print(f'Episode Reward: {episode_reward}')
+            #print(f'Epsilon {epsilon}')
+            episode_reward = 0
+        else:
+            s = sp
+
+        if time >= learning_starts:
+
+            if time % q_train_freq == 0:
+                q_losses = reward_net.train_Q_networks(time)
+                # tensorboard logging.
+                if time % q_loss_log_freq == 0:
+                    for j in range(num_partitions):
+                        LOG.add_line(f'q_loss{j}', q_losses[j])
+
+            if time % (q_train_freq * 5) == 0:
+                for j in range(1):
+                    reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
+                    LOG.add_line('reward_loss', reward_loss)
+                    LOG.add_line('max_value_constraint', max_value_constraint)
+                    LOG.add_line('value_constraint', value_constraint)
+                    LOG.add_line('J_indep', J_indep)
+                    LOG.add_line('J_nontrivial', J_nontrivial)
+                    LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                    LOG.add_line('time', time)
+                    # TODO actually log the value_partition
+                    if len(last_100_scores) < 100:
+                        last_100_scores.append(J_indep - J_nontrivial)
+                    else:
+                        last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
+
+            log_string = f'({time}, eps: {epsilon}) ' + \
+                         ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
+                         f'Reward Loss: {reward_loss}' + \
+                         f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+            print(log_string)
+
+            if time % display_freq == 0:
+                visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+
+            if time % save_freq == 0:
+                reward_net.save(save_path, 'reward_net.ckpt')
+
+            if time % evaluation_frequency == 0:
+                cum_reward, cum_reward_env = evaluate_performance(env)
+                print(f'({time}) EVAL: {cum_reward}')
+                LOG.add_line('cum_reward', cum_reward)
+                LOG.add_line('cum_reward_env', cum_reward_env)
+
+            if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
+                best_score = np.mean(last_100_scores)
+                reward_net.save(best_save_path, 'reward_net.ckpt')
 
 
+
+            epsilon = max(min_epsilon, epsilon - epsilon_delta)
+
+        current_episode_length += 1
+
+if __name__ == '__main__':
+    main()
 
