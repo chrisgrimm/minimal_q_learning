@@ -17,7 +17,8 @@ from replay_buffer import StateReplayBuffer
 from envs.atari.threaded_environment import ThreadedEnvironment
 from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
-from reward_network import RewardPartitionNetwork
+#from reward_network import RewardPartitionNetwork
+from reward_network2 import ReparameterizedRewardNetwork
 from utils import LOG, build_directory_structure
 
 parser = argparse.ArgumentParser()
@@ -207,14 +208,16 @@ buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
 
 state_replay_buffer = StateReplayBuffer(1000000)
 
-reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
-                                    env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
-                                    use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
-                                    max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
-                                    lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
-                                    use_ideal_threshold=args.use_ideal_filter, clip_gradient=args.clip_gradient,
-                                    softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
-                                    regularize=args.regularize, regularization_weight=args.regularization_weight)
+# reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
+#                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
+#                                     use_gpu=use_gpu, num_visual_channels=num_visual_channels, visual=visual,
+#                                     max_value_mult=args.max_value_mult, use_dynamic_weighting_disentangle_value=args.dynamic_weighting_disentangle,
+#                                     lr=args.learning_rate, reuse_visual_scoping=args.reuse_visual, separate_reward_repr=args.separate_reward_repr,
+#                                     use_ideal_threshold=args.use_ideal_filter, clip_gradient=args.clip_gradient,
+#                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
+#                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
+
+reward_net = ReparameterizedRewardNetwork(num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net')
 
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)
@@ -326,36 +329,38 @@ def main():
 
         if time >= learning_starts:
 
+            # if time % q_train_freq == 0:
+            #
+            #     q_losses = reward_net.train_Q_networks(time)
+            #     # tensorboard logging.
+            #     if time % q_loss_log_freq == 0:
+            #         for j in range(num_partitions):
+            #             LOG.add_line(f'q_loss{j}', q_losses[j])
+
             if time % q_train_freq == 0:
-                q_losses = reward_net.train_Q_networks(time)
-                # tensorboard logging.
-                if time % q_loss_log_freq == 0:
-                    for j in range(num_partitions):
-                        LOG.add_line(f'q_loss{j}', q_losses[j])
-
-            if time % (q_train_freq * 5) == 0:
                 for j in range(1):
-                    reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
-                    LOG.add_line('reward_loss', reward_loss)
-                    LOG.add_line('max_value_constraint', max_value_constraint)
-                    LOG.add_line('value_constraint', value_constraint)
+                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions()
+                    LOG.add_line('sums_to_R', sums_to_R)
+                    LOG.add_line('greater_than_0', greater_than_0)
+                    LOG.add_line('reward_consistency', reward_consistency)
                     LOG.add_line('J_indep', J_indep)
-                    LOG.add_line('J_nontrivial', J_nontrivial)
-                    LOG.add_line('J_disentangled', J_indep - J_nontrivial)
+                    LOG.add_line('J_nontriv', J_nontriv)
+                    LOG.add_line('J_disentangled', J_indep - J_nontriv)
                     LOG.add_line('time', time)
-                    # TODO actually log the value_partition
-                    if len(last_100_scores) < 100:
-                        last_100_scores.append(J_indep - J_nontrivial)
-                    else:
-                        last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
-
-            log_string = f'({time}, eps: {epsilon}) ' + \
-                         ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
-                         f'Reward Loss: {reward_loss}' + \
-                         f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
+                    # # TODO actually log the value_partition
+                    # if len(last_100_scores) < 100:
+                    #     last_100_scores.append(J_indep - J_nontrivial)
+                    # else:
+                    #     last_100_scores = last_100_scores[1:] + [J_indep - J_nontrivial]
+            log_string = f'({time}, eps: {epsilon})'
+            # log_string = f'({time}, eps: {epsilon}) ' + \
+            #              ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
+            #              f'Reward Loss: {reward_loss}' + \
+            #              f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
             print(log_string)
 
             if time % display_freq == 0:
+                value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
             if time % save_freq == 0:

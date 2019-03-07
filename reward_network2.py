@@ -5,15 +5,17 @@ import os
 
 class ReparameterizedRewardNetwork(object):
 
-    def __init__(self, buffer, num_actions, name, reuse=None):
+    def __init__(self, num_rewards, learning_rate, buffer, num_actions, name, reuse=None):
         self.buffer = buffer
-        self.num_rewards = 4
+        self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
         self.gamma = 0.99
         self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, 3])
+        self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
         self.inp_a = tf.placeholder(tf.int32, [None])
         self.inp_r = tf.placeholder(tf.float32, [None])
         self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, 3])
+        self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
 
         with tf.variable_scope(name, reuse=reuse) as scope:
             self.Q_s, self.Q_sp, self.R = self.setup_Q_functions()
@@ -21,7 +23,7 @@ class ReparameterizedRewardNetwork(object):
                 self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
 
             self.loss = self.sums_to_R + self.greater_than_0 + self.reward_consistency + self.J_indep - self.J_nontriv
-            self.train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
             self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
 
 
@@ -42,13 +44,14 @@ class ReparameterizedRewardNetwork(object):
     def train_R_functions(self):
         batch_size = 32
         S, A, R, SP, T = self.buffer.sample(batch_size)
-        [sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
+        [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
-    def get_partitioned_reward(self, s, a):
-        return self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s, self.inp_a: a})
+    def get_partitioned_reward(self, s, a, sp):
+        return self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
+                             feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp})
 
 
     def get_state_values(self, s):
@@ -70,8 +73,8 @@ class ReparameterizedRewardNetwork(object):
             raise Exception(f'Unrecognized mode: {mode}')
         return np.argmax(hybrid_q, axis=1)  # [bs]
 
-    def get_reward(self, s, a):
-        return self.get_partitioned_reward([s], [a])[0]
+    def get_reward(self, s, a, sp):
+        return self.get_partitioned_reward([s], [a], [sp])[0]
 
 
 
@@ -85,7 +88,7 @@ class ReparameterizedRewardNetwork(object):
             c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
             internal_rep = tf.reshape(c2, [-1, 8 * 8 * 64])
             fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
-            q = tf.reshape(tf.layers.dense(fc1, self.num_actions, name='q'), [-1])
+            q = tf.layers.dense(fc1, self.num_actions, name='q')
             return q
 
 
@@ -94,9 +97,9 @@ class ReparameterizedRewardNetwork(object):
         Q_s, Q_sp = dict(), dict()
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                Q_ij_s = self.build_Q_network(self.inp_s, f'Q_{i}_{j}')
+                Q_ij_s = self.build_Q_network(self.converted_inp_s, f'Q_{i}_{j}')
                 Q_s[(i,j)] = Q_ij_s
-                Q_ij_sp = self.build_Q_network(self.inp_sp, f'Q_{i}_{j}', reuse=True)
+                Q_ij_sp = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}', reuse=True)
                 Q_sp[(i,j)] = Q_ij_sp
         # build reward terms
         R = dict()
@@ -104,6 +107,7 @@ class ReparameterizedRewardNetwork(object):
             for j in range(self.num_rewards):
                 first_term = tf.reduce_sum(tf.one_hot(self.inp_a, self.num_actions) * Q_s[(i,j)], axis=1)
                 if i == j:
+                    print(Q_sp[(i,j)])
                     second_term = self.gamma * tf.reduce_max(Q_sp[(i,j)], axis=1)
                 else:
                     action_choice = tf.stop_gradient(tf.argmax(Q_sp[(j,j)],axis=1))
@@ -116,7 +120,7 @@ class ReparameterizedRewardNetwork(object):
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
         sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
-        greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.minimum(0, R[(i,i)]) for i in range(self.num_rewards)], axis=0), axis=0)
+        greater_than_0 = tf.reduce_mean(tf.reduce_sum([-tf.minimum(0.0, R[(i,i)]) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
         reward_consistency = 0
@@ -134,7 +138,7 @@ class ReparameterizedRewardNetwork(object):
                     J_nontriv += V_ii
                 else:
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(i,j)], axis=1), self.num_actions)
-                    V_ij = tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1)
+                    V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0)
                     J_indep += V_ij
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 

@@ -14,6 +14,7 @@ class BlockPushingDomain(object):
 
     def __init__(self, observation_mode='vector', configuration='obstacle', only_bottom_half=False):
         assert configuration in ['standard', 'obstacle', 'four_room', 'standard_all_reward']
+        self.only_bottom_half = only_bottom_half
         self.reward_always_one = False
         if configuration == 'standard_all_reward':
             self.reward_always_one = True
@@ -192,15 +193,19 @@ class BlockPushingDomain(object):
         # get all the blocks that could be in the way of an agent.
         non_agent_physical_blocks = [block for block in self.blocks
                                      if (not self.is_agent_block(block)) and block.is_physical()]
+        simulator = BlockPushingDomain(self.observation_mode, self.configuration, self.only_bottom_half)
         state_pairs = []
         for y in range(self.grid_size):
             for x in range(self.grid_size):
                 valid_position = not any([(x,y) == block.get_position() for block in non_agent_physical_blocks])
                 if valid_position:
                     cloned_blocks = self.clone_blocks_with_new_agent_position((x, y))
-                    positions = self.produce_object_positions_from_blocks(blocks=cloned_blocks)
-                    state = self.get_observation(self.observation_mode, object_positions=positions)
-                    state_pairs.append(((x,y), state))
+                    for a in range(self.action_space.n):
+                        s = simulator.restore_state({'blocks': cloned_blocks, 'timestep': 0})
+                        sp, r, t, info = simulator.step(a)
+                        state_pairs.append(((x,y), (s, a, sp)))
+                    #positions = self.produce_object_positions_from_blocks(blocks=cloned_blocks)
+                    #state = self.get_observation(self.observation_mode, object_positions=positions)
         return state_pairs
 
 
@@ -391,6 +396,7 @@ class BlockPushingDomain(object):
             self.reset(reset_timestep=terminal)
         # TODO use old_obs for hindsight.
         reward = 1.0 if self.reward_always_one else reward
+        info['r_env'] = reward 
         return new_obs, reward, False, info
 
     def render(self):

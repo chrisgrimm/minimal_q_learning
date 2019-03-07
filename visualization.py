@@ -40,20 +40,22 @@ def visualize_actions(action_set):
 
 
 def produce_two_goal_visualization(network, env, value_matrix, name):
-    state_pairs = env.get_all_agent_positions()
+    state_action_pairs = env.get_all_agent_positions()
     current_object_positions = env.produce_object_positions_from_blocks()
     state_image = env.produce_image(current_object_positions, env.render_mode_image_size)
     state_image = cv2.resize(state_image, (400, 400), interpolation=cv2.INTER_NEAREST)
     data = [[] for _ in range(network.num_partitions)]
     goal_positions = set([block.get_position() for block in env.blocks if env.is_goal_block(block)])
-
-    for (x,y), state in state_pairs:
-        #print('state', state)
-        #print(cv2.imwrite(f'./temp/{x}_{y}.png', state))
-
-        state_reward = network.get_reward(state, 1 if (x,y) in goal_positions or env.reward_always_one else 0)
-        for i in range(network.num_partitions):
-            data[i].append(((x,y), state_reward[i]))
+    max_state_rewards = dict()
+    for (x,y), (s, a, sp) in state_action_pairs:
+        rewards = network.get_reward(s, a, sp)
+        for i, reward in enumerate(rewards):
+            if (x,y,i) in max_state_rewards:
+                max_state_rewards[(x,y,i)] = max(max_state_rewards[(x,y,i)], reward)
+            else:
+                max_state_rewards[(x,y,i)] = reward
+    for (x,y,i), max_reward in max_state_rewards.items():
+        data[i].append(((x,y), max_reward))
     images = []
     images.append(state_image)
     for partition_state_pairs in data:
