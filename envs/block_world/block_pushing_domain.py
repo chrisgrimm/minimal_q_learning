@@ -396,7 +396,7 @@ class BlockPushingDomain(object):
             self.reset(reset_timestep=terminal)
         # TODO use old_obs for hindsight.
         reward = 1.0 if self.reward_always_one else reward
-        info['r_env'] = reward 
+        info['r_env'] = reward
         return new_obs, reward, False, info
 
     def render(self):
