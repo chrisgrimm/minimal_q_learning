@@ -50,13 +50,13 @@ class ReparameterizedRewardNetwork(object):
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
     def get_partitioned_reward(self, s, a, sp):
-        return self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
-                             feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp})
+        return np.transpose(self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
+                            feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp}), [1,0]) # [bs, num_rewards]
 
 
     def get_state_values(self, s):
         Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return [np.max(Q, axis=1) for Q in Qs]
+        return [np.max(Q, axis=1) for Q in Qs] # [num_partitions, bs]
 
 
     def get_state_actions(self, s):
@@ -74,6 +74,7 @@ class ReparameterizedRewardNetwork(object):
         return np.argmax(hybrid_q, axis=1)  # [bs]
 
     def get_reward(self, s, a, sp):
+
         return self.get_partitioned_reward([s], [a], [sp])[0]
 
 

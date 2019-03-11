@@ -131,13 +131,15 @@ elif mode == 'SOKOBAN':
 
     config = 'standard'
     env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
-    dummy_env_cluster = ThreadedEnvironment(32,
-                                            lambda i: BlockPushingDomain(observation_mode=observation_mode,
-                                                                         configuration=config),
-                                            BlockPushingDomain)
-    dummy_env_cluster('reset', args=[])
+    # dummy_env_cluster = ThreadedEnvironment(32,
+    #                                         lambda i: BlockPushingDomain(observation_mode=observation_mode,
+    #                                                                      configuration=config),
+    #                                         BlockPushingDomain)
+    #dummy_env_cluster('reset', args=[])
     dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env.reset()
+    dummy_env_cluster = None
+    ##dummy_env_cluster = dummy_env = None
 elif mode == 'SOKOBAN_REWARD_ALWAYS_ONE':
     num_partitions = args.num_partitions
     num_visual_channels = num_frames * num_color_channels
@@ -360,6 +362,7 @@ def main():
             print(log_string)
 
             if time % display_freq == 0:
+                print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 

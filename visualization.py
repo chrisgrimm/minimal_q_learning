@@ -50,6 +50,7 @@ def produce_two_goal_visualization(network, env, value_matrix, name):
     for (x,y), (s, a, sp) in state_action_pairs:
         rewards = network.get_reward(s, a, sp)
         for i, reward in enumerate(rewards):
+            print(reward)
             if (x,y,i) in max_state_rewards:
                 max_state_rewards[(x,y,i)] = max(max_state_rewards[(x,y,i)], reward)
             else:
