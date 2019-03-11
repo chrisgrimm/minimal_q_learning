@@ -131,16 +131,23 @@ class ReparameterizedRewardNetwork(object):
 
         # set up J_indep, J_nontriv
         J_indep = 0
-        J_nontriv = 0
+        #J_nontriv = 0
+        J_nontriv_terms = []
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
                 if i == j:
-                    V_ii = tf.reduce_mean(tf.reduce_max(Q_s[(i,j)], axis=1), axis=0)
-                    J_nontriv += V_ii
+                    V_ii = tf.reduce_max(Q_s[(i,j)], axis=1)
+                    #J_nontriv += V_ii
+                    J_nontriv_terms.append(V_ii)
                 else:
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(i,j)], axis=1), self.num_actions)
                     V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0)
                     J_indep += V_ij
+        avg_max_values = tf.identity([tf.reduce_mean(J_nontriv_terms[i], axis=0) for i in range(self.num_rewards)])
+        max_value_weighting = tf.stop_gradient(tf.nn.softmax(-2.0*avg_max_values))
+        J_nontriv = 0
+        for i in range(self.num_rewards):
+            J_nontriv += tf.reduce_mean(J_nontriv_terms[i] * max_value_weighting[i], axis=0)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
 
