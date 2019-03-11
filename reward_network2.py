@@ -120,7 +120,7 @@ class ReparameterizedRewardNetwork(object):
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
         sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
-        greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.minimum(0.0, -tf.square(R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
+        greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.maximum(0.0, -tf.square(R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
         reward_consistency = 0
