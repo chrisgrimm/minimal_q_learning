@@ -21,8 +21,7 @@ class ReparameterizedRewardNetwork(object):
             self.Q_s, self.Q_sp, self.R = self.setup_Q_functions()
             (self.sums_to_R, self.greater_than_0, self.reward_consistency,
                 self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
-            self.J_indep = tf.maximum(self.J_indep, 0.0)
-            self.loss = 1000*(self.sums_to_R + self.greater_than_0 + self.reward_consistency) + 0.2*self.J_indep - self.J_nontriv
+            self.loss = 1000*(self.sums_to_R + self.greater_than_0 + self.reward_consistency) + 0.2*tf.abs(self.J_indep) - self.J_nontriv
             self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
             self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
 
