@@ -356,21 +356,21 @@ class BlockPushingDomain(object):
                 self.blocks[index].set_position(new_pos)
 
 
-    def get_reward(self, obs):
+    def get_reward(self, obs, action):
         goal_part = self.extract_goal_part_vector(obs)
         assert len(goal_part) % 2 == 0
         reward_zone = [tuple(goal_part[2*i:2*i+2]) for i in range(len(goal_part)//2)]
         [agent_x, agent_y] = self.extract_agent_vector(obs)
         reward = 0
         for i, (x, y) in enumerate(reward_zone):
-            if (agent_x, agent_y) == (x, y):
+            if (agent_x, agent_y) == (x, y) and (action == self.NOOP): # requires the agent to be in position and take a no-op to get reward if use_action is true.
                 reward = self.goal_blocks[i].get_reward()
                 break
         return reward
 
 
-    def get_terminal(self, obs):
-        at_goal_state = (self.get_reward(obs) == 1.0)
+    def get_terminal(self, obs, action):
+        at_goal_state = (self.get_reward(obs, action) == 1.0)
         game_over = (self.timestep >= self.max_timesteps)
         return game_over
         #return game_over
@@ -378,13 +378,14 @@ class BlockPushingDomain(object):
     def step(self, raw_action):
         #old_obs = self.get_observation()
         action = raw_action
+        old_obs_vec = self.get_observation('vector')
         self.perform_action(action)
         # TODO : find a better way to handle rewards when we are dealing with images. Right now we just pass the
         # vectorized observation to the get_reward function.
         new_obs_vec = self.get_observation('vector')
         new_obs = self.get_observation(self.observation_mode)
-        reward = self.get_reward(new_obs_vec)
-        terminal = self.get_terminal(new_obs_vec)
+        reward = self.get_reward(old_obs_vec, action)
+        terminal = self.get_terminal(old_obs_vec, action)
         # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
         #   this should make plots of the cumulative reward more meaningful.
         info = {'internal_terminal': terminal}
