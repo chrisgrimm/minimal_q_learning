@@ -384,8 +384,8 @@ class BlockPushingDomain(object):
         # vectorized observation to the get_reward function.
         new_obs_vec = self.get_observation('vector')
         new_obs = self.get_observation(self.observation_mode)
-        reward = self.get_reward(new_obs_vec, action)
-        terminal = self.get_terminal(new_obs_vec, action)
+        reward = self.get_reward(old_obs_vec, action)
+        terminal = self.get_terminal(old_obs_vec, action)
         # changed to make internal terminal only get called if the episode has run for max_timesteps steps.
         #   this should make plots of the cumulative reward more meaningful.
         info = {'internal_terminal': terminal}
