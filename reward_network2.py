@@ -119,14 +119,19 @@ class ReparameterizedRewardNetwork(object):
 
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
-        sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
+        all_sums_to_R = 0
+        for j in range(self.num_rewards):
+            sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(j,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
+            all_sums_to_R += sums_to_R
+
+
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
         reward_consistency = 0
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                reward_consistency += tf.reduce_mean(tf.square(R[(i,i)] - tf.stop_gradient(R[(i,j)])), axis=0)
+                reward_consistency += tf.reduce_mean(tf.square(R[(i,i)] - R[(i,j)]), axis=0)
 
         # set up J_indep, J_nontriv
         J_indep = 0
@@ -147,6 +152,6 @@ class ReparameterizedRewardNetwork(object):
         J_nontriv = 0
         for i in range(self.num_rewards):
             J_nontriv += tf.reduce_mean(J_nontriv_terms[i] * max_value_weighting[i], axis=0)
-        return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
+        return all_sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
 
