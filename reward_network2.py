@@ -126,7 +126,7 @@ class ReparameterizedRewardNetwork(object):
         reward_consistency = 0
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                reward_consistency += tf.reduce_mean(tf.square(R[(i,i)] - R[(i,j)]), axis=0)
+                reward_consistency += tf.reduce_mean(tf.square(tf.stop_gradient(R[(i,i)]) - R[(i,j)]), axis=0)
 
         # set up J_indep, J_nontriv
         J_indep = 0
