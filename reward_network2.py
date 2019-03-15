@@ -89,7 +89,7 @@ class ReparameterizedRewardNetwork(object):
             c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
             internal_rep = tf.reshape(c2, [-1, 8 * 8 * 64])
             fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
-            q = tf.layers.dense(fc1, self.num_actions, name='q')
+            q = (1 / (1 - self.gamma)) * tf.layers.dense(fc1, self.num_actions, activation=tf.nn.sigmoid, name='q')
             return q
 
 
