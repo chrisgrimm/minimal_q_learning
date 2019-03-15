@@ -251,7 +251,7 @@ def get_action(s, eval=False):
     global epsilon
     global current_policy
     is_random = np.random.uniform(0, 1) < (min_epsilon if eval else epsilon)
-    if is_random:
+    if is_random or True:
         action = np.random.randint(0, env.action_space.n)
     else:
         if args.hybrid_reward:
