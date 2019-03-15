@@ -147,7 +147,7 @@ class ReparameterizedRewardNetwork(object):
         max_value_weighting = tf.stop_gradient(tf.nn.softmax(-2.0*avg_max_values))
         J_nontriv = 0
         for i in range(self.num_rewards):
-            J_nontriv += tf.reduce_mean(J_nontriv_terms[i], axis=0)
+            J_nontriv += tf.reduce_mean(J_nontriv_terms[i] * max_value_weighting[i], axis=0)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
 
