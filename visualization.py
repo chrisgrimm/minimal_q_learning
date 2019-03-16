@@ -129,7 +129,12 @@ def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env
                 V[(i,j)].append(V_i_array[(i,j)])
     # after filling the V[(i,j)] dictionary, we can approximate our disentanglement terms
     V = {(i,j): np.mean(V[(i,j)], axis=0) for i in range(network.num_rewards) for j in range(network.num_rewards)}
-    J_nontriv = sum(V[(i,i)] for i in range(network.num_rewards))
+    tau = 2.0
+    def softmin(Vii):
+        return np.exp(tau*-Vii) / np.sum(np.exp(tau*-Vii))
+    Vii = np.array([V[(i,i)] for i in range(network.num_rewards)])
+    J_nontriv = np.sum(Vii * softmin(Vii),axis=0)
+    #J_nontriv = sum(V[(i,i)] for i in range(network.num_rewards))
     J_indep = sum(V[(i,j)]
                   for i in range(network.num_rewards)
                   for j in range(network.num_rewards)
