@@ -3,7 +3,7 @@ from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix, approximate_disentanglement_terms
 from utils import LOG, build_directory_structure, add_implicit_name_arg
 from reward_prob_tracker import RewardProbTracker
 import argparse
@@ -69,6 +69,8 @@ def default_visualizations(network, env, value_matrix, name):
     record_value_matrix(value_matrix, value_matrix_full_name)
     file_number = re.match(r'^policy\_vis\_(\d+)\_behavior_file.pickle$', behavior_name).groups()[0]
     #produce_all_videos(path, file_number)
+
+
 
 
 def default_on_reward_print_func(r, sp, info, network, reward_buffer):
@@ -221,6 +223,7 @@ state_replay_buffer = StateReplayBuffer(1000000)
 
 reward_net = ReparameterizedRewardNetwork(num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net')
 
+
 (height, width, depth) = env.observation_space.shape
 tracker = RewardProbTracker(height, width, depth)
 
@@ -365,6 +368,12 @@ def main():
                 print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+                approx_J_nontriv, approx_J_indep = approximate_disentanglement_terms(reward_net, env)
+                approx_J_disentangled = approx_J_indep - approx_J_nontriv
+                LOG.add_line('approx_J_nontriv', approx_J_nontriv)
+                LOG.add_line('approx_J_indep', approx_J_indep)
+                LOG.add_line('approx_J_disentangled', approx_J_disentangled)
+
 
             if time % save_freq == 0:
                 reward_net.save(save_path, 'reward_net.ckpt')

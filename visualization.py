@@ -4,6 +4,7 @@ import os
 import pickle
 
 from reward_network import RewardPartitionNetwork
+from reward_network2 import ReparameterizedRewardNetwork
 from utils import horz_stack_images, build_directory_structure
 
 
@@ -107,6 +108,34 @@ def produce_assault_ship_histogram_visualization(network, env, name):
 def record_value_matrix(value_matrix, name_matrix_file):
     with open(name_matrix_file, 'wb') as f:
         pickle.dump(value_matrix, f)
+
+
+def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env):
+    num_traj = 10
+    traj_steps = 100
+    V = {(i,j): [] for i in range(network.num_rewards) for j in range(network.num_rewards)}
+    for j in range(network.num_rewards):
+        # j indicates policy number
+        for traj_num in range(num_traj):
+            s = env.reset()
+            V_i_array = {(i,j): 0 for i in range(network.num_rewards)}
+            for t in range(traj_steps):
+                a = network.get_state_actions([s])[j][0]
+                sp, r, t, info = env.step(a)
+                r_part = network.get_partitioned_reward([s], [a], [sp])[0] # [num_rewards]
+                for i, r in enumerate(r_part):
+                    V_i_array[(i,j)] += network.gamma**t * r_part[i]
+            for i in range(network.num_rewards):
+                V[(i,j)].append(V_i_array[(i,j)])
+    # after filling the V[(i,j)] dictionary, we can approximate our disentanglement terms
+    V = {(i,j): np.mean(V[(i,j)], axis=0) for i in range(network.num_rewards) for j in range(network.num_rewards)}
+    J_nontriv = sum(V[(i,i)] for i in range(network.num_rewards))
+    J_indep = sum(V[(i,j)]
+                  for i in range(network.num_rewards)
+                  for j in range(network.num_rewards)
+                  if i != j)
+    return J_nontriv, J_indep
+
 
 
 def produce_reward_statistics(network, env, name_reward, name_traj_file):
