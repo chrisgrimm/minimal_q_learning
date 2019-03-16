@@ -49,6 +49,7 @@ class ReparameterizedRewardNetwork(object):
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
+
     def get_partitioned_reward(self, s, a, sp):
         return np.transpose(self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
                             feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp}), [1,0]) # [bs, num_rewards]
@@ -63,6 +64,7 @@ class ReparameterizedRewardNetwork(object):
         Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         return [np.argmax(Q, axis=1) for Q in Qs]
 
+
     def get_hybrid_actions(self, s, mode='sum'):
         pre_hybrid = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         if mode == 'sum':
@@ -73,13 +75,9 @@ class ReparameterizedRewardNetwork(object):
             raise Exception(f'Unrecognized mode: {mode}')
         return np.argmax(hybrid_q, axis=1)  # [bs]
 
+
     def get_reward(self, s, a, sp):
-
         return self.get_partitioned_reward([s], [a], [sp])[0]
-
-
-
-
 
 
     def build_Q_network(self, s, name, reuse=None):
@@ -118,6 +116,7 @@ class ReparameterizedRewardNetwork(object):
                 R[(i,j)] = R_ij
         return Q_s, Q_sp, R
 
+
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
         sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
@@ -137,7 +136,6 @@ class ReparameterizedRewardNetwork(object):
             for j in range(self.num_rewards):
                 if i == j:
                     V_ii = tf.reduce_max(Q_s[(i,j)], axis=1)
-                    #J_nontriv += V_ii
                     J_nontriv_terms.append(V_ii)
                 else:
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(j,j)], axis=1), self.num_actions)
