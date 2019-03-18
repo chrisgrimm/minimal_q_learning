@@ -111,7 +111,7 @@ def record_value_matrix(value_matrix, name_matrix_file):
 
 
 def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env):
-    num_traj = 10
+    num_traj = 2
     traj_steps = 100
     V = {(i,j): [] for i in range(network.num_rewards) for j in range(network.num_rewards)}
     for j in range(network.num_rewards):
