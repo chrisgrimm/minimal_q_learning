@@ -208,7 +208,7 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
+buffer = ReplayBuffer(100000, num_frames, num_color_channels)
 
 #state_replay_buffer = StateReplayBuffer(1000000)
 
