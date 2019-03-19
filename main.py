@@ -210,7 +210,7 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
 
-state_replay_buffer = StateReplayBuffer(1000000)
+#state_replay_buffer = StateReplayBuffer(1000000)
 
 # reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
 #                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
@@ -311,7 +311,7 @@ def main():
         a = get_action(s)
         sp, r, t, info = env.step(a)
 
-        state_replay_buffer.append(env.get_current_state())
+        #state_replay_buffer.append(env.get_current_state())
 
 
 

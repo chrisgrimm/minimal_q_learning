@@ -12,7 +12,7 @@ action_map = {'w': 1,
               'd': 2,
               '': 4}
 
-policy = 0
+policy = 1
 s = env.reset()
 
 while True:
@@ -25,7 +25,7 @@ while True:
     sp, r, t, info = env.step(a)
     print(reward_net.get_reward(s,a,sp))
     s = sp
-
+    #input('...')
     env.render()
 
 
