@@ -3,6 +3,30 @@ import tensorflow as tf
 import os
 
 
+def huber_loss(y_true, y_pred, max_grad=1.):
+    """Calculates the huber loss.
+
+    Parameters
+    ----------
+    y_true: np.array, tf.Tensor
+      Target value.
+    y_pred: np.array, tf.Tensor
+      Predicted value.
+    max_grad: float, optional
+      Positive floating point value. Represents the maximum possible
+      gradient magnitude.
+
+    Returns
+    -------
+    tf.Tensor
+      The huber loss.
+    """
+    err = tf.abs(y_true - y_pred, name='abs')
+    mg = tf.constant(max_grad, name='max_grad')
+    lin = mg*(err-.5*mg)
+    quad=.5*err*err
+    return tf.where(err < mg, quad, lin)
+
 class ReparameterizedRewardNetwork(object):
 
     def __init__(self, num_rewards, learning_rate, buffer, num_actions, name, reuse=None):
@@ -145,14 +169,16 @@ class ReparameterizedRewardNetwork(object):
 
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
-        sums_to_R = tf.reduce_mean(tf.square(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0) - self.inp_r), axis=0)
+        loss = huber_loss
+        #loss = lambda x, y: tf.square(x - y)
+        sums_to_R = tf.reduce_mean(loss(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0), self.inp_r), axis=0)
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
         reward_consistency = 0
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                reward_consistency += tf.reduce_mean(tf.square(R[(i,i)] - R[(i,j)]), axis=0)
+                reward_consistency += tf.reduce_mean(loss(tf.square(R[(i,i)], R[(i,j)])), axis=0)
 
         # set up J_indep, J_nontriv
         J_indep = 0
