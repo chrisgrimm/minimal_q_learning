@@ -40,6 +40,8 @@ class ReparameterizedRewardNetwork(object):
         self.inp_r = tf.placeholder(tf.float32, [None])
         self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, 3])
         self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
+        self.use_target = False
+
 
         with tf.variable_scope(name, reuse=reuse) as scope:
             self.Q_s, self.Q_sp, self.R, self.soft_update, self.hard_update = self.setup_Q_functions()
@@ -56,7 +58,8 @@ class ReparameterizedRewardNetwork(object):
         self.sess = sess = tf.Session(config=config)
         self.saver = tf.train.Saver(var_list=self.variables)
         self.sess.run(tf.variables_initializer(self.variables))
-        self.sess.run(self.hard_update)
+        if self.use_target:
+            self.sess.run(self.hard_update)
 
 
     def save(self, path, name):
@@ -73,7 +76,8 @@ class ReparameterizedRewardNetwork(object):
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
-        self.sess.run(self.soft_update)
+        if self.use_target:
+            self.sess.run(self.soft_update)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
 
@@ -140,7 +144,11 @@ class ReparameterizedRewardNetwork(object):
             for j in range(self.num_rewards):
                 Q_ij_s, Q_ij_s_vars = self.build_Q_network(self.converted_inp_s, f'Q_{i}_{j}')
                 Q_s[(i,j)] = Q_ij_s
-                Q_ij_sp, Q_ij_sp_vars = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}_target')
+                if self.use_target:
+                    Q_ij_sp, Q_ij_sp_vars = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}_target')
+                else:
+                    Q_ij_sp, Q_ij_sp_vars = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}', reuse=True)
+
                 Q_sp[(i,j)] = Q_ij_sp
                 # build the update ops.
                 hard_ij_update = tf.group(*[tf.assign(target, network) for network, target in zip(Q_ij_s_vars, Q_ij_sp_vars)])
@@ -169,8 +177,8 @@ class ReparameterizedRewardNetwork(object):
 
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
-        loss = huber_loss
-        #loss = lambda x, y: tf.square(x - y)
+        #loss = huber_loss
+        loss = lambda x, y: tf.square(x - y)
         sums_to_R = tf.reduce_mean(loss(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0), self.inp_r), axis=0)
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
