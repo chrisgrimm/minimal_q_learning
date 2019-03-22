@@ -158,7 +158,7 @@ class ReparameterizedRewardNetwork(object):
         hard_update_ops = []
         tau = 0.998
         if self.use_shared_q_repr:
-            builder_func = self.build_shared_Q_network_trunk
+            builder_func = self.build_shared_Q_network_head
             inp_s, trunk_vars_s = self.build_shared_Q_network_trunk(self.converted_inp_s, 'Q_trunk')
             if self.use_target:
                 inp_sp, trunk_vars_sp = self.build_shared_Q_network_trunk(self.converted_inp_sp, 'Q_trunk_target')
