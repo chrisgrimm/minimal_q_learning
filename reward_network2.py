@@ -42,7 +42,7 @@ class ReparameterizedRewardNetwork(object):
         self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
         self.use_target = False
         self.use_shared_q_repr = True
-        self.use_huber = False
+        self.use_huber = True
 
 
         with tf.variable_scope(name, reuse=reuse) as scope:
