@@ -351,7 +351,7 @@ def main():
                     LOG.add_line('J_indep', J_indep)
                     LOG.add_line('J_nontriv', J_nontriv)
                     LOG.add_line('J_disentangled', J_indep - J_nontriv)
-                    LOG.add_line('time', time)
+                    #LOG.add_line('time', time)
                     # # TODO actually log the value_partition
                     # if len(last_100_scores) < 100:
                     #     last_100_scores.append(J_indep - J_nontrivial)

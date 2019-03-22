@@ -41,6 +41,8 @@ class ReparameterizedRewardNetwork(object):
         self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, 3])
         self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
         self.use_target = False
+        self.use_shared_q_repr = False
+        self.use_huber = True
 
 
         with tf.variable_scope(name, reuse=reuse) as scope:
@@ -115,6 +117,22 @@ class ReparameterizedRewardNetwork(object):
         return self.get_partitioned_reward([s], [a], [sp])[0]
 
 
+    def build_shared_Q_network_trunk(self, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse) as scope:
+            c0 = tf.layers.conv2d(s, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
+            c1 = tf.layers.conv2d(c0, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
+            c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
+            internal_rep = tf.reshape(c2, [-1, 8 * 8 * 64])
+            fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
+            vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope.original_name_scope)
+        return fc1, vars
+
+    def build_shared_Q_network_head(self, fc1, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse) as scope:
+            q = (1 / (1 - self.gamma)) * tf.layers.dense(fc1, self.num_actions, activation=tf.nn.sigmoid, name='q')
+            vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope.original_name_scope)
+        return q, vars
+
     def build_Q_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse) as scope:
             c0 = tf.layers.conv2d(s, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
@@ -124,8 +142,7 @@ class ReparameterizedRewardNetwork(object):
             fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
             q = (1 / (1 - self.gamma)) * tf.layers.dense(fc1, self.num_actions, activation=tf.nn.sigmoid, name='q')
             vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope.original_name_scope)
-
-            return q, vars
+        return q, vars
 
 
     def setup_Q_functions(self):
@@ -140,14 +157,31 @@ class ReparameterizedRewardNetwork(object):
         soft_update_ops = []
         hard_update_ops = []
         tau = 0.998
+        if self.use_shared_Q_repr:
+            builder_func = self.build_shared_Q_network_trunk
+            inp_s, trunk_vars_s = self.build_shared_Q_network_trunk(self.converted_inp_s, 'Q_trunk')
+            if self.use_target:
+                inp_sp, trunk_vars_sp = self.build_shared_Q_network_trunk(self.converted_inp_sp, 'Q_trunk_target')
+            else:
+                inp_sp, trunk_vars_sp = self.build_shared_Q_network_trunk(self.converted_inp_sp, 'Q_trunk', reuse=True)
+            hard_trunk_update = tf.group(*[tf.assign(target, network) for network, target in zip(trunk_vars_s, trunk_vars_sp)])
+            soft_trunk_update = tf.group(*[tf.assign(target, tau * target + (1 - tau) * network)
+                                           for network, target in zip(trunk_vars_s, trunk_vars_sp)])
+            soft_update_ops.append(soft_trunk_update)
+            hard_update_ops.append(hard_trunk_update)
+        else:
+            builder_func = self.build_Q_network
+            inp_s = self.converted_inp_s
+            inp_sp = self.converted_inp_sp
+
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                Q_ij_s, Q_ij_s_vars = self.build_Q_network(self.converted_inp_s, f'Q_{i}_{j}')
+                Q_ij_s, Q_ij_s_vars = builder_func(inp_s, f'Q_{i}_{j}')
                 Q_s[(i,j)] = Q_ij_s
                 if self.use_target:
-                    Q_ij_sp, Q_ij_sp_vars = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}_target')
+                    Q_ij_sp, Q_ij_sp_vars = builder_func(inp_sp, f'Q_{i}_{j}_target')
                 else:
-                    Q_ij_sp, Q_ij_sp_vars = self.build_Q_network(self.converted_inp_sp, f'Q_{i}_{j}', reuse=True)
+                    Q_ij_sp, Q_ij_sp_vars = builder_func(inp_sp, f'Q_{i}_{j}', reuse=True)
 
                 Q_sp[(i,j)] = Q_ij_sp
                 # build the update ops.
@@ -177,8 +211,10 @@ class ReparameterizedRewardNetwork(object):
 
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
-        #loss = huber_loss
-        loss = lambda x, y: tf.square(x - y)
+        if self.use_huber:
+            loss = huber_loss
+        else:
+            loss = lambda x, y: tf.square(x - y)
         sums_to_R = tf.reduce_mean(loss(tf.reduce_sum([R[(i,i)] for i in range(self.num_rewards)], axis=0), self.inp_r), axis=0)
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
