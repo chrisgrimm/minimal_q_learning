@@ -40,7 +40,7 @@ class ReparameterizedRewardNetwork(object):
         self.inp_r = tf.placeholder(tf.float32, [None])
         self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, 3])
         self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
-        self.use_target = False
+        self.use_target = True
         self.use_shared_q_repr = True
         self.use_huber = True
 
