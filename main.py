@@ -250,6 +250,35 @@ num_steps = 10000000
 policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
+class Actor:
+
+    def __init__(self, network: ReparameterizedRewardNetwork):
+        self.network = network
+        self.eps = [1.0 for _ in range(self.network.num_rewards)]
+        self.current_policy = np.random.randint(0, self.network.num_rewards)
+
+    def act(self, s, eval=False):
+        # handle evaluation
+        if eval:
+            if np.random.randint(0, 1) < min_epsilon:
+                a = np.random.randint(0, self.network.num_actions)
+            else:
+                a = self.network.get_state_actions([s])[self.current_policy][0]
+            return a
+        # handle non-evaluation
+        if np.random.uniform(0, 1) < self.eps[self.current_policy]:
+            a = np.random.randint(0, self.network.num_actions)
+        else:
+            a = self.network.get_state_actions([s])[self.current_policy][0]
+        self.eps[self.current_policy] = max(min_epsilon, self.eps[self.current_policy] - epsilon_delta)
+        return a
+
+    def switch_policy(self, policy_number=-1):
+        if policy_number >= 0:
+            self.current_policy = policy_number
+        else:
+            self.current_policy = np.random.randint(0, self.network.num_rewards)
+
 
 def get_action(s, eval=False):
     global epsilon
@@ -267,7 +296,7 @@ def get_action(s, eval=False):
 
 
 # this is a better performance metric. assesses the reward gained over an episode rather than for an arbitrary number of steps.
-def evaluate_performance(env):
+def evaluate_performance(env, actor: Actor):
     s = env.reset()
     cumulative_reward = 0
     cumulative_reward_env = 0
@@ -275,7 +304,8 @@ def evaluate_performance(env):
     #max_timesteps = 10000
     #for _ in range(max_timesteps):
     while True:
-        a = get_action(s, eval=True)
+        a = actor.act(s, eval=True)
+        #a = get_action(s, eval=True)
         #a = np.random.randint(0, env.action_space.n) if np.random.uniform(0,1) < 0.01 else q_network.get_action([s])[0]
         s, r, t, info = env.step(a)
         r_env = info['r_env']
@@ -294,6 +324,7 @@ def evaluate_performance(env):
 
 
 def main():
+    actor = Actor(reward_net)
     global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
         num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
         current_reward_training_step,epsilon_delta,time,num_steps
@@ -309,7 +340,7 @@ def main():
     starting_time = 0
     for time in range(starting_time, num_steps):
 
-        a = get_action(s)
+        a = actor.act(s)
         sp, r, t, info = env.step(a)
 
         #state_replay_buffer.append(env.get_current_state())
@@ -322,6 +353,7 @@ def main():
         if info['internal_terminal']:
             current_episode_length = 0
             current_policy = choice(policy_indices)
+            actor.switch_policy()
 
         if t:
             s = env.reset()
@@ -384,7 +416,7 @@ def main():
                 reward_net.save(save_path, 'reward_net.ckpt')
 
             if time % evaluation_frequency == 0:
-                cum_reward, cum_reward_env = evaluate_performance(env)
+                cum_reward, cum_reward_env = evaluate_performance(env, actor)
                 print(f'({time}) EVAL: {cum_reward}')
                 LOG.add_line('cum_reward', cum_reward)
                 LOG.add_line('cum_reward_env', cum_reward_env)
