@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import os
+from baselines.deepq.experiments.training_wrapper import make_dqn
 
 
 def huber_loss(y_true, y_pred, max_grad=1.):
@@ -29,7 +30,7 @@ def huber_loss(y_true, y_pred, max_grad=1.):
 
 class ReparameterizedRewardNetwork(object):
 
-    def __init__(self, num_rewards, learning_rate, buffer, num_actions, name, reuse=None):
+    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, gpu_num=-1, reuse=None):
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
@@ -43,6 +44,11 @@ class ReparameterizedRewardNetwork(object):
         self.use_target = True
         self.use_shared_q_repr = True
         self.use_huber = True
+        self.seperate_policy_networks = True
+        self.batch_size = 32
+
+        self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards)
+
 
 
         with tf.variable_scope(name, reuse=reuse) as scope:
@@ -65,22 +71,35 @@ class ReparameterizedRewardNetwork(object):
 
 
     def save(self, path, name):
+        self.dqn.save(path, 'qnet.ckpt')
         self.saver.save(self.sess, os.path.join(path, name))
 
 
     def restore(self, path, name):
+        self.dqn.restore(path, 'qnet.ckpt')
         self.saver.restore(self.sess, os.path.join(path, name))
 
 
-    def train_R_functions(self):
-        batch_size = 32
-        S, A, R, SP, T = self.buffer.sample(batch_size)
+    def train_R_functions(self, time):
+        q_loss = self.train_Q_functions(time)
+        S, A, R, SP, T = self.buffer.sample(self.batch_size)
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
         if self.use_target:
             self.sess.run(self.soft_update)
-        return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
+        return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv, q_loss
+
+    def train_Q_functions(self, time):
+        S, A, R, SP, T = self.buffer.sample(self.batch_size)
+        reward_num_samples = np.random.randint(0, self.num_rewards, size=[self.batch_size])
+        rewards = self.get_partitioned_reward(S, A, SP) # [bs, num_rewards]
+        selected_rewards = rewards[range(self.batch_size), reward_num_samples] # [bs]
+        weights, batch_idxes = np.ones_like(T), None
+        loss = self.dqn.train_batch(time, S, A, selected_rewards, SP, T, weights, batch_idxes, reward_num_samples)
+        return loss
+
+
 
 
     def get_partitioned_reward(self, s, a, sp):
@@ -89,21 +108,32 @@ class ReparameterizedRewardNetwork(object):
 
 
     def get_state_values(self, s):
-        Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return [np.max(Q, axis=1) for Q in Qs] # [num_partitions, bs]
+        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        x = np.max(x, axis=2) # [num_rewards, bs]
+        return x
+        #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
+        #return [np.max(Q, axis=1) for Q in Qs] # [num_partitions, bs]
+
 
 
     def get_state_actions(self, s):
-        Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return [np.argmax(Q, axis=1) for Q in Qs]
+        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        x = np.argmax(x, axis=2) # [num_rewards, bs]
+        return x
+        #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
+        #return [np.argmax(Q, axis=1) for Q in Qs]
 
     def get_Qs(self, s):
-        Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return Qs
+        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        return x
+        #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
+        #return Qs
 
 
     def get_hybrid_actions(self, s, mode='sum'):
-        pre_hybrid = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
+        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        pre_hybrid = x
+        #pre_hybrid = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         if mode == 'sum':
             hybrid_q = np.sum(pre_hybrid, axis=0)  # [bs, num_actions]
         elif mode == 'max':

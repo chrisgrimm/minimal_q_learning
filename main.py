@@ -221,7 +221,8 @@ buffer = ReplayBuffer(100000, num_frames, num_color_channels)
 #                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
 #                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
-reward_net = ReparameterizedRewardNetwork(num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net')
+reward_net = ReparameterizedRewardNetwork(env, num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net',
+                                          gpu_num=args.gpu_num)
 
 
 (height, width, depth) = env.observation_space.shape
@@ -344,13 +345,14 @@ def main():
 
             if time % q_train_freq == 0:
                 for j in range(1):
-                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions()
+                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv, q_loss = reward_net.train_R_functions(time)
                     LOG.add_line('sums_to_R', sums_to_R)
                     LOG.add_line('greater_than_0', greater_than_0)
                     LOG.add_line('reward_consistency', reward_consistency)
                     LOG.add_line('J_indep', J_indep)
                     LOG.add_line('J_nontriv', J_nontriv)
                     LOG.add_line('J_disentangled', J_indep - J_nontriv)
+                    LOG.add_line('q_loss', q_loss)
                     #LOG.add_line('time', time)
                     # # TODO actually log the value_partition
                     # if len(last_100_scores) < 100:
@@ -368,7 +370,10 @@ def main():
                 print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
-                approx_J_nontriv, approx_J_indep = approximate_disentanglement_terms(reward_net, env)
+                approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
+                for reward_num in range(reward_net.num_rewards):
+                    Vii = policy_value_vector[reward_num]
+                    LOG.add_line(f'Value_{reward_num}', Vii)
                 approx_J_disentangled = approx_J_indep - approx_J_nontriv
                 LOG.add_line('approx_J_nontriv', approx_J_nontriv)
                 LOG.add_line('approx_J_indep', approx_J_indep)

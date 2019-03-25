@@ -114,6 +114,7 @@ def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env
     num_traj = 2
     traj_steps = 100
     V = {(i,j): [] for i in range(network.num_rewards) for j in range(network.num_rewards)}
+
     for j in range(network.num_rewards):
         # j indicates policy number
         for traj_num in range(num_traj):
@@ -139,7 +140,7 @@ def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env
                   for i in range(network.num_rewards)
                   for j in range(network.num_rewards)
                   if i != j)
-    return J_nontriv, J_indep
+    return J_nontriv, J_indep, [V[(i,i)] for i in range(network.num_rewards)]
 
 
 
@@ -180,8 +181,8 @@ def produce_reward_statistics(network, env, name_reward, name_traj_file):
         partition_average_rewards.append((i, average_episode_partitioned_rewards))
     with open(name_reward, 'w') as f:
         f.write('\n'.join(str(x) for x in partition_average_rewards))
-    with open(name_traj_file, 'wb') as f:
-        pickle.dump(all_trajectories, f)
+    #with open(name_traj_file, 'wb') as f:
+    #    pickle.dump(all_trajectories, f)
 
 
 
