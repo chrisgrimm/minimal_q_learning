@@ -376,15 +376,19 @@ def main():
             #             LOG.add_line(f'q_loss{j}', q_losses[j])
 
             if time % q_train_freq == 0:
+                q_loss = reward_net.train_Q_functions(time)
+                LOG.add_line('q_loss', q_loss)
+
+            if time % (q_train_freq * 5) == 0:
                 for j in range(1):
-                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv, q_loss = reward_net.train_R_functions(time)
+                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions(time)
                     LOG.add_line('sums_to_R', sums_to_R)
                     LOG.add_line('greater_than_0', greater_than_0)
                     LOG.add_line('reward_consistency', reward_consistency)
                     LOG.add_line('J_indep', J_indep)
                     LOG.add_line('J_nontriv', J_nontriv)
                     LOG.add_line('J_disentangled', J_indep - J_nontriv)
-                    LOG.add_line('q_loss', q_loss)
+                    #LOG.add_line('q_loss', q_loss)
                     #LOG.add_line('time', time)
                     # # TODO actually log the value_partition
                     # if len(last_100_scores) < 100:
