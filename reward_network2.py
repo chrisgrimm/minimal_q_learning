@@ -108,32 +108,34 @@ class ReparameterizedRewardNetwork(object):
 
 
     def get_state_values(self, s):
-        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
-        x = np.max(x, axis=2) # [num_rewards, bs]
+        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+        x = np.max(x, axis=1) # [bs, num_rewards]
+        x = np.transpose(x, [1,0]) #[num_rewards, bs]
         return x
-        #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        #return [np.max(Q, axis=1) for Q in Qs] # [num_partitions, bs]
 
 
 
     def get_state_actions(self, s):
-        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
-        x = np.argmax(x, axis=2) # [num_rewards, bs]
+        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+        x = np.argmax(x, axis=1) # [bs, num_rewards]
+        x = np.transpose(x, [1,0]) # [num_rewards, bs]
         return x
         #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         #return [np.argmax(Q, axis=1) for Q in Qs]
 
     def get_Qs(self, s):
-        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+        x = np.transpose(x, [2, 0, 1]) # [num_rewards, bs, num_actions]
         return x
+        #x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        #return x
         #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         #return Qs
 
 
     def get_hybrid_actions(self, s, mode='sum'):
-        x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
+        x = self.get_Qs(s) # [num_rewards, bs, num_actions]
         pre_hybrid = x
-        #pre_hybrid = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         if mode == 'sum':
             hybrid_q = np.sum(pre_hybrid, axis=0)  # [bs, num_actions]
         elif mode == 'max':

@@ -352,12 +352,12 @@ def main():
 
         if info['internal_terminal']:
             current_episode_length = 0
-            current_policy = choice(policy_indices)
+            #current_policy = choice(policy_indices)
             actor.switch_policy()
 
         if t:
             s = env.reset()
-            current_policy = choice(policy_indices)
+            #current_policy = choice(policy_indices)
             current_episode_length = 0
             print(f'Episode Reward: {episode_reward}')
             #print(f'Epsilon {epsilon}')
