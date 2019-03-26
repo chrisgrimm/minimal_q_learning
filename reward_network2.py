@@ -89,8 +89,8 @@ class ReparameterizedRewardNetwork(object):
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
-        if self.use_target:
-            self.sess.run(self.soft_update)
+        #if self.use_target:
+        #    self.sess.run(self.soft_update)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv, q_loss
 
     def train_Q_functions(self, time):

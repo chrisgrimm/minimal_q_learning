@@ -258,7 +258,6 @@ class Actor:
         self.current_policy = np.random.randint(0, self.network.num_rewards)
 
     def act(self, s, eval=False):
-        return np.random.randint(0, self.network.num_actions)
         # handle evaluation
         if eval:
             if np.random.randint(0, 1) < min_epsilon:
