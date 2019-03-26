@@ -263,7 +263,8 @@ class ReparameterizedRewardNetwork(object):
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
                 reward_consistency_terms.append(tf.reduce_mean(loss(R[(i,i)], R[(i,j)]), axis=0))
-        selected_reward_consistency_terms = self.select_terms(reward_consistency_terms, num_terms, self.num_rewards**2)
+        selected_reward_consistency_terms = reward_consistency_terms
+        #selected_reward_consistency_terms = self.select_terms(reward_consistency_terms, num_terms, self.num_rewards**2)
         print('selected_reward_consistency_terms', selected_reward_consistency_terms)
         reward_consistency = tf.reduce_sum(selected_reward_consistency_terms, axis=0)
 
@@ -282,7 +283,8 @@ class ReparameterizedRewardNetwork(object):
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(j,j)], axis=1), self.num_actions)
                     V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0)
                     J_indep_terms.append(V_ij)
-        selected_J_indep_terms = self.select_terms(J_indep_terms, num_terms, self.num_rewards**2-self.num_rewards)
+        selected_J_indep_terms = J_indep_terms
+        #selected_J_indep_terms = self.select_terms(J_indep_terms, num_terms, self.num_rewards**2-self.num_rewards)
         print('selected_J_indep_terms', selected_J_indep_terms)
         J_indep = tf.reduce_sum(selected_J_indep_terms, axis=0)
 
