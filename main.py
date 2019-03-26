@@ -379,7 +379,7 @@ def main():
                 q_loss = reward_net.train_Q_functions(time)
                 LOG.add_line('q_loss', q_loss)
 
-            if time % (q_train_freq * 5) == 0:
+            if time % (q_train_freq) == 0:
                 for j in range(1):
                     sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions(time)
                     LOG.add_line('sums_to_R', sums_to_R)
