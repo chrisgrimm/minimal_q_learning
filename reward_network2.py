@@ -30,16 +30,17 @@ def huber_loss(y_true, y_pred, max_grad=1.):
 
 class ReparameterizedRewardNetwork(object):
 
-    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, gpu_num=-1, reuse=None):
+    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, num_channels=3, gpu_num=-1, reuse=None):
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
         self.gamma = 0.99
-        self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, 3])
+
+        self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
         self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
         self.inp_a = tf.placeholder(tf.int32, [None])
         self.inp_r = tf.placeholder(tf.float32, [None])
-        self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, 3])
+        self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
         self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
         self.use_target = True
         self.use_shared_q_repr = True

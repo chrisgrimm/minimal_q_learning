@@ -222,7 +222,7 @@ buffer = ReplayBuffer(100000, num_frames, num_color_channels)
 #                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
 reward_net = ReparameterizedRewardNetwork(env, num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net',
-                                          gpu_num=args.gpu_num)
+                                          num_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 
 (height, width, depth) = env.observation_space.shape
