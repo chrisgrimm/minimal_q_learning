@@ -52,14 +52,21 @@ class ReparameterizedRewardNetwork(object):
 
         self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards)
 
-
+        strat = tf.distribute.MirroredStrategy()
 
         with tf.variable_scope(name, reuse=reuse) as scope:
             self.Q_s, self.Q_sp, self.R, self.soft_update, self.hard_update = self.setup_Q_functions()
             (self.sums_to_R, self.greater_than_0, self.reward_consistency,
                 self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
 
-            self.loss = 10000*(self.sums_to_R + self.greater_than_0 + self.reward_consistency) + self.J_indep - 10*self.J_nontriv
+            self.loss = (10000*(
+                self.sums_to_R +
+                self.greater_than_0 #+
+                #self.reward_consistency
+                ) +
+                #self.J_indep +
+                -10*self.J_nontriv
+                )
             self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
             self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
 
@@ -89,8 +96,8 @@ class ReparameterizedRewardNetwork(object):
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
-        #if self.use_target:
-        #    self.sess.run(self.soft_update)
+        if self.use_target:
+            self.sess.run(self.soft_update)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
     def train_Q_functions(self, time):
