@@ -65,8 +65,8 @@ def default_visualizations(network, env, value_matrix, name):
     behavior_full_name = os.path.join(path, behavior_name)
     value_matrix_full_name = os.path.join(path, name+'_value_matrix.pickle')
 
-    produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
-    record_value_matrix(value_matrix, value_matrix_full_name)
+    #produce_reward_statistics(network, env, statistics_full_name, behavior_full_name)
+    #record_value_matrix(value_matrix, value_matrix_full_name)
     file_number = re.match(r'^policy\_vis\_(\d+)\_behavior_file.pickle$', behavior_name).groups()[0]
     #produce_all_videos(path, file_number)
 
