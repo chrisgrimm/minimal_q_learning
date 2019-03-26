@@ -52,7 +52,6 @@ class ReparameterizedRewardNetwork(object):
 
         self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards)
 
-        strat = tf.distribute.MirroredStrategy()
 
         with tf.variable_scope(name, reuse=reuse) as scope:
             self.Q_s, self.Q_sp, self.R, self.soft_update, self.hard_update = self.setup_Q_functions()
