@@ -46,6 +46,8 @@ class ReparameterizedRewardNetwork(object):
         self.use_shared_q_repr = True
         self.use_huber = True
         self.seperate_policy_networks = True
+        self.enforce_random_subset = True
+
         self.batch_size = 32
 
         self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards)
@@ -242,6 +244,10 @@ class ReparameterizedRewardNetwork(object):
         return Q_s, Q_sp, R, soft_update, hard_update
 
 
+    def build_term_mask(self, num_terms_per_iter, num_elems):
+        term_mask = tf.one_hot(tf.random_shuffle(tf.range(num_elems))[:num_terms_per_iter], num_elems) # [term_mask, num_rewards**2]
+        return term_mask
+
     def setup_constraints(self, Q_s, Q_sp, R):
         # set up reward_constraints
         if self.use_huber:
@@ -252,15 +258,20 @@ class ReparameterizedRewardNetwork(object):
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
+        consistency_mask = self.build_term_mask(10, self.num_rewards**2)
         reward_consistency = 0
+        n = 0
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                reward_consistency += tf.reduce_mean(loss(R[(i,i)], R[(i,j)]), axis=0)
+                reward_consistency += tf.reduce_mean(loss(R[(i,i)], R[(i,j)]), axis=0) * consistency_mask[n,n]
+                n += 1
 
         # set up J_indep, J_nontriv
         J_indep = 0
         #J_nontriv = 0
         J_nontriv_terms = []
+        indep_mask = self.build_term_mask(10, self.num_rewards**2 - self.num_rewards)
+        n = 0
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
                 if i == j:
@@ -268,8 +279,9 @@ class ReparameterizedRewardNetwork(object):
                     J_nontriv_terms.append(V_ii)
                 else:
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(j,j)], axis=1), self.num_actions)
-                    V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0)
+                    V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0) * indep_mask[n,n]
                     J_indep += V_ij
+                    n += 1
         avg_max_values = tf.identity([tf.reduce_mean(J_nontriv_terms[i], axis=0) for i in range(self.num_rewards)])
         max_value_weighting = tf.stop_gradient(tf.nn.softmax(-2.0*avg_max_values))
         J_nontriv = 0
