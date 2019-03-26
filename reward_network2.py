@@ -60,10 +60,10 @@ class ReparameterizedRewardNetwork(object):
 
             self.loss = (10000*(
                 self.sums_to_R +
-                self.greater_than_0 #+
-                #self.reward_consistency
+                self.greater_than_0 +
+                self.reward_consistency
                 ) +
-                #self.J_indep +
+                self.J_indep +
                 -10*self.J_nontriv
                 )
             self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
