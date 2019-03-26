@@ -84,8 +84,7 @@ class ReparameterizedRewardNetwork(object):
 
 
     def train_R_functions(self, time):
-        #q_loss = self.train_Q_functions(time)
-        q_loss = 0
+        q_loss = self.train_Q_functions(time)
         S, A, R, SP, T = self.buffer.sample(self.batch_size)
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
@@ -259,7 +258,7 @@ class ReparameterizedRewardNetwork(object):
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
-        selectivity_term_indices = self.select_terms(10, self.num_rewards**2)
+        selectivity_term_indices = self.select_terms(1, self.num_rewards**2)
         reward_consistency = 0
         reward_consistency_terms = []
         for i in range(self.num_rewards):
@@ -275,7 +274,7 @@ class ReparameterizedRewardNetwork(object):
         #J_nontriv = 0
         J_nontriv_terms = []
         J_indep_terms = []
-        indep_term_indices = self.select_terms(10, self.num_rewards**2 - self.num_rewards)
+        indep_term_indices = self.select_terms(1, self.num_rewards**2 - self.num_rewards)
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
                 if i == j:
