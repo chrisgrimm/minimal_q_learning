@@ -244,8 +244,8 @@ class ReparameterizedRewardNetwork(object):
         return Q_s, Q_sp, R, soft_update, hard_update
 
 
-    def build_term_mask(self, num_terms_per_iter, num_elems):
-        term_mask = tf.one_hot(tf.random_shuffle(tf.range(num_elems))[:num_terms_per_iter], num_elems) # [term_mask, num_rewards**2]
+    def select_terms(self, num_terms_per_iter, num_elems):
+        term_mask = tf.random_shuffle(tf.range(num_elems))[:num_terms_per_iter] # [term_mask, num_rewards**2]
         return term_mask
 
     def setup_constraints(self, Q_s, Q_sp, R):
@@ -258,20 +258,23 @@ class ReparameterizedRewardNetwork(object):
         greater_than_0 = tf.reduce_mean(tf.reduce_sum([tf.square(tf.maximum(0.0, -R[(i,i)])) for i in range(self.num_rewards)], axis=0), axis=0)
 
         # set up consistency constraints
-        consistency_mask = self.build_term_mask(10, self.num_rewards**2)
+        selectivity_term_indices = self.select_terms(10, self.num_rewards**2)
         reward_consistency = 0
-        n = 0
+        reward_consistency_terms = []
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
-                reward_consistency += tf.reduce_mean(loss(R[(i,i)], R[(i,j)]), axis=0) * consistency_mask[n,n]
-                n += 1
+                reward_consistency_terms.append(tf.reduce_mean(loss(R[(i,i)], R[(i,j)]), axis=0))
+        selected_reward_consistency_terms = tf.gather(reward_consistency_terms, selectivity_term_indices)
+        print('selected_reward_consistency_terms', selected_reward_consistency_terms)
+        reward_consistency = tf.reduce_sum(selected_reward_consistency_terms, axis=0)
+
 
         # set up J_indep, J_nontriv
-        J_indep = 0
+        #J_indep = 0
         #J_nontriv = 0
         J_nontriv_terms = []
-        indep_mask = self.build_term_mask(10, self.num_rewards**2 - self.num_rewards)
-        n = 0
+        J_indep_terms = []
+        indep_term_indices = self.select_terms(10, self.num_rewards**2 - self.num_rewards)
         for i in range(self.num_rewards):
             for j in range(self.num_rewards):
                 if i == j:
@@ -279,9 +282,12 @@ class ReparameterizedRewardNetwork(object):
                     J_nontriv_terms.append(V_ii)
                 else:
                     pi_j_action = tf.one_hot(tf.argmax(Q_s[(j,j)], axis=1), self.num_actions)
-                    V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0) * indep_mask[n,n]
-                    J_indep += V_ij
-                    n += 1
+                    V_ij = tf.reduce_mean(tf.reduce_sum(Q_s[(i,j)] * pi_j_action, axis=1), axis=0)
+                    J_indep_terms.append(V_ij)
+        selected_J_indep_terms = tf.gather(J_indep_terms, indep_term_indices)
+        print('selected_J_indep_terms', selected_J_indep_terms)
+        J_indep = tf.reduce_sum(selected_J_indep_terms, axis=0)
+
         avg_max_values = tf.identity([tf.reduce_mean(J_nontriv_terms[i], axis=0) for i in range(self.num_rewards)])
         max_value_weighting = tf.stop_gradient(tf.nn.softmax(-2.0*avg_max_values))
         J_nontriv = 0
