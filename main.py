@@ -75,7 +75,7 @@ def default_visualizations(network, env, value_matrix, name):
 
 def default_on_reward_print_func(r, sp, info, network, reward_buffer):
     partitioned_r = network.get_partitioned_reward([sp], [r])[0]
-    print(reward_buffer.length(), partitioned_r)
+    #print(reward_buffer.length(), partitioned_r)
 
 ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
 num_frames = 4 if mode in ATARI_GAMES else 1
@@ -260,7 +260,7 @@ class Actor:
     def act(self, s, eval=False):
         # handle evaluation
         if eval:
-            if np.random.randint(0, 1) < min_epsilon:
+            if np.random.uniform(0, 1) < min_epsilon:
                 a = np.random.randint(0, self.network.num_actions)
             else:
                 a = self.network.get_state_actions([s])[self.current_policy][0]
@@ -338,7 +338,7 @@ def main():
     s = env.reset()
 
     starting_time = 0
-    for time in range(starting_time, num_steps):
+    for time in tqdm.tqdm(range(starting_time, num_steps)):
 
         a = actor.act(s)
         sp, r, t, info = env.step(a)
@@ -359,7 +359,7 @@ def main():
             s = env.reset()
             #current_policy = choice(policy_indices)
             current_episode_length = 0
-            print(f'Episode Reward: {episode_reward}')
+            #print(f'Episode Reward: {episode_reward}')
             #print(f'Epsilon {epsilon}')
             episode_reward = 0
         else:
@@ -379,7 +379,7 @@ def main():
                 q_loss = reward_net.train_Q_functions(time)
                 LOG.add_line('q_loss', q_loss)
 
-            if time % (q_train_freq) == 0:
+            if time % (q_train_freq * 5) == 0:
                 for j in range(1):
                     sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions(time)
                     LOG.add_line('sums_to_R', sums_to_R)
@@ -400,10 +400,10 @@ def main():
             #              ''.join([f'Q_{j}_loss: {q_losses[j]}\t' for j in range(num_partitions)]) + \
             #              f'Reward Loss: {reward_loss}' + \
             #              f'(MaxValConst: {max_value_constraint}, ValConst: {value_constraint})'
-            print(log_string)
+            #print(log_string)
 
             if time % display_freq == 0:
-                print('displaying!')
+                #print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
                 approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
@@ -421,7 +421,7 @@ def main():
 
             if time % evaluation_frequency == 0:
                 cum_reward, cum_reward_env = evaluate_performance(env, actor)
-                print(f'({time}) EVAL: {cum_reward}')
+                #print(f'({time}) EVAL: {cum_reward}')
                 LOG.add_line('cum_reward', cum_reward)
                 LOG.add_line('cum_reward_env', cum_reward_env)
 

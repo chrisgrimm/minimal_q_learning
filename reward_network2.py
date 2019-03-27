@@ -99,6 +99,7 @@ class ReparameterizedRewardNetwork(object):
             self.sess.run(self.soft_update)
         return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
+
     def train_Q_functions(self, time):
         S, A, R, SP, T = self.buffer.sample(self.batch_size)
         reward_num_samples = np.random.randint(0, self.num_rewards, size=[self.batch_size])
