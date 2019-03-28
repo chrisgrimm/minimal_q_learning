@@ -60,6 +60,8 @@ class ExplorationWorld(Env):
 
 
     def is_wall(self, pos):
+        if np.abs(pos[0]) >= 2*self.world_size + 3 or np.abs(pos[1]) >= 2*self.world_size + 3:
+            return True
         if pos in self.specified_walls:
             return True
         else:
