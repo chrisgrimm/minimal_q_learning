@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import os
 import pickle
+from gym import Env
+from envs.exploration_world import ExplorationWorld
 
 from reward_network import RewardPartitionNetwork
 from reward_network2 import ReparameterizedRewardNetwork
@@ -141,6 +143,22 @@ def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env
                   for j in range(network.num_rewards)
                   if i != j)
     return J_nontriv, J_indep, [V[(i,i)] for i in range(network.num_rewards)]
+
+def visualize_exploration_world_trajectories(network: ReparameterizedRewardNetwork, env: ExplorationWorld, name: str):
+    num_steps = 1000
+    canvas = env.get_cached_wall_image()
+    colors = [(255,0,0), (0,255,0), (0,0,255), (255,255,0)]
+    for reward_num in range(network.num_rewards):
+        s = env.reset()
+        traj = []
+        for _ in range(num_steps):
+            a = network.get_state_actions([s])[reward_num][0]
+            s, r, t, info = env.step(a)
+            x, y = info['agent_position']
+            traj.append((x,y))
+        canvas = env.visualize_trajectory(canvas, colors[reward_num], traj)
+    cv2.imwrite(name, canvas)
+
 
 
 

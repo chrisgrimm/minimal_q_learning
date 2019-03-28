@@ -1,9 +1,11 @@
 import numpy as np
 from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
+from envs.exploration_world import ExplorationWorld
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
 from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix, approximate_disentanglement_terms
+from visualization import visualize_exploration_world_trajectories
 from utils import LOG, build_directory_structure, add_implicit_name_arg
 from reward_prob_tracker import RewardProbTracker
 import argparse
@@ -28,7 +30,11 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+parser.add_argument('--mode', type=str, required=True, choices=
+    ['SOKOBAN',
+     'EXPLORATION_WORLD_EXPLORE', 'EXPLORATION_WORLD_ONE', 'EXPLORATION_WORLD_COLLECT',
+     'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE',
+     'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -46,7 +52,6 @@ parser.add_argument('--regularize', action='store_true')
 parser.add_argument('--regularization-weight', type=float, default=1.0)
 parser.add_argument('--hybrid-reward', action='store_true')
 parser.add_argument('--hybrid-reward-mode', type=str, default='sum', choices=['sum', 'max'])
-
 
 
 args = parser.parse_args()
@@ -191,7 +196,17 @@ elif mode == 'SOKOBAN_FOUR_ROOM':
     dummy_env_cluster('reset', args=[])
     dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env.reset()
+elif mode.startswith('EXPLORATION_WORLD'):
+    (reward_mode) = re.match(r'^EXPLORATION\_WORLD\_(.+?)$', mode).groups()
 
+    num_partitions = args.num_partitions
+    visualization_func = lambda network, env, value_matrix, name: None
+    on_reward_print_func = lambda r, sp, info, network, reward_buffer: None
+    visual = False
+    env = ExplorationWorld(reward_mode=reward_mode)
+    dummy_env = ExplorationWorld(reward_mode=reward_mode)
+    dummy_env.reset()
+    num_visual_channels = 1
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -208,7 +223,7 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(100000, num_frames, num_color_channels)
+buffer = ReplayBuffer(100000, num_frames, num_color_channels, visual=args.visual)
 
 #state_replay_buffer = StateReplayBuffer(1000000)
 
@@ -222,11 +237,8 @@ buffer = ReplayBuffer(100000, num_frames, num_color_channels)
 #                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
 reward_net = ReparameterizedRewardNetwork(env, num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net',
-                                          num_channels=num_visual_channels, gpu_num=args.gpu_num)
+                                          num_channels=num_visual_channels, gpu_num=args.gpu_num, visual=args.visual)
 
-
-(height, width, depth) = env.observation_space.shape
-tracker = RewardProbTracker(height, width, depth)
 
 learning_starts = 10000
 batch_size = 32
@@ -332,7 +344,6 @@ def main():
     current_episode_length = 0
     max_length_before_policy_switch = -1
     update_threshold_frequency = 100
-    (h, w, d) = env.observation_space.shape
     last_100_scores = [np.inf]
     best_score = np.inf
     s = env.reset()
@@ -406,6 +417,8 @@ def main():
                 #print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+                visualization_name = f'./{run_dir}/{args.name}/images/explore_{time}.png'
+                visualize_exploration_world_trajectories(reward_net, dummy_env, visualization_name)
                 approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
                 for reward_num in range(reward_net.num_rewards):
                     Vii = policy_value_vector[reward_num]
@@ -414,6 +427,7 @@ def main():
                 LOG.add_line('approx_J_nontriv', approx_J_nontriv)
                 LOG.add_line('approx_J_indep', approx_J_indep)
                 LOG.add_line('approx_J_disentangled', approx_J_disentangled)
+
 
 
             if time % save_freq == 0:

@@ -30,18 +30,25 @@ def huber_loss(y_true, y_pred, max_grad=1.):
 
 class ReparameterizedRewardNetwork(object):
 
-    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, num_channels=3, gpu_num=-1, reuse=None):
+    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None):
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
         self.gamma = 0.99
+        self.visual = visual
+        if visual:
+            self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
+            self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
+            self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
+            self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
+        else:
+            self.inp_s = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
+            self.converted_inp_s = self.inp_s
+            self.inp_sp = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
+            self.converted_inp_sp = self.inp_sp
 
-        self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
-        self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
         self.inp_a = tf.placeholder(tf.int32, [None])
         self.inp_r = tf.placeholder(tf.float32, [None])
-        self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
-        self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
         self.use_target = True
         self.use_shared_q_repr = True
         self.use_huber = True
@@ -50,7 +57,7 @@ class ReparameterizedRewardNetwork(object):
 
         self.batch_size = 32
 
-        self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards)
+        self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards, visual=visual)
 
 
         with tf.variable_scope(name, reuse=reuse) as scope:
@@ -160,6 +167,20 @@ class ReparameterizedRewardNetwork(object):
 
 
     def build_shared_Q_network_trunk(self, s, name, reuse=None):
+        if self.visual:
+            return self.build_shared_Q_network_trunk_image(s, name, reuse)
+        else:
+            return self.build_shared_Q_network_trunk_vector(s, name, reuse)
+
+
+    def build_shared_Q_network_trunk_vector(self, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse) as scope:
+            fc1 = tf.layers.dense(s, 128, activation=tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, activation=tf.nn.relu, name='fc2')
+            vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope.original_name_scope)
+        return fc2, vars
+
+    def build_shared_Q_network_trunk_image(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse) as scope:
             c0 = tf.layers.conv2d(s, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
             c1 = tf.layers.conv2d(c0, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
