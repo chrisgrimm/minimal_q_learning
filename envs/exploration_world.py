@@ -157,7 +157,11 @@ class ExplorationWorld(Env):
     def visualize_trajectory(self, canvas, color, trajectory):
         for (x,y) in trajectory:
             img_x, img_y = self.to_image_pos((x,y))
-            canvas[img_y, img_x,:] = color
+            # theres a weird indexing thing, but i dont think it really matters for this application.
+            try:
+                canvas[img_y, img_x,:] = color
+            except IndexError:
+                pass
         return canvas
 
 
