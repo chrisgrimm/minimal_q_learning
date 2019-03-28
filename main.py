@@ -197,7 +197,7 @@ elif mode == 'SOKOBAN_FOUR_ROOM':
     dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env.reset()
 elif mode.startswith('EXPLORATION_WORLD'):
-    (reward_mode) = re.match(r'^EXPLORATION\_WORLD\_(.+?)$', mode).groups()
+    (reward_mode,) = re.match(r'^EXPLORATION\_WORLD\_(.+?)$', mode).groups()
 
     num_partitions = args.num_partitions
     visualization_func = lambda network, env, value_matrix, name: None
