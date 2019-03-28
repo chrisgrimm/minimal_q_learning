@@ -120,6 +120,8 @@ def setup_atari(name):
 
 
 
+reward_mapper = None
+
 if mode in ATARI_GAMES:
     settings = setup_atari(mode)
     num_partitions = settings['num_partitions']
@@ -205,6 +207,8 @@ elif mode.startswith('EXPLORATION_WORLD'):
     visual = False
     env = ExplorationWorld(reward_mode=reward_mode)
     dummy_env = ExplorationWorld(reward_mode=reward_mode)
+    if reward_mode == 'EXPLORE':
+        reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(sp))
     dummy_env.reset()
     num_visual_channels = 1
 else:
@@ -392,7 +396,7 @@ def main():
 
             if time % (q_train_freq * 5) == 0:
                 for j in range(1):
-                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions(time)
+                    sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv = reward_net.train_R_functions(time, reward_mapper=reward_mapper)
                     LOG.add_line('sums_to_R', sums_to_R)
                     LOG.add_line('greater_than_0', greater_than_0)
                     LOG.add_line('reward_consistency', reward_consistency)

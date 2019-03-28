@@ -121,6 +121,9 @@ class ExplorationWorld(Env):
     def get_observation(self):
         return np.array(self.agent) / (self.world_size + 2 + 1)
 
+    def to_pos(self, obs):
+        return tuple((obs * (self.world_size + 2 + 1)).astype(np.int32))
+
     def step(self, action):
         delta_x, delta_y = self.action_mapping[action]
         new_x, new_y = self.agent[0] + delta_x, self.agent[1] + delta_y

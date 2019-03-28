@@ -96,9 +96,14 @@ class ReparameterizedRewardNetwork(object):
         self.saver.restore(self.sess, os.path.join(path, name))
 
 
-    def train_R_functions(self, time):
+    def train_R_functions(self, time, reward_mapper=None):
         #q_loss = self.train_Q_functions(time)
         S, A, R, SP, T = self.buffer.sample(self.batch_size)
+        if reward_mapper is not None:
+            R_mod = []
+            for s, a, r, sp in zip(S, A, R, SP):
+                R_mod.append(reward_mapper(s,a,r,sp))
+            R = R_mod
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
                       feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
