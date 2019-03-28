@@ -76,7 +76,7 @@ class ExplorationWorld(Env):
             return np.copy(self.cached_wall_image)
         else:
             wall_color = (0, 0, 0)
-            canvas = 255 * np.ones([2 * self.world_size + 7, 2 * self.world_size + 7, 3], dtype=np.uint8)
+            canvas = 255 * np.ones([2 * self.world_size + 8, 2 * self.world_size + 8, 3], dtype=np.uint8)
             for x in range(-self.world_size - 2, self.world_size + 2 + 1):
                 for y in range(-self.world_size - 2, self.world_size + 2 + 1):
                     img_x, img_y = self.to_image_pos((x, y))
