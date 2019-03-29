@@ -350,7 +350,7 @@ def evaluate_performance(env, actor: Actor):
 
 
 def main():
-    actor = RandomActor(reward_net)
+    actor = Actor(reward_net)
     global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
         num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
         current_reward_training_step,epsilon_delta,time,num_steps
