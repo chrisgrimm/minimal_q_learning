@@ -60,7 +60,7 @@ class ExplorationWorld(Env):
 
 
     def is_wall(self, pos):
-        if np.abs(pos[0]) >= 2*self.world_size + 3 or np.abs(pos[1]) >= 2*self.world_size + 3:
+        if np.abs(pos[0]) >= self.world_size + 3 or np.abs(pos[1]) >= self.world_size + 3:
             return True
         if pos in self.specified_walls:
             return True
@@ -97,10 +97,11 @@ class ExplorationWorld(Env):
         return canvas
 
     def get_exploration_reward(self, pos):
+        base_reward = 0.1
         if pos in self.exploration_counts:
-            return self.beta * self.exploration_counts[pos]**-0.5
+            return self.beta * self.exploration_counts[pos]**-0.5 + base_reward
         else:
-            return self.beta * 1
+            return self.beta * 1 + base_reward
 
     def get_reward(self, pos):
         if self.reward_mode == 'ONE':
