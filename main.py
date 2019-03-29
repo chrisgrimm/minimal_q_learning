@@ -295,6 +295,16 @@ class Actor:
         else:
             self.current_policy = np.random.randint(0, self.network.num_rewards)
 
+class RandomActor:
+    def __init__(self, network: ReparameterizedRewardNetwork):
+        self.network = network
+
+    def act(self, s, eval=False):
+        return np.random.randint(0, self.network.num_actions)
+
+    def switch_policy(self, policy_number=-1):
+        pass
+
 
 def get_action(s, eval=False):
     global epsilon
@@ -340,7 +350,7 @@ def evaluate_performance(env, actor: Actor):
 
 
 def main():
-    actor = Actor(reward_net)
+    actor = RandomActor(reward_net)
     global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
         num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
         current_reward_training_step,epsilon_delta,time,num_steps
