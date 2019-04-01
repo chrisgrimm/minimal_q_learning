@@ -3,6 +3,7 @@ from gym.spaces import Box, Discrete
 import numpy as np
 from itertools import count
 import cv2
+from reward_network2 import ReparameterizedRewardNetwork
 
 
 class ExplorationWorld(Env):
@@ -73,17 +74,21 @@ class ExplorationWorld(Env):
     def to_image_pos(self, p):
         return (p[0] + self.world_size + 2, p[1] + self.world_size + 2)
 
+    def position_iterator(self):
+        for x in range(-self.world_size-2, self.world_size+2+1):
+            for y in range(-self.world_size-2, self.world_size+2+1):
+                yield (x, y)
+
     def get_cached_wall_image(self):
         if self.cached_wall_image is not None:
             return np.copy(self.cached_wall_image)
         else:
             wall_color = (0, 0, 0)
             canvas = 255 * np.ones([2 * self.world_size + 8, 2 * self.world_size + 8, 3], dtype=np.uint8)
-            for x in range(-self.world_size - 2, self.world_size + 2 + 1):
-                for y in range(-self.world_size - 2, self.world_size + 2 + 1):
-                    img_x, img_y = self.to_image_pos((x, y))
-                    if self.is_wall((x, y)):
-                        canvas[img_y, img_x, :] = wall_color
+            for (x, y) in self.position_iterator():
+                img_x, img_y = self.to_image_pos((x, y))
+                if self.is_wall((x, y)):
+                    canvas[img_y, img_x, :] = wall_color
             self.cached_wall_image = canvas
             return np.copy(self.cached_wall_image)
 
@@ -119,8 +124,9 @@ class ExplorationWorld(Env):
         else:
             self.exploration_counts[pos] = 1
 
-    def get_observation(self):
-        return np.array(self.agent) / (self.world_size + 2 + 1)
+    def get_observation(self, position=None):
+        position = self.agent if position is None else position
+        return np.array(position) / (self.world_size + 2 + 1)
 
     def to_pos(self, obs):
         return tuple((obs * (self.world_size + 2 + 1)).astype(np.int32))
@@ -164,6 +170,40 @@ class ExplorationWorld(Env):
             except IndexError:
                 pass
         return canvas
+
+    def visualize_reward_bonuses(self):
+        canvas = np.zeros_like(self.get_cached_wall_image()[:, :, 0], dtype=np.float32)
+        for (x,y) in self.position_iterator():
+            img_x, img_y = self.to_image_pos((x,y))
+            canvas[img_y, img_x] = self.get_exploration_reward((x,y))
+        canvas = canvas / np.max(canvas) # now between [0,1]
+        canvas = (255 * canvas).astype(np.uint8)
+        canvas = cv2.applyColorMap(canvas, cv2.COLORMAP_HOT)
+        return canvas
+
+
+    def visualize_reward_values(self, net: ReparameterizedRewardNetwork):
+        make_canvas = lambda : np.zeros_like(self.get_cached_wall_image()[:, :, 0], dtype=np.float32)
+        canvases = [make_canvas() for _ in range(net.num_rewards)]
+        for (x,y) in self.position_iterator():
+            img_x, img_y = self.to_image_pos((x,y))
+            obs = self.get_observation((x,y))
+            values = net.get_state_values([obs])[:, 0]
+            for reward_num, value in enumerate(values):
+                canvases[reward_num][img_y, img_x] = value
+        # process canvases into heatmaps
+        heatmaps = []
+        for canvas in canvases:
+            canvas = np.clip(canvas, 0, np.inf) # strip negative values
+            canvas = canvas / np.max(canvas)
+            canvas = (255 * canvas).astype(np.uint8)
+            canvas = cv2.applyColorMap(canvas, cv2.COLORMAP_HOT)
+            heatmaps.append(canvas)
+        return heatmaps
+
+
+
+
 
 
 if __name__ == '__main__':
