@@ -270,6 +270,17 @@ num_steps = 10000000
 policy_indices = list(range(num_partitions)) + [-1]
 current_policy = choice(policy_indices)
 
+class MixtureActor:
+
+    def __init__(self, network: ReparameterizedRewardNetwork, mode='sum'):
+        self.network = network
+        self.mode = mode
+
+    def act(self, s, eval=False):
+        assert eval
+        return self.network.get_hybrid_actions([s], mode=mode)[0]
+
+
 class Actor:
 
     def __init__(self, network: ReparameterizedRewardNetwork):
@@ -309,20 +320,20 @@ class RandomActor:
     def switch_policy(self, policy_number=-1):
         pass
 
-
-def get_action(s, eval=False):
-    global epsilon
-    global current_policy
-    is_random = np.random.uniform(0, 1) < (min_epsilon if eval else epsilon)
-    if is_random or True:
-        action = np.random.randint(0, env.action_space.n)
-    else:
-        if args.hybrid_reward:
-            action = reward_net.get_hybrid_actions([s], mode=args.hybrid_reward_mode)[0]
-        else:
-            action = reward_net.get_state_actions([s])[current_policy][0]
-
-    return action
+#
+# def get_action(s, eval=False):
+#     global epsilon
+#     global current_policy
+#     is_random = np.random.uniform(0, 1) < (min_epsilon if eval else epsilon)
+#     if is_random or True:
+#         action = np.random.randint(0, env.action_space.n)
+#     else:
+#         if args.hybrid_reward:
+#             action = reward_net.get_hybrid_actions([s], mode=args.hybrid_reward_mode)[0]
+#         else:
+#             action = reward_net.get_state_actions([s])[current_policy][0]
+#
+#     return action
 
 
 # this is a better performance metric. assesses the reward gained over an episode rather than for an arbitrary number of steps.
@@ -355,6 +366,8 @@ def evaluate_performance(env, actor: Actor):
 
 def main():
     actor = Actor(reward_net)
+    sum_actor = MixtureActor(reward_net, mode='sum')
+    max_actor = MixtureActor(reward_net, mode='max')
     global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
         num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
         current_reward_training_step,epsilon_delta,time,num_steps
@@ -414,11 +427,11 @@ def main():
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
                 base_path = f'./{run_dir}/{args.name}/images'
-                visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
+                #visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
                 # must use regular environment for this.
-                cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
-                for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
-                    cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
+                #cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
+                #for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
+                #    cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
                 approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
                 for reward_num in range(reward_net.num_rewards):
                     Vii = policy_value_vector[reward_num]
@@ -434,10 +447,15 @@ def main():
                 reward_net.save(save_path, 'reward_net.ckpt')
 
             if time % evaluation_frequency == 0:
-                cum_reward, cum_reward_env = evaluate_performance(env, actor)
+                #cum_reward, cum_reward_env = evaluate_performance(env, actor)
+                sum_cum_reward, sum_cum_reward_env = evaluate_performance(env, sum_actor)
+                max_cum_reward, max_cum_reward_env = evaluate_performance(env, max_actor)
                 #print(f'({time}) EVAL: {cum_reward}')
-                LOG.add_line('cum_reward', cum_reward)
-                LOG.add_line('cum_reward_env', cum_reward_env)
+                LOG.add_line('sum_cum_reward', sum_cum_reward)
+                LOG.add_line('max_cum_reward', max_cum_reward)
+
+                LOG.add_line('sum_cum_reward_env', sum_cum_reward_env)
+                LOG.add_line('max_cum_reward_env', max_cum_reward_env)
 
             if time % 10000 == 0 and np.mean(last_100_scores) < best_score:
                 best_score = np.mean(last_100_scores)
