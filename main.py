@@ -278,7 +278,7 @@ class MixtureActor:
 
     def act(self, s, eval=False):
         assert eval
-        return self.network.get_hybrid_actions([s], mode=mode)[0]
+        return self.network.get_hybrid_actions([s], mode=self.mode)[0]
 
 
 class Actor:
