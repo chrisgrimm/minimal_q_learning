@@ -39,11 +39,12 @@ class ExplorationWorld(Env):
         }
 
         self.human_action_mapping = {
-            0: 'd',
-            1: 'a',
-            2: 's',
-            3: 'w'
+            'd': 0,
+            'a': 1,
+            's': 2,
+            'w': 3
         }
+
 
         self.observation_space = Box(-1, 1, shape=[2], dtype=np.float32)
         self.action_space = Discrete(4)
@@ -129,7 +130,7 @@ class ExplorationWorld(Env):
         return np.array(position) / (self.world_size + 2 + 1)
 
     def to_pos(self, obs):
-        return tuple((obs * (self.world_size + 2 + 1)).astype(np.int32))
+        return tuple((obs * (self.world_size + 2 + 1)).round().astype(np.int32))
 
     def step(self, action):
         delta_x, delta_y = self.action_mapping[action]
@@ -176,6 +177,7 @@ class ExplorationWorld(Env):
         for (x,y) in self.position_iterator():
             img_x, img_y = self.to_image_pos((x,y))
             canvas[img_y, img_x] = self.get_exploration_reward((x,y))
+
         canvas = canvas / np.max(canvas) # now between [0,1]
         canvas = (255 * canvas).astype(np.uint8)
         canvas = cv2.applyColorMap(canvas, cv2.COLORMAP_HOT)
@@ -209,8 +211,15 @@ class ExplorationWorld(Env):
 if __name__ == '__main__':
     env = ExplorationWorld()
     for time in count():
-        a = np.random.randint(0, 4)
+        try:
+            a = input('Action:')
+            a = env.human_action_mapping[a]
+        except KeyError:
+            print('invalid action!')
+            continue
         s, r, t, info = env.step(a)
+        print(s, env.to_pos(s), info['agent_position'])
+        print(env.get_exploration_reward(env.to_pos(s)), r)
         obs = env.generate_image()
         obs = cv2.resize(obs, (400, 400))
         #print(time, s)
