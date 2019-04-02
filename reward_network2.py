@@ -92,7 +92,7 @@ class ReparameterizedRewardNetwork(object):
 
 
     def restore(self, path, name):
-        self.dqn.restore(path, 'qnet.ckpt')
+        #self.dqn.restore(path, 'qnet.ckpt')
         self.saver.restore(self.sess, os.path.join(path, name))
 
 

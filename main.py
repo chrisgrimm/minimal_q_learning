@@ -426,12 +426,13 @@ def main():
                 #print('displaying!')
                 value_matrix = np.zeros([num_partitions, num_partitions], dtype=np.float32)
                 visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
-                base_path = f'./{run_dir}/{args.name}/images'
-                visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
-                # must use regular environment for this.
-                cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
-                for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
-                    cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
+                if isinstance(env, ExplorationWorld):
+                    base_path = f'./{run_dir}/{args.name}/images'
+                    visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
+                    # must use regular environment for this.
+                    cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
+                    for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
+                        cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
                 approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
                 for reward_num in range(reward_net.num_rewards):
                     Vii = policy_value_vector[reward_num]

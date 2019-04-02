@@ -148,7 +148,6 @@ class ExplorationWorld(Env):
 
     def get_exploration_reward(self, pos):
         base_reward = 0.1
-        print(pos)
         if pos in self.exploration_counts:
             return self.beta * self.exploration_counts[pos]**-0.5 + base_reward
         else:
@@ -260,8 +259,14 @@ class ExplorationWorld(Env):
 
 
 
+
 if __name__ == '__main__':
     env = ExplorationWorld(reward_mode='COLLECT')
+    net = ReparameterizedRewardNetwork(env, 4, 0.001, None, 4, 'reward_net', False, gpu_num=-1)
+    path = '/Users/chris/projects/q_learning/reparam_runs/exploration_explore_1/weights'
+    net.restore(path, 'reward_net.ckpt')
+                #'reparam_runs/exploration_explore_1/weights'
+
     for time in count():
         try:
             a = input('Action:')
