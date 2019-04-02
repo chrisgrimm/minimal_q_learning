@@ -118,6 +118,7 @@ class ExplorationWorld(Env):
                     canvas[img_y, img_x, :] = wall_color
                 else:
                     canvas[img_y, img_x, :] = uncollected_color
+            self.cached_collection_image = canvas
             return canvas
 
     def update_collected(self, pos):
