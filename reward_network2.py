@@ -56,7 +56,7 @@ class ReparameterizedRewardNetwork(object):
         self.enforce_random_subset = True
 
         self.batch_size = 32
-
+        print(visual)
         self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards, visual=visual)
 
 

@@ -10,6 +10,8 @@ class ExplorationWorld(Env):
 
     def __init__(self, world_size=100, reward_mode='EXPLORE'):
         self.agent = (0,0)
+        self.image_mode = (reward_mode == 'COLLECT')
+        self.image_size = 64
         self.inner_walls = [
             (2,1), (2,2), (2,-1), (2,-2),
             (1,2), (1,-2),
@@ -23,6 +25,8 @@ class ExplorationWorld(Env):
             (-3,1), (-3,0), (-3,-1)
         ]
         self.world_size = world_size # the size of the world in any direction outside of the inner walls.
+        if reward_mode == 'COLLECT':
+            self.world_size = 32
 
         self.specified_walls = set(self.inner_walls)
         self.generated_wall_rules = [
@@ -30,6 +34,7 @@ class ExplorationWorld(Env):
             #lambda p: ((np.abs(p[0]) > 2) and (np.abs(p[0]) == np.abs(p[1]))), # builds the diagonal walls.
             #lambda p: ((np.abs(p[0]) > self.world_size + 2) or (np.abs(p[1]) > self.world_size + 2)), # builds the outer walls
         ]
+
 
         self.action_mapping = {
             0: (1,0),
@@ -45,8 +50,10 @@ class ExplorationWorld(Env):
             'w': 3
         }
 
-
-        self.observation_space = Box(-1, 1, shape=[2], dtype=np.float32)
+        if reward_mode == 'COLLECT':
+            self.observation_space = Box(0, 255, shape=[64,64,3], dtype=np.uint8)
+        else:
+            self.observation_space = Box(-1, 1, shape=[2], dtype=np.float32)
         self.action_space = Discrete(4)
 
         self.reward_modes = ['EXPLORE', 'COLLECT', 'ONE']
@@ -59,6 +66,7 @@ class ExplorationWorld(Env):
         self.max_episode_steps = 1000
         self.step_num = 0
         self.cached_wall_image = None
+        self.cached_collection_image = None
 
 
     def is_wall(self, pos):
@@ -93,17 +101,53 @@ class ExplorationWorld(Env):
             self.cached_wall_image = canvas
             return np.copy(self.cached_wall_image)
 
+    def get_cached_collection_image(self):
+        if self.cached_collection_image is not None:
+            return np.copy(self.cached_collection_image)
+        else:
+            canvas = np.zeros([2 * self.world_size + 8, 2 * self.world_size + 8, 3], dtype=np.uint8)
+            wall_color = (0,0,0)
+            uncollected_color = (255,0,0)
+            collected_color = (0,255,0)
+            agent_color = (0,0,255)
+            for (x, y) in self.position_iterator():
+                img_x, img_y = self.to_image_pos((x,y))
+                if (x, y) in self.collected_states:
+                    canvas[img_y, img_x, :] = collected_color
+                elif self.is_wall((x,y)):
+                    canvas[img_y, img_x, :] = wall_color
+                else:
+                    canvas[img_y, img_x, :] = uncollected_color
+            return canvas
+
+    def update_collected(self, pos):
+        self.collected_states.add(pos)
+        img_x, img_y = self.to_image_pos(pos)
+        if self.cached_collection_image is None:
+            self.get_cached_collection_image()
+        else:
+            self.cached_collection_image[img_y, img_x, :] = (0,255,0)
 
 
-    def generate_image(self):
+    def reset_collected(self):
+        self.collected_states = {(0,0)}
+        self.cached_collection_image = None
+        self.get_cached_collection_image()
+
+
+
+
+    def generate_image(self, position=None):
+        position = self.agent if position is None else position
         canvas = self.get_cached_wall_image()
         agent_color = (255,0,0)
-        x, y = self.to_image_pos(self.agent)
+        x, y = self.to_image_pos(position)
         canvas[y, x, :] = agent_color
         return canvas
 
     def get_exploration_reward(self, pos):
         base_reward = 0.1
+        print(pos)
         if pos in self.exploration_counts:
             return self.beta * self.exploration_counts[pos]**-0.5 + base_reward
         else:
@@ -127,7 +171,14 @@ class ExplorationWorld(Env):
 
     def get_observation(self, position=None):
         position = self.agent if position is None else position
-        return np.array(position) / (self.world_size + 2 + 1)
+        if self.image_mode:
+            img_x, img_y = self.to_image_pos(position)
+            obs = self.get_cached_collection_image()
+            obs[img_y, img_x, :] = (0,0,255)
+            obs = cv2.resize(obs, (64, 64))
+            return obs
+        else:
+            return np.array(position) / (self.world_size + 2 + 1)
 
     def to_pos(self, obs):
         return tuple((obs * (self.world_size + 2 + 1)).round().astype(np.int32))
@@ -144,7 +195,7 @@ class ExplorationWorld(Env):
         self.update_exploration_reward(self.agent)
         r = self.get_reward(self.agent)
         # update the collection set AFTER getting the reward.
-        self.collected_states.add(self.agent)
+        self.update_collected(self.agent)
 
         s = self.get_observation()
         info = {'internal_terminal': False,
@@ -159,7 +210,7 @@ class ExplorationWorld(Env):
     def reset(self):
         self.agent = (0,0)
         self.step_num = 0
-        self.collected_states = {(0,0)}
+        self.reset_collected()
         return self.get_observation()
 
     def visualize_trajectory(self, canvas, color, trajectory):
@@ -209,18 +260,22 @@ class ExplorationWorld(Env):
 
 
 if __name__ == '__main__':
-    env = ExplorationWorld()
+    env = ExplorationWorld(reward_mode='COLLECT')
     for time in count():
         try:
             a = input('Action:')
+            if a == 'r':
+                env.reset()
+                continue
             a = env.human_action_mapping[a]
         except KeyError:
             print('invalid action!')
             continue
         s, r, t, info = env.step(a)
-        print(s, env.to_pos(s), info['agent_position'])
-        print(env.get_exploration_reward(env.to_pos(s)), r)
-        obs = env.generate_image()
+        print(r)
+        #print(s, env.to_pos(s), info['agent_position'])
+        #print(env.get_exploration_reward(env.to_pos(s)), r)
+        obs = env.get_observation()
         obs = cv2.resize(obs, (400, 400))
         #print(time, s)
         cv2.imshow('game', obs)
