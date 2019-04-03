@@ -29,6 +29,9 @@ add_implicit_name_arg(parser)
 parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
+parser.add_argument('--j_indep', type=float, default=1.0)
+parser.add_argument('--j_nontriv', type=float, default=10.0)
+parser.add_argument('--reward_consistency', type=float, default=10000)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=
     ['SOKOBAN',
@@ -245,7 +248,9 @@ buffer = ReplayBuffer(100000, num_frames, num_color_channels, visual=args.visual
 #                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
 reward_net = ReparameterizedRewardNetwork(env, num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net',
-                                          num_channels=num_visual_channels, gpu_num=args.gpu_num, visual=args.visual)
+                                          num_channels=num_visual_channels, gpu_num=args.gpu_num, visual=args.visual,
+                                          j_indep_coeff=args.j_indep, j_nontriv_coeff=args.j_nontriv,
+                                          reward_consistency_coeff=args.reward_consistency)
 
 
 learning_starts = 10000

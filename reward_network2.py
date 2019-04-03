@@ -30,7 +30,8 @@ def huber_loss(y_true, y_pred, max_grad=1.):
 
 class ReparameterizedRewardNetwork(object):
 
-    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None):
+    def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None,
+                 j_indep_coeff=1, j_nontriv_coeff=10, reward_consistency_coeff=10000):
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
@@ -65,13 +66,13 @@ class ReparameterizedRewardNetwork(object):
             (self.sums_to_R, self.greater_than_0, self.reward_consistency,
                 self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
 
-            self.loss = (10000*(
+            self.loss = (reward_consistency_coeff*(
                 self.sums_to_R +
                 self.greater_than_0 +
                 self.reward_consistency
                 ) +
-                self.J_indep +
-                -10*self.J_nontriv
+                j_indep_coeff*self.J_indep +
+                -j_nontriv_coeff*self.J_nontriv
                 )
             self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
             self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
@@ -92,7 +93,7 @@ class ReparameterizedRewardNetwork(object):
 
 
     def restore(self, path, name):
-        #self.dqn.restore(path, 'qnet.ckpt')
+        self.dqn.restore(path, 'qnet.ckpt')
         self.saver.restore(self.sess, os.path.join(path, name))
 
 

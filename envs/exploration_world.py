@@ -263,8 +263,12 @@ class ExplorationWorld(Env):
 if __name__ == '__main__':
     env = ExplorationWorld(reward_mode='COLLECT')
     net = ReparameterizedRewardNetwork(env, 4, 0.001, None, 4, 'reward_net', False, gpu_num=-1)
-    path = '/Users/chris/projects/q_learning/reparam_runs/exploration_explore_1/weights'
-    net.restore(path, 'reward_net.ckpt')
+
+    #net.save('.', 'rnet.ckpt')
+    #net.restore('.', 'rnet.ckpt')
+    #input('Successfully Restored network!')
+    #path = '/Users/chris/projects/q_learning/reparam_runs/exploration_explore_1/weights'
+    #net.restore(path, 'reward_net.ckpt')
                 #'reparam_runs/exploration_explore_1/weights'
 
     for time in count():
