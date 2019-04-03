@@ -29,9 +29,9 @@ add_implicit_name_arg(parser)
 parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
-parser.add_argument('--j_indep', type=float, default=1.0)
-parser.add_argument('--j_nontriv', type=float, default=10.0)
-parser.add_argument('--reward_consistency', type=float, default=10000)
+parser.add_argument('--j-indep', type=float, default=1.0)
+parser.add_argument('--j-nontriv', type=float, default=10.0)
+parser.add_argument('--reward-consistency', type=float, default=10000)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=
     ['SOKOBAN',
