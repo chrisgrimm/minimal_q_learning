@@ -31,7 +31,8 @@ def huber_loss(y_true, y_pred, max_grad=1.):
 class ReparameterizedRewardNetwork(object):
 
     def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None,
-                 j_indep_coeff=1, j_nontriv_coeff=10, reward_consistency_coeff=10000):
+                 j_indep_coeff=1, j_nontriv_coeff=10, reward_consistency_coeff=10000,
+                 use_shared_q_repr=True, use_target=True, enforce_random_subset=False, use_huber=True):
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
@@ -50,11 +51,10 @@ class ReparameterizedRewardNetwork(object):
 
         self.inp_a = tf.placeholder(tf.int32, [None])
         self.inp_r = tf.placeholder(tf.float32, [None])
-        self.use_target = True
-        self.use_shared_q_repr = True
-        self.use_huber = True
-        self.seperate_policy_networks = True
-        self.enforce_random_subset = True
+        self.use_target = use_target
+        self.use_shared_q_repr = use_shared_q_repr
+        self.use_huber = use_huber
+        self.enforce_random_subset = enforce_random_subset
 
         self.batch_size = 32
         print(visual)
@@ -123,8 +123,6 @@ class ReparameterizedRewardNetwork(object):
         return loss
 
 
-
-
     def get_partitioned_reward(self, s, a, sp):
         return np.transpose(self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
                             feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp}), [1,0]) # [bs, num_rewards]
@@ -135,7 +133,6 @@ class ReparameterizedRewardNetwork(object):
         x = np.max(x, axis=1) # [bs, num_rewards]
         x = np.transpose(x, [1,0]) #[num_rewards, bs]
         return x
-
 
 
     def get_state_actions(self, s):

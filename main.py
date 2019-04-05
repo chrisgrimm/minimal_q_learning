@@ -28,7 +28,7 @@ add_implicit_name_arg(parser)
 
 parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
-parser.add_argument('--max-value-mult', type=float, default=10.0)
+#parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--j-indep', type=float, default=1.0)
 parser.add_argument('--j-nontriv', type=float, default=10.0)
 parser.add_argument('--reward-consistency', type=float, default=10000)
@@ -41,20 +41,23 @@ parser.add_argument('--mode', type=str, required=True, choices=
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
-parser.add_argument('--separate-reward-repr', action='store_true')
-parser.add_argument('--bayes-reward-filter', action='store_true')
-parser.add_argument('--use-ideal-filter', action='store_true')
+#parser.add_argument('--separate-reward-repr', action='store_true')
+#parser.add_argument('--bayes-reward-filter', action='store_true')
+#parser.add_argument('--use-ideal-filter', action='store_true')
 parser.add_argument('--num-partitions', type=int, required=True)
-parser.add_argument('--use-meta-controller', action='store_true')
-parser.add_argument('--clip-gradient', type=float, default=-1)
-parser.add_argument('--restore-dead-run', type=str, default=None)
+#parser.add_argument('--use-meta-controller', action='store_true')
+#parser.add_argument('--clip-gradient', type=float, default=-1)
+#parser.add_argument('--restore-dead-run', type=str, default=None)
 parser.add_argument('--softmin-temp', type=float, default=1.0)
-parser.add_argument('--stop-softmin-gradient', action='store_true')
+#parser.add_argument('--stop-softmin-gradient', action='store_true')
 parser.add_argument('--run-dir', type=str, default='new_runs')
-parser.add_argument('--regularize', action='store_true')
-parser.add_argument('--regularization-weight', type=float, default=1.0)
+#parser.add_argument('--regularize', action='store_true')
+#parser.add_argument('--regularization-weight', type=float, default=1.0)
 parser.add_argument('--hybrid-reward', action='store_true')
 parser.add_argument('--hybrid-reward-mode', type=str, default='sum', choices=['sum', 'max'])
+parser.add_argument('--no-shared-q-repr', action='store_true')
+parser.add_argument('--no-target', action='store_true')
+parser.add_argument('--enforace-random-subset', action='store_true')
 
 
 args = parser.parse_args()
@@ -250,7 +253,10 @@ buffer = ReplayBuffer(100000, num_frames, num_color_channels, visual=args.visual
 reward_net = ReparameterizedRewardNetwork(env, num_partitions, args.learning_rate, buffer, env.action_space.n, 'reward_net',
                                           num_channels=num_visual_channels, gpu_num=args.gpu_num, visual=args.visual,
                                           j_indep_coeff=args.j_indep, j_nontriv_coeff=args.j_nontriv,
-                                          reward_consistency_coeff=args.reward_consistency)
+                                          reward_consistency_coeff=args.reward_consistency,
+                                          use_shared_q_repr=(not args.no_shared_q_repr),
+                                          use_target=(not args.no_target),
+                                          enforce_random_subset=args.enforce_random_subset)
 
 
 learning_starts = 10000
