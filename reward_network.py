@@ -294,6 +294,7 @@ class RewardPartitionNetwork(object):
 
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
             SP_j_then_j, R_j_then_j, T_j_then_j, _ = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            print('JJ', np.shape(SP_j_then_j))
             if reward_mapper is not None:
                 R_mod = []
                 for sp in SP_j_then_j:
