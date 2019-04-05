@@ -297,8 +297,11 @@ class RewardPartitionNetwork(object):
             print('JJ', np.shape(SP_j_then_j))
             if reward_mapper is not None:
                 R_mod = []
-                for sp in SP_j_then_j:
-                    R_mod.append(reward_mapper(None, None, None, sp))
+                for elem in SP_j_then_j: # [10, 2]
+                    traj_mod = []
+                    for sp in elem: # [2]
+                        traj_mod.append(reward_mapper(None, None, None, sp))
+                    R_mod.append(traj_mod)
                 R_j_then_j = R_mod
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
