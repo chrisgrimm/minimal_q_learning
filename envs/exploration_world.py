@@ -170,6 +170,9 @@ class ExplorationWorld(Env):
         return canvas
 
     def get_exploration_reward(self, pos):
+        print(type(pos))
+        print(pos)
+        print(pos.shape)
         base_reward = 0.1
         if pos in self.exploration_counts:
             return self.beta * self.exploration_counts[pos]**-0.5 + base_reward
