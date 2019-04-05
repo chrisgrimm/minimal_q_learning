@@ -205,7 +205,7 @@ elif mode.startswith('EXPLORATION_WORLD'):
     env = ExplorationWorld(reward_mode=reward_mode)
     dummy_env = ExplorationWorld(reward_mode=reward_mode)
     if reward_mode == 'EXPLORE':
-        reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(sp))
+        reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(tuple(sp)))
     dummy_env.reset()
     dummy_env_cluster = ThreadedEnvironment(32,
                                             lambda i: ExplorationWorld(reward_mode=reward_mode),
