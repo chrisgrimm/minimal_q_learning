@@ -30,6 +30,7 @@ class RewardPartitionNetwork(object):
             self.ideal_threshold = None
 
         self.num_partitions = num_partitions
+        self.num_rewards = num_partitions
         self.num_actions = num_actions
         self.obs_size = obs_size
         self.buffer = buffer
@@ -63,7 +64,7 @@ class RewardPartitionNetwork(object):
                                   alternate_visual_scope=self.visual_scope, sess=self.sess)
                 )
         else:
-            self.Q_networks = [make_dqn(env, f'qnet{i}', gpu_num) for i in range(num_partitions)]
+            self.Q_networks = [make_dqn(env, f'qnet{i}', gpu_num, visual=visual) for i in range(num_partitions)]
             #self.Q_networks = [QLearnerAgent(obs_size, num_actions, f'qnet{i}', num_visual_channels=num_visual_channels,
             #                                 visual=visual, gpu_num=gpu_num, use_gpu=use_gpu, sess=self.sess)
             #                   for i in range(num_partitions)]
@@ -77,7 +78,6 @@ class RewardPartitionNetwork(object):
                     self.inp_sp = tf.placeholder(tf.float32, self.obs_shape)
                     self.inp_sp_converted = self.inp_sp
                 self.inp_r = tf.placeholder(tf.float32, [None])
-                self.pred_reward, self.internal_repr, self.all_layers = self.reward_visual_tf(self.inp_sp_converted, 'pred_reward')
 
 
 
@@ -201,7 +201,6 @@ class RewardPartitionNetwork(object):
 
                 value_constraint = tf.reduce_mean(value_constraint, axis=0)
                 self.J_indep = value_constraint
-                self.reward_loss = tf.reduce_mean(tf.square(self.pred_reward - self.inp_r), axis=0)
 
                 self.max_value_constraint = max_value_constraint
                 self.value_constraint = value_constraint
@@ -226,7 +225,6 @@ class RewardPartitionNetwork(object):
                 self.train_op = opt.apply_gradients(gradients)
                 #self.train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, var_list=reward_params + visual_params)
 
-                self.train_op_reward = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.reward_loss, var_list=pred_reward_params)
 
             all_variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=f'{name}/')
             self.saver = tf.train.Saver(var_list=all_variables)
@@ -243,9 +241,14 @@ class RewardPartitionNetwork(object):
         for i, q_net in enumerate(self.Q_networks):
             q_net.restore(path, f'q_net{i}.ckpt')
 
-    def train_Q_networks(self, time):
+    def train_Q_networks(self, time, reward_mapper=None):
         Q_losses = []
         s_batch, a_batch, r_batch, sp_batch, t_batch = self.buffer.sample(32)
+        if reward_mapper is not None:
+            R_mod = []
+            for s, a, r, sp in zip(s_batch, a_batch, r_batch, sp_batch):
+                R_mod.append(reward_mapper(s, a, r, sp))
+            r_batch = R_mod
         [partitioned_reward] = self.sess.run([self.partitioned_reward], feed_dict={self.inp_sp: sp_batch, self.inp_r: r_batch})
         for i, network in enumerate(self.Q_networks):
             weights, batch_idxes = np.ones_like(t_batch), None
@@ -266,7 +269,7 @@ class RewardPartitionNetwork(object):
     #    return loss
 
 
-    def train_R_function(self, dummy_env_cluster):
+    def train_R_function(self, dummy_env_cluster, reward_mapper=None):
         batch_size = 32
 
         # _, _, r_no_reward_batch, sp_no_reward_batch, t_batch = self.buffer.sample(batch_size // 2)
@@ -283,7 +286,6 @@ class RewardPartitionNetwork(object):
         #dummy_env_cluster('reset', args=[])
         #starting_state = dummy_env.get_current_state()
         #starting_states = dummy_env_cluster('get_current_state', args=[])
-
         feed_dict = {}
 
         for j in range(self.num_partitions):
@@ -292,6 +294,11 @@ class RewardPartitionNetwork(object):
 
             starting_states = [[x] for x in dummy_env_cluster('get_current_state', args=[])]
             SP_j_then_j, R_j_then_j, T_j_then_j, _ = self.get_trajectory(dummy_env_cluster, starting_states, j, self.traj_len)
+            if reward_mapper is not None:
+                R_mod = []
+                for sp in SP_j_then_j:
+                    R_mod.append(reward_mapper(None, None, None, sp))
+                R_j_then_j = R_mod
             feed_dict[self.list_inp_sp_traj[j]] = SP_j_then_j
             feed_dict[self.list_inp_r_traj[j]] = R_j_then_j
             feed_dict[self.list_inp_t_traj[j]] = T_j_then_j
@@ -338,7 +345,10 @@ class RewardPartitionNetwork(object):
             r_traj.append([r for (sp, r, t, _) in experience_tuple_list])
             sp_traj.append([sp for (sp, r, t, _) in experience_tuple_list])
             t_traj.append([t for (sp, r, t, _) in experience_tuple_list])
-        sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
+        if self.visual:
+            sp_traj = np.transpose(sp_traj, [1, 0, 2, 3, 4])
+        else:
+            sp_traj = np.transpose(sp_traj, [1, 0, 2])
         t_traj = np.transpose(t_traj, [1, 0])
         r_traj = np.transpose(r_traj, [1, 0])
         return sp_traj, r_traj, t_traj, init_s_list
@@ -419,10 +429,10 @@ class RewardPartitionNetwork(object):
         return partitioned_r
 
     def get_state_values(self, s):
-        return [np.max(self.Q_networks[i].get_Q(s), axis=1) for i in range(self.num_partitions)]
+        return np.array([np.max(self.Q_networks[i].get_Q(s), axis=1) for i in range(self.num_partitions)])
 
     def get_state_actions(self, s):
-        return [self.Q_networks[i].get_action(s) for i in range(self.num_partitions)]
+        return np.array([self.Q_networks[i].get_action(s) for i in range(self.num_partitions)])
 
     def get_hybrid_actions(self, s, mode='sum'):
         pre_hybrid = [self.Q_networks[i].get_Q(s) for i in range(self.num_partitions)] # [num_partitions, bs, num_actions]

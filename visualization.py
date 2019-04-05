@@ -4,6 +4,9 @@ import os
 import pickle
 
 from reward_network import RewardPartitionNetwork
+from reward_network2 import ReparameterizedRewardNetwork
+from envs.exploration_world import ExplorationWorld
+
 from utils import horz_stack_images, build_directory_structure
 
 
@@ -163,6 +166,22 @@ def produce_assault_reward_visualization(network, env, name):
     cv2.imwrite(name, all_partitioned_rewards)
 
 
+def visualize_exploration_world_trajectories(network: ReparameterizedRewardNetwork, env: ExplorationWorld, name: str):
+
+    num_steps = 1000
+    canvas = env.get_cached_wall_image()
+    colors = [(255,0,0), (0,255,0), (0,0,255), (255,255,0)]
+    for reward_num in range(network.num_rewards):
+        s = env.reset()
+        traj = []
+        for _ in range(num_steps):
+            a = network.get_state_actions([s])[reward_num][0]
+            s, r, t, info = env.step(a)
+            x, y = info['agent_position']
+            traj.append((x,y))
+        canvas = env.visualize_trajectory(canvas, colors[reward_num], traj)
+    cv2.imwrite(name, canvas)
+
 
 def produce_reward_image(partition_state_pairs, grid_size):
     canvas = np.zeros(shape=(grid_size, grid_size), dtype=np.float32)
@@ -174,12 +193,12 @@ def produce_reward_image(partition_state_pairs, grid_size):
 
 
 
-def visualize_all_representations_all_reward_images(network: RewardPartitionNetwork):
-    with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
-        obs_samples = pickle.load(f)
-    for ship_num, ship_examples in enumerate(obs_samples):
-        for instance_num, example in enumerate(ship_examples):
-            visualize_all_representations(f'{ship_num}_{instance_num}', example, network)
+# def visualize_all_representations_all_reward_images(network: RewardPartitionNetwork):
+#     with open(os.path.join('envs/atari/stored_obs_64.pickle'), 'rb') as f:
+#         obs_samples = pickle.load(f)
+#     for ship_num, ship_examples in enumerate(obs_samples):
+#         for instance_num, example in enumerate(ship_examples):
+#             visualize_all_representations(f'{ship_num}_{instance_num}', example, network)
 
 
 

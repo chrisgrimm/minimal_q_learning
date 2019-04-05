@@ -43,12 +43,16 @@ import numpy as np
 
 class ReplayBuffer(object):
 
-    def __init__(self, capacity, num_frames, num_color_channels):
+    def __init__(self, capacity, num_frames, num_color_channels, visual=True, non_visual_size=2):
         self.color_channels = num_color_channels
         self.capacity = capacity
         self.num_frames = num_frames
+        self.visual = visual
         #self.S = [None for _ in range(self.capacity)]
-        self.S = np.zeros([1000000, 64, 64, num_color_channels], dtype=np.uint8)
+        if visual:
+            self.S = np.zeros([self.capacity, 64, 64, num_color_channels], dtype=np.uint8)
+        else:
+            self.S = np.zeros([self.capacity, non_visual_size], dtype=np.float32)
         self.A = [None for _ in range(self.capacity)]
         self.R = [None for _ in range(self.capacity)]
         self.T = [None for _ in range(self.capacity)]
@@ -60,10 +64,13 @@ class ReplayBuffer(object):
         if self.test_mode:
             self.S[self.idx] = sp
         else:
-            if self.color_channels > 1:
-                self.S[self.idx] = sp[:, :, -self.color_channels:]
+            if self.visual:
+                if self.color_channels > 1:
+                    self.S[self.idx] = sp[:, :, -self.color_channels:]
+                else:
+                    self.S[self.idx] = sp[:, :, [-1]]
             else:
-                self.S[self.idx] = sp[:, :, [-1]]
+                self.S[self.idx] = sp
         self.A[self.idx] = a
         self.R[self.idx] = r
         self.T[self.idx] = t
@@ -105,8 +112,10 @@ class ReplayBuffer(object):
         else:
             #print(i0, i1)
             #print(slice)
-
-            return np.concatenate(slice, axis=2)
+            if self.visual:
+                return np.concatenate(slice, axis=2)
+            else:
+                return np.concatenate(slice, axis=0)
 
 
 

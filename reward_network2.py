@@ -53,12 +53,12 @@ class ReparameterizedRewardNetwork(object):
 
     def get_state_values(self, s):
         Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return [np.max(Q, axis=1) for Q in Qs]
+        return np.array([np.max(Q, axis=1) for Q in Qs])
 
 
     def get_state_actions(self, s):
         Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
-        return [np.argmax(Q, axis=1) for Q in Qs]
+        return np.array([np.argmax(Q, axis=1) for Q in Qs])
 
     def get_hybrid_actions(self, s, mode='sum'):
         pre_hybrid = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})

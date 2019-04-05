@@ -3,7 +3,9 @@ from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
-from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, visualize_all_representations_all_reward_images, record_value_matrix
+from envs.exploration_world import ExplorationWorld
+from visualization import produce_two_goal_visualization, produce_assault_ship_histogram_visualization, produce_assault_reward_visualization, produce_reward_statistics, record_value_matrix
+from visualization import visualize_exploration_world_trajectories
 from utils import LOG, build_directory_structure, add_implicit_name_arg
 from reward_prob_tracker import RewardProbTracker
 import argparse
@@ -27,7 +29,11 @@ parser.add_argument('--reuse-visual', action='store_true')
 parser.add_argument('--traj-len', type=int, default=10)
 parser.add_argument('--max-value-mult', type=float, default=10.0)
 parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE', 'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+parser.add_argument('--mode', type=str, required=True, choices=
+    ['SOKOBAN',
+     'EXPLORATION_WORLD_EXPLORE', 'EXPLORATION_WORLD_ONE', 'EXPLORATION_WORLD_COLLECT',
+     'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE',
+     'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -73,6 +79,9 @@ def default_visualizations(network, env, value_matrix, name):
 def default_on_reward_print_func(r, sp, info, network, reward_buffer):
     partitioned_r = network.get_partitioned_reward([sp], [r])[0]
     print(reward_buffer.length(), partitioned_r)
+
+
+reward_mapper = None
 
 ATARI_GAMES = ['ASSAULT', 'PACMAN', 'SEAQUEST', 'BREAKOUT', 'QBERT', 'ALIEN']
 num_frames = 4 if mode in ATARI_GAMES else 1
@@ -186,15 +195,35 @@ elif mode == 'SOKOBAN_FOUR_ROOM':
     dummy_env_cluster('reset', args=[])
     dummy_env = BlockPushingDomain(observation_mode=observation_mode, configuration=config)
     dummy_env.reset()
+elif mode.startswith('EXPLORATION_WORLD'):
+    (reward_mode,) = re.match(r'^EXPLORATION\_WORLD\_(.+?)$', mode).groups()
 
+    num_partitions = args.num_partitions
+    visualization_func = lambda network, env, value_matrix, name: None
+    on_reward_print_func = lambda r, sp, info, network, reward_buffer: None
+    visual = (reward_mode == 'COLLECT')
+    env = ExplorationWorld(reward_mode=reward_mode)
+    dummy_env = ExplorationWorld(reward_mode=reward_mode)
+    if reward_mode == 'EXPLORE':
+        reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(sp))
+    dummy_env.reset()
+    dummy_env_cluster = ThreadedEnvironment(32,
+                                            lambda i: ExplorationWorld(reward_mode=reward_mode),
+                                            ExplorationWorld)
+    dummy_env_cluster('reset', args=[])
+    num_visual_channels = 3
 else:
-    raise Exception(f'mode must be in {mode_options}.')
+    raise Exception(f'Invalid mode: {mode}.')
 
 run_dir = args.run_dir
 
 build_directory_structure('.', {run_dir: {
                                     args.name: {
-                                        'images': {},
+                                        'images': {
+                                            'trajs': {},
+                                            'env_bonus': {},
+                                            'values': {}
+                                        },
                                         'weights': {},
                                         'best_weights': {},}}})
 LOG.setup(f'./{run_dir}/{args.name}')
@@ -203,9 +232,9 @@ best_save_path = os.path.join(run_dir, args.name, 'best_weights')
 
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer = ReplayBuffer(1000000, num_frames, num_color_channels)
+buffer = ReplayBuffer(10000, num_frames, num_color_channels, visual=visual)
 
-state_replay_buffer = StateReplayBuffer(1000000)
+state_replay_buffer = StateReplayBuffer(10000)
 
 reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partitions, env.observation_space.shape[0],
                                     env.action_space.n, 'reward_net', traj_len=args.traj_len,  gpu_num=args.gpu_num,
@@ -216,8 +245,6 @@ reward_net = RewardPartitionNetwork(env, buffer, state_replay_buffer, num_partit
                                     softmin_temperature=args.softmin_temp, stop_softmin_gradients=args.stop_softmin_gradient,
                                     regularize=args.regularize, regularization_weight=args.regularization_weight)
 
-(height, width, depth) = env.observation_space.shape
-tracker = RewardProbTracker(height, width, depth)
 
 learning_starts = 10000
 batch_size = 32
@@ -292,7 +319,6 @@ def main():
     current_episode_length = 0
     max_length_before_policy_switch = -1
     update_threshold_frequency = 100
-    (h, w, d) = env.observation_space.shape
     last_100_scores = [np.inf]
     best_score = np.inf
     s = env.reset()
@@ -335,7 +361,7 @@ def main():
 
             if time % (q_train_freq * 5) == 0:
                 for j in range(1):
-                    reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster)
+                    reward_loss, max_value_constraint, value_constraint, J_indep, J_nontrivial, value_matrix = reward_net.train_R_function(dummy_env_cluster, reward_mapper=reward_mapper )
                     LOG.add_line('reward_loss', reward_loss)
                     LOG.add_line('max_value_constraint', max_value_constraint)
                     LOG.add_line('value_constraint', value_constraint)
@@ -356,7 +382,16 @@ def main():
             print(log_string)
 
             if time % display_freq == 0:
-                visualization_func(reward_net, dummy_env, value_matrix, f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
+                if isinstance(env, ExplorationWorld):
+                    base_path = f'./{run_dir}/{args.name}/images'
+                    visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
+                    # must use regular environment for this.
+                    cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
+                    for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
+                        cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
+                else:
+                    visualization_func(reward_net, dummy_env, value_matrix,
+                                       f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
 
             if time % save_freq == 0:
                 reward_net.save(save_path, 'reward_net.ckpt')
