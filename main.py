@@ -398,6 +398,7 @@ def main():
                 reward_net.save(save_path, 'reward_net.ckpt')
 
             if time % evaluation_frequency == 0:
+                print('evaluating performance...')
                 cum_reward, cum_reward_env = evaluate_performance(env)
                 print(f'({time}) EVAL: {cum_reward}')
                 LOG.add_line('cum_reward', cum_reward)
