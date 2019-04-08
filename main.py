@@ -57,7 +57,7 @@ parser.add_argument('--hybrid-reward', action='store_true')
 parser.add_argument('--hybrid-reward-mode', type=str, default='sum', choices=['sum', 'max'])
 parser.add_argument('--no-shared-q-repr', action='store_true')
 parser.add_argument('--no-target', action='store_true')
-parser.add_argument('--enforace-random-subset', action='store_true')
+parser.add_argument('--enforce-random-subset', action='store_true')
 
 
 args = parser.parse_args()
