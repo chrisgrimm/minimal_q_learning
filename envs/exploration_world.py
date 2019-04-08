@@ -79,17 +79,17 @@ class ExplorationWorld(Env):
 
 
     def restore_state(self, state):
-        # self.reset_collected()
-        # self.step_num = state['step_num']
-        #
-        # # set the collected states up properly
-        # self.collected_states = state['collected_states']
-        # #self.exploration_counts = state['exploration_counts']
-        # self.cached_collection_image = None
-        # self.cached_wall_image = None
-        # self.get_cached_collection_image()
-        #
-        # self.agent = state['agent']
+        #self.reset_collected()
+        self.step_num = state['step_num']
+
+        # set the collected states up properly
+        self.collected_states = state['collected_states']
+        #self.exploration_counts = state['exploration_counts']
+        self.cached_collection_image = None
+        self.cached_wall_image = None
+        #self.get_cached_collection_image()
+
+        self.agent = state['agent']
         return self.get_observation()
 
 
