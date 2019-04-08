@@ -33,8 +33,6 @@ class ReparameterizedRewardNetwork(object):
     def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None,
                  j_indep_coeff=1, j_nontriv_coeff=10, reward_consistency_coeff=10000,
                  use_shared_q_repr=True, use_target=True, enforce_random_subset=False, use_huber=True):
-        print('visual', visual)
-        input('...')
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
@@ -203,11 +201,14 @@ class ReparameterizedRewardNetwork(object):
 
     def build_Q_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse) as scope:
-            c0 = tf.layers.conv2d(s, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
-            c1 = tf.layers.conv2d(c0, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
-            c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
-            internal_rep = tf.reshape(c2, [-1, 8 * 8 * 64])
-            fc1 = tf.layers.dense(internal_rep, 128, activation=tf.nn.relu, name='fc1')
+            if self.visual:
+                c0 = tf.layers.conv2d(s, 32, 8, 4, 'SAME', activation=tf.nn.relu, name='c0')  # [bs, 16, 16, 32]
+                c1 = tf.layers.conv2d(c0, 64, 4, 2, 'SAME', activation=tf.nn.relu, name='c1')  # [bs, 8, 8, 64]
+                c2 = tf.layers.conv2d(c1, 64, 3, 1, 'SAME', activation=tf.nn.relu, name='c2')  # [bs, 8, 8, 64]
+                fc0 = tf.reshape(c2, [-1, 8 * 8 * 64], name='fc0')
+            else:
+                fc0 = tf.layers.dense(s, 128, activation=tf.nn.relu, name='fc0')
+            fc1 = tf.layers.dense(fc0, 128, activation=tf.nn.relu, name='fc1')
             q = (1 / (1 - self.gamma)) * tf.layers.dense(fc1, self.num_actions, activation=tf.nn.sigmoid, name='q')
             vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope.original_name_scope)
         return q, vars
