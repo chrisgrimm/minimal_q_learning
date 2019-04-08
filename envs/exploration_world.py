@@ -87,7 +87,7 @@ class ExplorationWorld(Env):
         # set the collected states up properly
         self.collected_states = state['collected_states']
         #self.exploration_counts = state['exploration_counts']
-        self.cached_collection_image = None
+        self.cached_collection_image = self.get_cached_wall_collection_image()
         self.cached_wall_image = None
         #self.get_cached_collection_image()
 
