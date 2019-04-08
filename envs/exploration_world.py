@@ -67,7 +67,9 @@ class ExplorationWorld(Env):
         self.step_num = 0
         # cache objects
         self.cached_wall_image = None
-        self.cached_collection_image = None
+        self.cached_wall_collection_image = None
+        self.cached_collection_image = self.get_cached_wall_collection_image()
+
 
     def get_current_state(self):
         #return dict()
@@ -113,6 +115,7 @@ class ExplorationWorld(Env):
             for y in range(-self.world_size-2, self.world_size+2+1):
                 yield (x, y)
 
+
     def get_cached_wall_image(self):
         if self.cached_wall_image is not None:
             return np.copy(self.cached_wall_image)
@@ -124,7 +127,23 @@ class ExplorationWorld(Env):
                 if self.is_wall((x, y)):
                     canvas[img_y, img_x, :] = wall_color
             self.cached_wall_image = canvas
-            return self.cached_wall_image
+            return np.copy(self.cached_wall_image)
+
+    def get_cached_wall_collection_image(self):
+        if self.cached_wall_collection_image is not None:
+            return np.copy(self.cached_wall_collection_image)
+        else:
+            wall_color = (0, 0, 0)
+            canvas = 255 * np.ones([2 * self.world_size + 8, 2 * self.world_size + 8, 3], dtype=np.uint8)
+            for (x, y) in self.position_iterator():
+                img_x, img_y = self.to_image_pos((x, y))
+                if self.is_wall((x, y)):
+                    canvas[img_y, img_x, :] = wall_color
+                else:
+                    canvas[img_y, img_x, :] = (255,0,0)
+            self.cached_wall_collection_image = canvas
+            return np.copy(self.cached_wall_collection_image)
+
 
     def get_cached_collection_image(self):
         if self.cached_collection_image is not None:
@@ -144,7 +163,16 @@ class ExplorationWorld(Env):
                 else:
                     canvas[img_y, img_x, :] = uncollected_color
             self.cached_collection_image = canvas
-            return canvas
+            return np.copy(canvas)
+
+    def reset_collected2(self):
+        self.cached_collection_image = self.get_cached_wall_collection_image()
+
+
+    def update_collected2(self, pos):
+        img_x, img_y = self.to_image_pos(pos)
+        self.cached_collection_image[img_y, img_x, :] = (0,255,0)
+
 
     def update_collected(self, pos):
         self.collected_states.add(pos)
@@ -184,7 +212,12 @@ class ExplorationWorld(Env):
         elif self.reward_mode == 'EXPLORE':
             return self.get_exploration_reward(pos)
         elif self.reward_mode == 'COLLECT':
-            return 0 if pos in self.collected_states else 1
+            image_x, image_y = self.to_image_pos(pos)
+            if np.array_equal(self.cached_collection_image[image_y, image_x, :], (0,255,0)):
+                return 0
+            else:
+                return 1
+            #return 0 if pos in self.collected_states else 1
         else:
             raise Exception(f'Unrecognized reward mode: {self.reward_mode}')
 
@@ -220,7 +253,7 @@ class ExplorationWorld(Env):
         self.update_exploration_reward(self.agent)
         r = self.get_reward(self.agent)
         # update the collection set AFTER getting the reward.
-        self.update_collected(self.agent)
+        self.update_collected2(self.agent)
 
         s = self.get_observation()
         info = {'internal_terminal': False,
@@ -235,7 +268,7 @@ class ExplorationWorld(Env):
     def reset(self):
         self.agent = (0,0)
         self.step_num = 0
-        self.reset_collected()
+        self.reset_collected2()
         return self.get_observation()
 
     def visualize_trajectory(self, canvas, color, trajectory):
@@ -287,7 +320,7 @@ class ExplorationWorld(Env):
 
 if __name__ == '__main__':
     env = ExplorationWorld(reward_mode='COLLECT')
-    net = ReparameterizedRewardNetwork(env, 4, 0.001, None, 4, 'reward_net', False, gpu_num=-1)
+    #net = ReparameterizedRewardNetwork(env, 4, 0.001, None, 4, 'reward_net', False, gpu_num=-1)
 
     #net.save('.', 'rnet.ckpt')
     #net.restore('.', 'rnet.ckpt')
