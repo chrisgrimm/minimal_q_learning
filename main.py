@@ -272,7 +272,6 @@ min_reward_experiences = 500
 num_reward_steps = 30000
 save_freq = 10000
 evaluation_frequency = 1000
-current_reward_training_step = 0 if args.separate_reward_repr else num_reward_steps
 epsilon_delta = (epsilon - min_epsilon) / num_epsilon_steps
 time = 0
 num_steps = 10000000
@@ -381,7 +380,7 @@ def main():
     max_actor = MixtureActor(reward_net, mode='max')
     global learning_starts, batch_size,q_train_freq,q_loss_log_freq,episode_reward,epsilon,min_epsilon, \
         num_epsilon_steps,min_reward_experiences,num_reward_steps,save_freq,evaluation_frequency, \
-        current_reward_training_step,epsilon_delta,time,num_steps
+        epsilon_delta,time,num_steps
 
     current_episode_length = 0
     max_length_before_policy_switch = -1
