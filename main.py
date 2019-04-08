@@ -388,8 +388,8 @@ def main():
                     # must use regular environment for this.
                     cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
                     print('visualizing values...')
-                    for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
-                        cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
+                    #for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
+                    #    cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
                 else:
                     visualization_func(reward_net, dummy_env, value_matrix,
                                        f'./{run_dir}/{args.name}/images/policy_vis_{time}.png')
