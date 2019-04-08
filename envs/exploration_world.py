@@ -70,24 +70,26 @@ class ExplorationWorld(Env):
         self.cached_collection_image = None
 
     def get_current_state(self):
-        return {'step_num': self.step_num,
+        return dict()
+        '''return {'step_num': self.step_num,
                 'collected_states': self.collected_states.copy(),
                 'agent': self.agent,
-                'exploration_counts': self.exploration_counts.copy()
-                }
+                #'exploration_counts': self.exploration_counts.copy()
+                }'''
+
 
     def restore_state(self, state):
-        self.reset_collected()
-        self.step_num = state['step_num']
-
-        # set the collected states up properly
-        self.collected_states = state['collected_states']
-        self.exploration_counts = state['exploration_counts']
-        self.cached_collection_image = None
-        self.cached_wall_image = None
-        self.get_cached_collection_image()
-
-        self.agent = state['agent']
+        # self.reset_collected()
+        # self.step_num = state['step_num']
+        #
+        # # set the collected states up properly
+        # self.collected_states = state['collected_states']
+        # #self.exploration_counts = state['exploration_counts']
+        # self.cached_collection_image = None
+        # self.cached_wall_image = None
+        # self.get_cached_collection_image()
+        #
+        # self.agent = state['agent']
         return self.get_observation()
 
 

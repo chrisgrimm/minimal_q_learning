@@ -268,7 +268,6 @@ class RewardPartitionNetwork(object):
     #    [_, loss] = self.sess.run([self.train_op_reward, self.reward_loss], feed_dict={self.inp_r: r_batch, self.inp_sp: sp_batch})
     #    return loss
 
-
     def train_R_function(self, dummy_env_cluster, reward_mapper=None):
         batch_size = 32
 
