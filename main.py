@@ -383,9 +383,11 @@ def main():
             if time % display_freq == 0:
                 if isinstance(env, ExplorationWorld):
                     base_path = f'./{run_dir}/{args.name}/images'
+                    print('visualizing trajectories...')
                     visualize_exploration_world_trajectories(reward_net, dummy_env, f'{base_path}/trajs/{time}.png')
                     # must use regular environment for this.
                     cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
+                    print('visualizing values...')
                     for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
                         cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
                 else:
