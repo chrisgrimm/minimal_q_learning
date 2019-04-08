@@ -33,6 +33,8 @@ class ReparameterizedRewardNetwork(object):
     def __init__(self, env, num_rewards, learning_rate, buffer, num_actions, name, visual=True, num_channels=3, gpu_num=-1, reuse=None,
                  j_indep_coeff=1, j_nontriv_coeff=10, reward_consistency_coeff=10000,
                  use_shared_q_repr=True, use_target=True, enforce_random_subset=False, use_huber=True):
+        print('visual', visual)
+        input('...')
         self.buffer = buffer
         self.num_rewards = self.num_partitions = num_rewards
         self.num_actions = num_actions
