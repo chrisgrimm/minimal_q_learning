@@ -74,7 +74,7 @@ class ExplorationWorld(Env):
     def get_current_state(self):
         #return dict()
         return {'step_num': self.step_num,
-                'collected_states': self.collected_states.copy(),
+                'cached_collection_image': np.copy(self.cached_collection_image),
                 'agent': self.agent,
                 #'exploration_counts': self.exploration_counts.copy()
                 }
@@ -85,9 +85,7 @@ class ExplorationWorld(Env):
         self.step_num = state['step_num']
 
         # set the collected states up properly
-        self.collected_states = state['collected_states']
-        #self.exploration_counts = state['exploration_counts']
-        self.cached_collection_image = self.get_cached_wall_collection_image()
+        self.cached_collection_image = np.copy(state['cached_collection_image'])
         self.cached_wall_image = None
         #self.get_cached_collection_image()
 
@@ -231,7 +229,7 @@ class ExplorationWorld(Env):
         position = self.agent if position is None else position
         if self.image_mode:
             img_x, img_y = self.to_image_pos(position)
-            obs = self.get_cached_collection_image()
+            obs = np.copy(self.cached_collection_image)
             obs[img_y, img_x, :] = (0,0,255)
             obs = cv2.resize(obs, (64, 64))
             return obs
@@ -328,13 +326,17 @@ if __name__ == '__main__':
     #path = '/Users/chris/projects/q_learning/reparam_runs/exploration_explore_1/weights'
     #net.restore(path, 'reward_net.ckpt')
                 #'reparam_runs/exploration_explore_1/weights'
-
+    state = None
     for time in count():
         try:
             a = input('Action:')
             if a == 'r':
                 env.reset()
                 continue
+            elif a == 'store':
+                state = env.get_current_state()
+            elif a == 'restore':
+                s = env.restore_state(state)
             a = env.human_action_mapping[a]
         except KeyError:
             print('invalid action!')
