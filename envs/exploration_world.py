@@ -70,12 +70,12 @@ class ExplorationWorld(Env):
         self.cached_collection_image = None
 
     def get_current_state(self):
-        return dict()
-        '''return {'step_num': self.step_num,
+        #return dict()
+        return {'step_num': self.step_num,
                 'collected_states': self.collected_states.copy(),
                 'agent': self.agent,
                 #'exploration_counts': self.exploration_counts.copy()
-                }'''
+                }
 
 
     def restore_state(self, state):
@@ -124,7 +124,7 @@ class ExplorationWorld(Env):
                 if self.is_wall((x, y)):
                     canvas[img_y, img_x, :] = wall_color
             self.cached_wall_image = canvas
-            return np.copy(self.cached_wall_image)
+            return self.cached_wall_image
 
     def get_cached_collection_image(self):
         if self.cached_collection_image is not None:
