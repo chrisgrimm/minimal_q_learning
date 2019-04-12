@@ -20,7 +20,7 @@ class MetaEnvironment(object):
         self.tf_icf_agent = tf_icf_agent
         if tf_icf_agent is None:
             self.q_learners = q_learners
-            self.action_space = Discrete(len(q_learners) + (env.action_space.n if allow_base_actions else 0))
+            self.action_space = Discrete(r_net.num_partitions + (env.action_space.n if allow_base_actions else 0))
             self.r_net = r_net
         else:
             self.num_icf_policies = num_icf_policies
@@ -31,7 +31,7 @@ class MetaEnvironment(object):
         self.stop_at_reward = stop_at_reward
         self.repeat = repeat
         # should protect us against accidentally passing in both modes.
-        self.offset = self.num_icf_policies if self.tf_icf_agent is not None else len(self.q_learners)
+        self.offset = self.num_icf_policies if self.tf_icf_agent is not None else self.r_net.num_partitions
 
 
 
@@ -43,7 +43,9 @@ class MetaEnvironment(object):
             policy = action_probs[meta_action]
             return np.random.choice(list(range(self.env.action_space.n)), p=policy)
         else:
-            return self.q_learners[meta_action].get_action([self.current_obs])[0]
+            #return self.q_learners[meta_action].get_action([self.current_obs])[0]
+            return self.r_net.get_state_actions([self.current_obs])[meta_action][0]
+
 
 
     # here meta_actions are 0-len(Q_learners)

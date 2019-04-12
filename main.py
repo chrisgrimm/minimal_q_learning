@@ -61,6 +61,11 @@ parser.add_argument('--enforce-random-subset', action='store_true')
 
 
 args = parser.parse_args()
+def cache_args(args, path):
+    with open(path, 'w') as f:
+        for arg in vars(args):
+            f.write(f'{arg}, {getattr(args, arg)}\n')
+
 
 use_gpu = args.gpu_num >= 0
 mode = args.mode
@@ -231,6 +236,8 @@ build_directory_structure('.', {run_dir: {
                                         },
                                         'weights': {},
                                         'best_weights': {},}}})
+cache_args(f'./{run_dir}/{args.name}/args.txt')
+
 LOG.setup(f'./{run_dir}/{args.name}')
 save_path = os.path.join(run_dir, args.name, 'weights')
 best_save_path = os.path.join(run_dir, args.name, 'best_weights')

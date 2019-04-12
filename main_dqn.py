@@ -12,6 +12,7 @@ from envs.block_world.block_pushing_domain import BlockPushingDomain
 from replay_buffer import ReplayBuffer
 from q_learner_agent import QLearnerAgent
 from reward_network import RewardPartitionNetwork
+from reward_network2 import ReparameterizedRewardNetwork
 from utils import LOG, build_directory_structure
 from theano_converter import ICF_Policy
 
@@ -85,11 +86,13 @@ if args.meta:
     if not args.use_icf_policy:
         assert args.num_partitions is not None
         assert args.restore_path is not None
-        reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
-                                            base_env.action_space.n, 'reward_net', traj_len=10, use_gpu=True,
-                                            num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
+        reward_net = ReparameterizedRewardNetwork(base_env, args.num_partitions, 0.0001, None, base_env.action_space.n, 'reward_net', visual=visual,
+                                                  num_channels=num_visual_channels, gpu_num=args.gpu_num, reuse=None)
+        #reward_net = RewardPartitionNetwork(base_env, None, None, args.num_partitions, base_env.observation_space.shape[0],
+        #                                    base_env.action_space.n, 'reward_net', traj_len=10, use_gpu=True,
+        #                                    num_visual_channels=num_visual_channels, visual=visual, gpu_num=args.gpu_num)
         reward_net.restore(args.restore_path, 'reward_net.ckpt')
-        Q_networks = reward_net.Q_networks
+        #Q_networks = reward_net.Q_networks
         icf_policies = None
         tf_icf_agent = None
     else:
@@ -101,7 +104,7 @@ if args.meta:
         reward_net = None
         Q_networks = None
 
-    env = MetaEnvironment(base_env, reward_net, Q_networks, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
+    env = MetaEnvironment(base_env, reward_net, None, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
 elif args.augment_trajectories:
 
     if not args.use_icf_policy:
@@ -193,7 +196,7 @@ def get_action(s, eval=False, augmented=False, augment_policy=None):
         else:
             action = np.random.randint(0, env.action_space.n)
     else:
-        action = dqn.get_action([s])[0]
+        action = dqn.get_action([s], [0])[0]
 
     return action
 
@@ -246,7 +249,7 @@ for time in range(start_time, num_steps):
 
             weights, batch_idxes = np.ones_like(t_sample), None
 
-            q_loss = dqn.train_batch(time, s_sample, a_sample, r_sample, sp_sample, t_sample, weights, batch_idxes)
+            q_loss = dqn.train_batch(time, s_sample, a_sample, r_sample, sp_sample, t_sample, weights, batch_idxes, np.zeros_like(t_sample, dtype=np.int32))
             if time % q_loss_log_freq == 0:
                 LOG.add_line(f'q_loss', q_loss)
 
