@@ -237,7 +237,7 @@ build_directory_structure('.', {run_dir: {
                                         },
                                         'weights': {},
                                         'best_weights': {},}}})
-cache_args(f'./{run_dir}/{args.name}/args.txt')
+cache_args(args, f'./{run_dir}/{args.name}/args.txt')
 
 LOG.setup(f'./{run_dir}/{args.name}')
 save_path = os.path.join(run_dir, args.name, 'weights')
