@@ -8,8 +8,9 @@ from reward_network2 import ReparameterizedRewardNetwork
 
 class ExplorationWorld(Env):
 
-    def __init__(self, world_size=100, reward_mode='EXPLORE'):
+    def __init__(self, world_size=100, reward_mode='EXPLORE', count_step=1):
         self.agent = (0,0)
+        self.count_step = count_step
         self.image_mode = (reward_mode == 'COLLECT')
         self.image_size = 64
         self.inner_walls = [
@@ -149,7 +150,9 @@ class ExplorationWorld(Env):
     def get_exploration_reward(self, pos):
         base_reward = 0.1
         if pos in self.exploration_counts:
-            return self.beta * self.exploration_counts[pos]**-0.5 + base_reward
+            count = self.exploration_counts[pos]
+            count = count // self.count_step
+            return self.beta * count**-0.5 + base_reward
         else:
             return self.beta * 1 + base_reward
 
