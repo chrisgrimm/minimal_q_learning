@@ -147,9 +147,11 @@ def approximate_disentanglement_terms(network: ReparameterizedRewardNetwork, env
 def visualize_exploration_world_trajectories(network: ReparameterizedRewardNetwork, env: ExplorationWorld, name: str):
 
     num_steps = 1000
-    canvas = env.get_cached_wall_image()
     colors = [(255,0,0), (0,255,0), (0,0,255), (255,255,0)]
+    color = (255,0,0)
+    canvases = []
     for reward_num in range(network.num_rewards):
+        canvas = env.get_cached_wall_image()
         s = env.reset()
         traj = []
         for _ in range(num_steps):
@@ -157,8 +159,10 @@ def visualize_exploration_world_trajectories(network: ReparameterizedRewardNetwo
             s, r, t, info = env.step(a)
             x, y = info['agent_position']
             traj.append((x,y))
-        canvas = env.visualize_trajectory(canvas, colors[reward_num], traj)
-    cv2.imwrite(name, canvas)
+        canvas = env.visualize_trajectory(canvas, color, traj)
+        canvases.append(canvas)
+
+    cv2.imwrite(name, horz_stack_images(*canvases))
 
 #def visualize_exploration_world_rewards(network: ReparameterizedRewardNetwork, env: ExplorationWorld, name: str):
 
