@@ -152,7 +152,7 @@ class ExplorationWorld(Env):
         if pos in self.exploration_counts:
             count = self.exploration_counts[pos]
             count = count // self.count_step
-            return self.beta * count**-0.5 + base_reward
+            return self.beta * (count+1)**-0.5 + base_reward
         else:
             return self.beta * 1 + base_reward
 
