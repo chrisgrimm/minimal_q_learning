@@ -220,7 +220,7 @@ elif mode.startswith('EXPLORATION_WORLD'):
     env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step, visual=visual)
     dummy_env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step, visual=visual)
     if reward_mode == 'EXPLORE':
-        reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(sp))
+        reward_mapper = lambda s, a, r, sp, info: env.get_exploration_reward(env.to_pos(np.array(info['agent_position'])))
     dummy_env.reset()
     num_visual_channels = 3
 else:
@@ -408,7 +408,7 @@ def main():
 
 
         episode_reward += r
-        buffer.append(s, a, r, sp, t)
+        buffer.append(s, a, r, sp, t, info)
 
         if info['internal_terminal']:
             current_episode_length = 0

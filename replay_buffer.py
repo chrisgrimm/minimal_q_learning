@@ -56,11 +56,12 @@ class ReplayBuffer(object):
         self.A = [None for _ in range(self.capacity)]
         self.R = [None for _ in range(self.capacity)]
         self.T = [None for _ in range(self.capacity)]
+        self.INFO = [None for _ in range(self.capacity)]
         self.idx = 0
         self.is_full = False
         self.test_mode = False
 
-    def append(self, s, a, r, sp, t):
+    def append(self, s, a, r, sp, t, info):
         if self.test_mode:
             self.S[self.idx] = sp
         else:
@@ -74,6 +75,7 @@ class ReplayBuffer(object):
         self.A[self.idx] = a
         self.R[self.idx] = r
         self.T[self.idx] = t
+        self.INFO[self.idx] = info
         self.idx = (self.idx + 1) % self.capacity
         if self.idx == 0:
             self.is_full = True
@@ -125,13 +127,16 @@ class ReplayBuffer(object):
         R = []
         SP = []
         T = []
+        INFO = []
         for idx in self.rejection_sample_indices(batch_size):
             S.append(self.get_S_slice(idx-1-self.num_frames, idx-1))
             SP.append(self.get_S_slice(idx-self.num_frames, idx))
             A.append(self.A[idx-1])
             R.append(self.R[idx-1])
             T.append(self.T[idx-1])
-        return S, A, R, SP, T
+            INFO.append(self.INFO[idx-1])
+        return S, A, R, SP, T, INFO
+
 
     def length(self):
         if self.is_full:

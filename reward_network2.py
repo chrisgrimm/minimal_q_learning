@@ -99,11 +99,11 @@ class ReparameterizedRewardNetwork(object):
 
     def train_R_functions(self, time, reward_mapper=None):
         #q_loss = self.train_Q_functions(time)
-        S, A, R, SP, T = self.buffer.sample(self.batch_size)
+        S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
         if reward_mapper is not None:
             R_mod = []
-            for s, a, r, sp in zip(S, A, R, SP):
-                R_mod.append(reward_mapper(s,a,r,sp))
+            for s, a, r, sp, info in zip(S, A, R, SP, INFO):
+                R_mod.append(reward_mapper(s,a,r,sp,info))
             R = R_mod
         [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
             [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
@@ -114,7 +114,7 @@ class ReparameterizedRewardNetwork(object):
 
 
     def train_Q_functions(self, time):
-        S, A, R, SP, T = self.buffer.sample(self.batch_size)
+        S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
         reward_num_samples = np.random.randint(0, self.num_rewards, size=[self.batch_size])
         rewards = self.get_partitioned_reward(S, A, SP) # [bs, num_rewards]
         selected_rewards = rewards[range(self.batch_size), reward_num_samples] # [bs]
