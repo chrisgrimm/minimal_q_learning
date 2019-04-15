@@ -51,7 +51,7 @@ class ExplorationWorld(Env):
             'w': 3
         }
 
-        if reward_mode == 'COLLECT':
+        if self.image_mode:
             self.observation_space = Box(0, 255, shape=[64,64,3], dtype=np.uint8)
         else:
             self.observation_space = Box(-1, 1, shape=[2], dtype=np.float32)
