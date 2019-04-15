@@ -8,10 +8,10 @@ from reward_network2 import ReparameterizedRewardNetwork
 
 class ExplorationWorld(Env):
 
-    def __init__(self, world_size=100, reward_mode='EXPLORE', count_step=1):
+    def __init__(self, world_size=100, reward_mode='EXPLORE', count_step=1, visual=False):
         self.agent = (0,0)
         self.count_step = count_step
-        self.image_mode = (reward_mode == 'COLLECT')
+        self.image_mode = (reward_mode == 'COLLECT') or visual
         self.image_size = 64
         self.inner_walls = [
             (2,1), (2,2), (2,-1), (2,-2),
@@ -26,7 +26,7 @@ class ExplorationWorld(Env):
             (-3,1), (-3,0), (-3,-1)
         ]
         self.world_size = world_size # the size of the world in any direction outside of the inner walls.
-        if reward_mode == 'COLLECT':
+        if self.image_mode:
             self.world_size = 32
 
         self.specified_walls = set(self.inner_walls)
@@ -176,7 +176,10 @@ class ExplorationWorld(Env):
         position = self.agent if position is None else position
         if self.image_mode:
             img_x, img_y = self.to_image_pos(position)
-            obs = self.get_cached_collection_image()
+            if self.reward_mode == 'COLLECT':
+                obs = self.get_cached_collection_image()
+            else:
+                obs = self.get_cached_wall_image()
             obs[img_y, img_x, :] = (0,0,255)
             obs = cv2.resize(obs, (64, 64))
             return obs

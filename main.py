@@ -216,9 +216,9 @@ elif mode.startswith('EXPLORATION_WORLD'):
     num_partitions = args.num_partitions
     visualization_func = lambda network, env, value_matrix, name: None
     on_reward_print_func = lambda r, sp, info, network, reward_buffer: None
-    visual = (reward_mode == 'COLLECT')
-    env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step)
-    dummy_env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step)
+    visual = (reward_mode == 'COLLECT') or args.visual
+    env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step, visual=visual)
+    dummy_env = ExplorationWorld(reward_mode=reward_mode, count_step=args.count_step, visual=visual)
     if reward_mode == 'EXPLORE':
         reward_mapper = lambda s, a, r, sp: env.get_exploration_reward(env.to_pos(sp))
     dummy_env.reset()
