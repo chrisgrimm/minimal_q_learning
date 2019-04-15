@@ -50,7 +50,7 @@ class ExplorationWorld(Env):
             's': 2,
             'w': 3
         }
-        print('image_mode', image_mode)
+        print('image_mode', self.image_mode)
         input('...')
         if self.image_mode:
             self.observation_space = Box(0, 255, shape=[64,64,3], dtype=np.uint8)
