@@ -1,6 +1,7 @@
 import numpy as np
 from envs.atari.atari_wrapper import PacmanWrapper, QBertWrapper, AssaultWrapper, AlienWrapper, SeaquestWrapper, BreakoutWrapper
 from envs.exploration_world import ExplorationWorld
+from envs.multitask_corners_world import CornersTaskWorld
 from q_learner_agent import QLearnerAgent
 from envs.metacontroller_actor import MetaEnvironment
 from envs.atari.simple_assault import SimpleAssault
@@ -36,8 +37,11 @@ parser.add_argument('--dynamic-weighting-disentangle', action='store_true')
 parser.add_argument('--mode', type=str, required=True, choices=
     ['SOKOBAN',
      'EXPLORATION_WORLD_EXPLORE', 'EXPLORATION_WORLD_ONE', 'EXPLORATION_WORLD_COLLECT',
+     'CORNERS_WORLD',
      'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE',
      'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+parser.add_argument('--corners-world-task', type=str, default='1111')
+parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--learning-rate', type=float, default=0.00005)
 parser.add_argument('--gpu-num', type=int, required=True)
@@ -223,6 +227,15 @@ elif mode.startswith('EXPLORATION_WORLD'):
         reward_mapper = lambda s, a, r, sp, info: env.get_exploration_reward(env.to_pos(np.array(info['agent_position'])))
     dummy_env.reset()
     num_visual_channels = 3
+elif mode == 'CORNERS_WORLD':
+    task = tuple([int(x) for x in args.corners_world_task])
+    num_partitions = args.num_partitions
+    visualization_func = lambda network, env, value_matrix, name: None
+    on_reward_print_func = lambda r, sp, info, network, reward_buffer: None
+    env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task)
+    dummy_env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task)
+    dummy_env.reset()
+    num_visual_channels = 3
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -233,7 +246,8 @@ build_directory_structure('.', {run_dir: {
                                         'images': {
                                             'trajs': {},
                                             'env_bonus': {},
-                                            'values': {}
+                                            'values': {},
+                                            'rewards': {}
                                         },
                                         'weights': {},
                                         'best_weights': {},}}})
@@ -451,6 +465,10 @@ def main():
                     cv2.imwrite(f'{base_path}/env_bonus/{time}.png', env.visualize_reward_bonuses())
                     for reward_num, heatmap in enumerate(env.visualize_reward_values(reward_net)):
                         cv2.imwrite(f'{base_path}/values/{time}_{reward_num}.png', heatmap)
+                if isinstance(env, CornersTaskWorld):
+                    base_path = f'./{run_dir}/{args.name}/images'
+                    for reward_num, heatmap in enumerate(env.visualize_rewards(reward_net)):
+                        cv2.imwrite(f'{base_path}/rewards/{time}_{reward_num}.png', heatmap)
                 approx_J_nontriv, approx_J_indep, policy_value_vector = approximate_disentanglement_terms(reward_net, dummy_env)
                 for reward_num in range(reward_net.num_rewards):
                     Vii = policy_value_vector[reward_num]
