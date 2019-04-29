@@ -38,19 +38,28 @@ class ReparameterizedRewardNetwork(object):
         self.num_actions = num_actions
         self.gamma = 0.99
         self.visual = visual
-        if visual:
-            self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
-            self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
-            self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
-            self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
-        else:
-            self.inp_s = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
-            self.converted_inp_s = self.inp_s
-            self.inp_sp = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
-            self.converted_inp_sp = self.inp_sp
 
-        self.inp_a = tf.placeholder(tf.int32, [None])
-        self.inp_r = tf.placeholder(tf.float32, [None])
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        self.graph = tf.Graph()
+
+        self.sess = sess = tf.Session(config=config, graph=self.graph)
+
+        with self.graph.as_default():
+            with self.sess.as_default():
+                if visual:
+                    self.inp_s = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
+                    self.inp_sp = tf.placeholder(tf.uint8, [None, 64, 64, num_channels])
+                    self.converted_inp_s = tf.image.convert_image_dtype(self.inp_s, tf.float32)
+                    self.converted_inp_sp = tf.image.convert_image_dtype(self.inp_sp, tf.float32)
+                else:
+                    self.inp_s = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
+                    self.converted_inp_s = self.inp_s
+                    self.inp_sp = tf.placeholder(tf.float32, [None, env.observation_space.shape[0]])
+                    self.converted_inp_sp = self.inp_sp
+
+                self.inp_a = tf.placeholder(tf.int32, [None])
+                self.inp_r = tf.placeholder(tf.float32, [None])
         self.use_target = use_target
         self.use_shared_q_repr = use_shared_q_repr
         self.use_huber = use_huber
@@ -58,29 +67,32 @@ class ReparameterizedRewardNetwork(object):
 
         self.batch_size = 32
         print(visual)
-        self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards, visual=visual)
+
+        with self.graph.as_default():
+            with self.sess.as_default():
+                print('default_graph', tf.get_default_graph())
+                self.dqn = make_dqn(env, f'qnet', gpu_num=gpu_num, multihead=True, num_heads=num_rewards, visual=visual)
+
+        with self.graph.as_default():
+            with self.sess.as_default():
+                with tf.variable_scope(name, reuse=reuse) as scope:
+                    self.Q_s, self.Q_sp, self.R, self.soft_update, self.hard_update = self.setup_Q_functions()
+                    (self.sums_to_R, self.greater_than_0, self.reward_consistency,
+                        self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
+
+                    self.loss = (reward_consistency_coeff*(
+                        self.sums_to_R +
+                        self.greater_than_0 +
+                        self.reward_consistency
+                        ) +
+                        j_indep_coeff*self.J_indep +
+                        -j_nontriv_coeff*self.J_nontriv
+                        )
+                    self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
+                    self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
 
 
-        with tf.variable_scope(name, reuse=reuse) as scope:
-            self.Q_s, self.Q_sp, self.R, self.soft_update, self.hard_update = self.setup_Q_functions()
-            (self.sums_to_R, self.greater_than_0, self.reward_consistency,
-                self.J_indep, self.J_nontriv) = self.setup_constraints(self.Q_s, self.Q_sp, self.R)
 
-            self.loss = (reward_consistency_coeff*(
-                self.sums_to_R +
-                self.greater_than_0 +
-                self.reward_consistency
-                ) +
-                j_indep_coeff*self.J_indep +
-                -j_nontriv_coeff*self.J_nontriv
-                )
-            self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
-            self.variables = tf.get_collection(tf.GraphKeys.VARIABLES, scope=scope.original_name_scope)
-
-
-        config = tf.ConfigProto(allow_soft_placement=True)
-        config.gpu_options.allow_growth = True
-        self.sess = sess = tf.Session(config=config)
         self.saver = tf.train.Saver(var_list=self.variables)
         self.sess.run(tf.variables_initializer(self.variables))
         if self.use_target:
@@ -88,65 +100,81 @@ class ReparameterizedRewardNetwork(object):
 
 
     def save(self, path, name):
-        self.dqn.save(path, 'qnet.ckpt')
-        self.saver.save(self.sess, os.path.join(path, name))
+        with self.graph.as_default():
+            with self.sess.as_default():
+                self.dqn.save(path, 'qnet.ckpt')
+                self.saver.save(self.sess, os.path.join(path, name))
 
 
     def restore(self, path, name):
-        self.dqn.restore(path, 'qnet.ckpt')
-        self.saver.restore(self.sess, os.path.join(path, name))
+        with self.graph.as_default():
+            with self.sess.as_default():
+                self.dqn.restore(path, 'qnet.ckpt')
+                self.saver.restore(self.sess, os.path.join(path, name))
 
 
     def train_R_functions(self, time, reward_mapper=None):
-        #q_loss = self.train_Q_functions(time)
-        S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
-        if reward_mapper is not None:
-            R_mod = []
-            for s, a, r, sp, info in zip(S, A, R, SP, INFO):
-                R_mod.append(reward_mapper(s,a,r,sp,info))
-            R = R_mod
-        [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
-            [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
-                      feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
-        if self.use_target:
-            self.sess.run(self.soft_update)
-        return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
+        with self.graph.as_default():
+            with self.sess.as_default():
+                #q_loss = self.train_Q_functions(time)
+                S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
+                if reward_mapper is not None:
+                    R_mod = []
+                    for s, a, r, sp, info in zip(S, A, R, SP, INFO):
+                        R_mod.append(reward_mapper(s,a,r,sp,info))
+                    R = R_mod
+                [_, sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv] = self.sess.run(
+                    [self.train_op, self.sums_to_R, self.greater_than_0, self.reward_consistency, self.J_indep, self.J_nontriv],
+                              feed_dict={self.inp_s: S, self.inp_a: A, self.inp_r: R, self.inp_sp: SP})
+                if self.use_target:
+                    self.sess.run(self.soft_update)
+                return sums_to_R, greater_than_0, reward_consistency, J_indep, J_nontriv
 
 
     def train_Q_functions(self, time):
-        S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
-        reward_num_samples = np.random.randint(0, self.num_rewards, size=[self.batch_size])
-        rewards = self.get_partitioned_reward(S, A, SP) # [bs, num_rewards]
-        selected_rewards = rewards[range(self.batch_size), reward_num_samples] # [bs]
-        weights, batch_idxes = np.ones_like(T), None
-        loss = self.dqn.train_batch(time, S, A, selected_rewards, SP, T, weights, batch_idxes, reward_num_samples)
-        return loss
+        with self.graph.as_default():
+            with self.sess.as_default():
+                S, A, R, SP, T, INFO = self.buffer.sample(self.batch_size)
+                reward_num_samples = np.random.randint(0, self.num_rewards, size=[self.batch_size])
+                rewards = self.get_partitioned_reward(S, A, SP) # [bs, num_rewards]
+                selected_rewards = rewards[range(self.batch_size), reward_num_samples] # [bs]
+                weights, batch_idxes = np.ones_like(T), None
+                loss = self.dqn.train_batch(time, S, A, selected_rewards, SP, T, weights, batch_idxes, reward_num_samples)
+                return loss
 
 
     def get_partitioned_reward(self, s, a, sp):
-        return np.transpose(self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
-                            feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp}), [1,0]) # [bs, num_rewards]
+        with self.graph.as_default():
+            with self.sess.as_default():
+                return np.transpose(self.sess.run([self.R[(i,i)] for i in range(self.num_rewards)],
+                                    feed_dict={self.inp_s: s, self.inp_a: a, self.inp_sp: sp}), [1,0]) # [bs, num_rewards]
 
 
     def get_state_values(self, s):
-        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
-        x = np.max(x, axis=1) # [bs, num_rewards]
-        x = np.transpose(x, [1,0]) #[num_rewards, bs]
-        return x
+        with self.graph.as_default():
+            with self.sess.as_default():
+                x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+                x = np.max(x, axis=1) # [bs, num_rewards]
+                x = np.transpose(x, [1,0]) #[num_rewards, bs]
+                return x
 
 
     def get_state_actions(self, s):
-        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
-        x = np.argmax(x, axis=1) # [bs, num_rewards]
-        x = np.transpose(x, [1,0]) # [num_rewards, bs]
-        return x
+        with self.graph.as_default():
+            with self.sess.as_default():
+                x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+                x = np.argmax(x, axis=1) # [bs, num_rewards]
+                x = np.transpose(x, [1,0]) # [num_rewards, bs]
+                return x
         #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         #return [np.argmax(Q, axis=1) for Q in Qs]
 
     def get_Qs(self, s):
-        x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
-        x = np.transpose(x, [2, 0, 1]) # [num_rewards, bs, num_actions]
-        return x
+        with self.graph.as_default():
+            with self.sess.as_default():
+                x = self.dqn.get_all_Q(s) # [bs, num_actions, num_rewards]
+                x = np.transpose(x, [2, 0, 1]) # [num_rewards, bs, num_actions]
+                return x
         #x = [self.dqn.get_Q(s, [reward_num]*len(s)) for reward_num in range(self.num_rewards)] # [num_rewards, bs, num_actions]
         #return x
         #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})

@@ -84,7 +84,7 @@ class CornersTaskWorld(Env):
                 img_x, img_y = self.to_image_pos((x, y))
                 if self.is_wall((x, y)):
                     canvas[img_y, img_x, :] = wall_color
-                if (x, y) in self.rewarding_pos:
+                if (x, y) in self.corner_set:
                     canvas[img_y, img_x, :] = reward_color
             self.cached_wall_image = canvas
             return np.copy(self.cached_wall_image)
@@ -235,30 +235,43 @@ class CornersTaskWorld(Env):
 
 
 if __name__ == '__main__':
+    import os
+    from state_representation_wrapper import StateRepresentationWrapper
+
     env = CornersTaskWorld(visual=True, task=(1,0,1,0))
-    #net = ReparameterizedRewardNetwork(env, 4, 0.001, None, 4, 'reward_net', False, gpu_num=-1)
 
-    #net.save('.', 'rnet.ckpt')
-    #net.restore('.', 'rnet.ckpt')
-    #input('Successfully Restored network!')
-    #path = '/Users/chris/projects/q_learning/reparam_runs/exploration_explore_1/weights'
-    #net.restore(path, 'reward_net.ckpt')
-                #'reparam_runs/exploration_explore_1/weights'
+    #path = '/Users/chris/projects/q_learning/reparam_runs/'
+    #names = ['top_5', 'bottom_5']  # , 'left_5', 'right_5']
+    #paths = [os.path.join(path, name, 'weights') for name in names]
+    #repr_wrapper = StateRepresentationWrapper(env, 2, paths)
+    #net = repr_wrapper.networks[0]
+    #net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
 
+    use_network = False
+    if use_network:
+        net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
+
+        path = '/Users/chris/projects/q_learning/reparam_runs/top_5/weights'
+        net.restore(path, 'reward_net.ckpt')
+    policy_num = 0
+    s = env.reset()
     for time in count():
-        try:
-            a = input('Action:')
-            if a == 'r':
-                env.reset()
+        if not use_network:
+            try:
+                a = input('Action:')
+                if a == 'r':
+                    env.reset()
+                    continue
+                a = env.human_action_mapping[a]
+            except KeyError:
+                print('invalid action!')
                 continue
-            a = env.human_action_mapping[a]
-        except KeyError:
-            print('invalid action!')
-            continue
+        else:
+            input('...')
+            a = net.get_state_actions([s])[policy_num][0]
         s, r, t, info = env.step(a)
         print(r)
-        #print(s, env.to_pos(s), info['agent_position'])
-        #print(env.get_exploration_reward(env.to_pos(s)), r)
+
         obs = env.get_observation()
         obs = cv2.resize(obs, (400, 400))
         #print(time, s)
