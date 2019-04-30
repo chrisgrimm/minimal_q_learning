@@ -3,9 +3,10 @@ from envs.multitask_corners_world import CornersTaskWorld
 import numpy as np
 from typing import List
 from gym import Env
+from gym.spaces import Box
 import os
 
-class StateRepresentationWrapper(object):
+class StateRepresentationWrapper(Env):
 
     def __init__(self, env: Env, num_rewards: int, paths: List[str]):
         self.networks = []
@@ -16,6 +17,19 @@ class StateRepresentationWrapper(object):
                                          gpu_num=-1)
             net.restore(path, 'reward_net.ckpt')
             self.networks.append(net)
+
+        self.action_space = env.action_space
+        self.observation_space = Box(0, 100, shape=[num_rewards * self.action_space.n * len(paths)])
+
+
+    def step(self, a):
+        s, r, t, info = self.env.step(a)
+        s = self.get_state_repr([s])[0]
+        return s, r, t, info
+
+    def reset(self):
+        return self.env.reset()
+
 
     def get_state_repr(self, s):
         all_qs = []

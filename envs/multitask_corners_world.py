@@ -237,8 +237,8 @@ class CornersTaskWorld(Env):
 if __name__ == '__main__':
     import os
     from state_representation_wrapper import StateRepresentationWrapper
-
-    env = CornersTaskWorld(visual=True, task=(1,0,1,0))
+    world_size = 15
+    env = CornersTaskWorld(visual=True, task=(1,1,1,1), world_size=world_size)
 
     #path = '/Users/chris/projects/q_learning/reparam_runs/'
     #names = ['top_5', 'bottom_5']  # , 'left_5', 'right_5']
@@ -247,13 +247,13 @@ if __name__ == '__main__':
     #net = repr_wrapper.networks[0]
     #net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
 
-    use_network = False
+    use_network = True
     if use_network:
         net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
 
-        path = '/Users/chris/projects/q_learning/reparam_runs/top_5/weights'
+        path = f'/Users/chris/projects/q_learning/reparam_runs/corners_right_{world_size}/weights'
         net.restore(path, 'reward_net.ckpt')
-    policy_num = 0
+    policy_num = 1
     s = env.reset()
     for time in count():
         if not use_network:

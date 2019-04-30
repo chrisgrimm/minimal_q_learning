@@ -1,6 +1,8 @@
 from utils import add_implicit_name_arg
 from envs.atari.atari_wrapper import PacmanWrapper, AssaultWrapper, QBertWrapper, SeaquestWrapper, AlienWrapper, BreakoutWrapper
 from envs.metacontroller_actor import MetaEnvironment
+from state_representation_wrapper import StateRepresentationWrapper
+from envs.multitask_corners_world import CornersTaskWorld
 import argparse
 import os
 import tensorflow as tf
@@ -19,7 +21,14 @@ from theano_converter import ICF_Policy
 parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
-parser.add_argument('--mode', type=str, required=True, choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN', 'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN', 'SOKOBAN_NO_TOP'])
+parser.add_argument('--mode', type=str, required=True,
+                    choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN',
+                             'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN', 'SOKOBAN_NO_TOP',
+                             'CORNERS_WORLD'])
+parser.add_argument('--psr-paths', type=str, default=None)
+parser.add_argument('--psr-num-rewards', type=int, default=2)
+parser.add_argument('--corners-world-size', type=int, default=5)
+parser.add_argument('--corners-world-task', type=str, default='1111')
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--meta', action='store_true')
@@ -59,6 +68,8 @@ num_frames = 4 if mode in ATARI_GAMES else 1
 num_color_channels = 1 if mode in ATARI_GAMES else 3
 num_visual_channels = num_frames * num_color_channels
 
+
+
 name_class_mapping = {
         'ASSAULT': AssaultWrapper,
         'PACMAN': PacmanWrapper,
@@ -73,6 +84,11 @@ elif mode == 'SOKOBAN':
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard')
 elif mode == 'SOKOBAN_NO_TOP':
     base_env = BlockPushingDomain(observation_mode=observation_mode, configuration='standard', only_bottom_half=True)
+elif mode == 'CORNERS_WORLD':
+    task = tuple([int(x) for x in args.corners_world_task])
+    # extra consideration necessary for determining whether the base-environment is "visual."
+    visual = args.visual or (args.psr_paths is not None)
+    base_env = CornersTaskWorld(world_size=args.corners_world_size, visual=visual, task=task)
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
@@ -105,6 +121,11 @@ if args.meta:
         Q_networks = None
 
     env = MetaEnvironment(base_env, reward_net, None, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
+if args.psr_paths is not None:
+    psr_paths = args.psr_paths.split(',')
+    env = StateRepresentationWrapper(base_env, args.psr_num_rewards, psr_paths)
+
+
 elif args.augment_trajectories:
 
     if not args.use_icf_policy:
@@ -135,13 +156,21 @@ LOG.setup(f'./{runs_dir}/{args.name}')
 save_path = os.path.join(runs_dir, args.name, 'weights')
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
-buffer_size = 1000000
-buffer = ReplayBuffer(buffer_size, num_frames, num_color_channels)
+buffer_size = 100000
+
+if not args.visual:
+    non_visual_size = env.observation_space.shape[0]
+else:
+    non_visual_size = 2
+buffer = ReplayBuffer(buffer_size, num_frames, num_color_channels, visual=args.visual, non_visual_size=non_visual_size)
 
 #dqn = QLearnerAgent(env.observation_space.shape[0], env.action_space.n, 'q_net', visual=visual, num_visual_channels=num_visual_channels, gpu_num=args.gpu_num)
 
 with sess.as_default():
-    dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num)
+    # use the single layer dqn if we are in PSR mode.
+    single_layer = (args.psr_paths is not None)
+    dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num, single_layer=single_layer, visual=args.visual)
+
 
 #sess.run(tf.global_variables_initializer())
 #sess.run(tf.local_variables_initializer())
@@ -159,6 +188,7 @@ learning_starts = 10000
 num_epsilon_steps = 1000000
 num_steps = 10000000
 evaluation_frequency = 1000
+save_frequency = 10000
 start_time = 0
 augment_frequency = 10000
 augment_steps = 100
@@ -229,7 +259,7 @@ for time in range(start_time, num_steps):
     a = get_action(s, augmented=should_augment, augment_policy=augment_policy_num)
     sp, r, t, info = env.step(a)
 
-    buffer.append(s, a, r, sp, t)
+    buffer.append(s, a, r, sp, t, info)
 
     if t:
         s = env.reset()
@@ -245,7 +275,7 @@ for time in range(start_time, num_steps):
     if time >= learning_starts:
 
         if time % q_train_freq == 0:
-            s_sample, a_sample, r_sample, sp_sample, t_sample = buffer.sample(batch_size)
+            s_sample, a_sample, r_sample, sp_sample, t_sample, info_sample = buffer.sample(batch_size)
 
             weights, batch_idxes = np.ones_like(t_sample), None
 
@@ -258,6 +288,9 @@ for time in range(start_time, num_steps):
             print(f'({time}) EVAL: {cum_reward}')
             LOG.add_line('cum_reward', cum_reward)
             LOG.add_line('cum_reward_env', cum_reward_env)
+
+        if time % save_frequency == 0:
+            dqn.save(save_path, 'qnet.ckpt')
 
 
         log_string = f'({time}) Q_loss: {q_loss}, ({epsilon})'
