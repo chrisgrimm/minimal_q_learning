@@ -26,6 +26,7 @@ parser.add_argument('--mode', type=str, required=True,
                              'SOKOBAN_META', 'BREAKOUT', 'SEAQUEST', 'ALIEN', 'SOKOBAN_NO_TOP',
                              'CORNERS_WORLD'])
 parser.add_argument('--psr-paths', type=str, default=None)
+parser.add_argument('--psr-mode', type=str, default=None, choices=['dqn', 'reward_net'])
 parser.add_argument('--psr-num-rewards', type=int, default=2)
 parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--corners-world-task', type=str, default='1111')
@@ -123,7 +124,7 @@ if args.meta:
     env = MetaEnvironment(base_env, reward_net, None, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
 if args.psr_paths is not None:
     psr_paths = args.psr_paths.split(',')
-    env = StateRepresentationWrapper(base_env, args.psr_num_rewards, psr_paths)
+    env = StateRepresentationWrapper(base_env, args.psr_num_rewards, psr_paths, mode=args.psr_mode, gpu_num=args.gpu_num)
 
 
 elif args.augment_trajectories:
