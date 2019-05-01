@@ -80,7 +80,7 @@ class StateRepresentationWrapper(Env):
 
     def get_state_repr(self, s):
         if self.mode == 'reward_net':
-            return self.get_state_repr_reward_net(s)
+            return self.get_state_repr_reward_net(s) / 100.0
         else:
             return self.get_state_repr_dqns(s) / 100.0
 
