@@ -17,6 +17,7 @@ from reward_network import RewardPartitionNetwork
 from reward_network2 import ReparameterizedRewardNetwork
 from utils import LOG, build_directory_structure
 from theano_converter import ICF_Policy
+import tqdm
 
 parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
@@ -32,6 +33,7 @@ parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--corners-world-task', type=str, default='1111')
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
+parser.add_argument('--num-steps', type=int, default=10_000_000)
 parser.add_argument('--meta', action='store_true')
 parser.add_argument('--meta-repeat', type=int, default=1)
 parser.add_argument('--num-partitions', type=int, default=None)
@@ -186,8 +188,8 @@ epsilon = 1.0
 q_train_freq = 4
 min_epsilon = 0.01
 learning_starts = 10000
-num_epsilon_steps = 1000000
-num_steps = 10000000
+num_epsilon_steps = 1_000_000
+num_steps = args.num_steps
 evaluation_frequency = 1000
 save_frequency = 10000
 start_time = 0
@@ -255,7 +257,7 @@ def evaluate_performance(env, q_network: QLearnerAgent):
     #quick_visualize_policy(env, q_network)
     return cumulative_reward, cumulative_reward_env
 
-for time in range(start_time, num_steps):
+for time in tqdm.tqdm(range(start_time, num_steps)):
 
     a = get_action(s, augmented=should_augment, augment_policy=augment_policy_num)
     sp, r, t, info = env.step(a)
@@ -294,8 +296,8 @@ for time in range(start_time, num_steps):
             dqn.save(save_path, 'qnet.ckpt')
 
 
-        log_string = f'({time}) Q_loss: {q_loss}, ({epsilon})'
-        print(log_string)
+        #log_string = f'({time}) Q_loss: {q_loss}, ({epsilon})'
+        #print(log_string)
         #LOG.add_line(f'time', time)
         # decrement epsilon appropriately
         epsilon = max(min_epsilon, epsilon - epsilon_delta)

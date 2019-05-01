@@ -251,8 +251,15 @@ if __name__ == '__main__':
     if use_network:
         net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
 
-        path = f'/Users/chris/projects/q_learning/reparam_runs/corners_right_{world_size}/weights'
+        path = f'/Users/chris/projects/q_learning/reparam_runs/corners_right_{world_size}_2/weights'
         net.restore(path, 'reward_net.ckpt')
+        # restore state rep too.
+        path = '/Users/chris/projects/q_learning/reparam_runs/'
+        # names = ['top_5', 'bottom_5']#, 'left_5', 'right_5']
+        names = ['undecomp_bottom_5', 'undecomp_top_5']
+        paths = [os.path.join(path, name, 'weights') for name in names]
+        repr_wrapper = StateRepresentationWrapper(env, 1, paths, mode='dqn')
+
     policy_num = 1
     s = env.reset()
     for time in count():
@@ -270,6 +277,7 @@ if __name__ == '__main__':
             input('...')
             a = net.get_state_actions([s])[policy_num][0]
         s, r, t, info = env.step(a)
+        print(repr_wrapper.get_state_repr([s])[0])
         print(r)
 
         obs = env.get_observation()
