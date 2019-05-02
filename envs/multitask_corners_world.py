@@ -8,7 +8,9 @@ from reward_network2 import ReparameterizedRewardNetwork
 
 class CornersTaskWorld(Env):
 
-    def __init__(self, world_size=5, visual=False, task=(1,1,1,1)):
+    def __init__(self, world_size=5, visual=False, task=(1,1,1,1), reset_mode='deterministic'):
+        assert reset_mode in ['deterministic', 'random']
+        self.reset_mode = reset_mode
         self.agent = (0,0)
         self.image_mode = visual
         self.image_size = 64
@@ -161,7 +163,10 @@ class CornersTaskWorld(Env):
 
 
     def reset(self, update_internal=True):
-        agent = (self.world_size // 2, self.world_size // 2)
+        if self.reset_mode == 'deterministic':
+            agent = (self.world_size // 2, self.world_size // 2)
+        else:
+            agent = tuple(np.random.randint(0, self.world_size, size=2))
         if update_internal:
             self.agent = agent
             self.step_num = 0

@@ -40,6 +40,8 @@ parser.add_argument('--mode', type=str, required=True, choices=
      'CORNERS_WORLD',
      'SOKOBAN_REWARD_ALWAYS_ONE', 'SOKOBAN_OBSTACLE',
      'SOKOBAN_FOUR_ROOM', 'ASSAULT', 'PACMAN', 'QBERT', 'ALIEN', 'BREAKOUT', 'SEAQUEST'])
+
+parser.add_argument('--corners-world-reset-mode', type=str, choices=['random', 'deterministic'], default='deterministic')
 parser.add_argument('--corners-world-task', type=str, default='1111')
 parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--visual', action='store_true')
@@ -232,8 +234,8 @@ elif mode == 'CORNERS_WORLD':
     num_partitions = args.num_partitions
     visualization_func = lambda network, env, value_matrix, name: None
     on_reward_print_func = lambda r, sp, info, network, reward_buffer: None
-    env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task)
-    dummy_env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task)
+    env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task, reset_mode=args.corners_world_reset_mode)
+    dummy_env = CornersTaskWorld(world_size=args.corners_world_size, visual=args.visual, task=task, reset_mode=args.corners_world_reset_mode)
     dummy_env.reset()
     num_visual_channels = 3
 else:

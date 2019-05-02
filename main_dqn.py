@@ -19,6 +19,10 @@ from utils import LOG, build_directory_structure
 from theano_converter import ICF_Policy
 import tqdm
 
+from gym.envs.atari import AtariEnv
+
+#ATARI_GAMES
+
 parser = argparse.ArgumentParser()
 add_implicit_name_arg(parser)
 
@@ -31,6 +35,7 @@ parser.add_argument('--psr-mode', type=str, default=None, choices=['dqn', 'rewar
 parser.add_argument('--psr-num-rewards', type=int, default=2)
 parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--corners-world-task', type=str, default='1111')
+parser.add_argument('--corners-world-reset-mode', type=str, choices=['random', 'deterministic'], default='deterministic')
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--num-steps', type=int, default=10_000_000)
@@ -91,7 +96,8 @@ elif mode == 'CORNERS_WORLD':
     task = tuple([int(x) for x in args.corners_world_task])
     # extra consideration necessary for determining whether the base-environment is "visual."
     visual = args.visual or (args.psr_paths is not None)
-    base_env = CornersTaskWorld(world_size=args.corners_world_size, visual=visual, task=task)
+    base_env = CornersTaskWorld(world_size=args.corners_world_size, visual=visual, task=task,
+                                reset_mode=args.corners_world_reset_mode)
 else:
     raise Exception(f'mode must be in {mode_options}.')
 
