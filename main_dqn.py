@@ -24,7 +24,9 @@ from gym.envs.atari import AtariEnv
 #ATARI_GAMES
 
 parser = argparse.ArgumentParser()
-add_implicit_name_arg(parser)
+#add_implicit_name_arg(parser)
+parser.add_argument('--run-num', type=int, required=True)
+parser.add_argument('--tb-name', type=str, required=True)
 
 parser.add_argument('--mode', type=str, required=True,
                     choices=['SOKOBAN', 'ASSAULT', 'QBERT', 'PACMAN',
@@ -171,12 +173,14 @@ runs_dir = args.run_dir
 q_loss_log_freq = 100
 
 build_directory_structure('.', {runs_dir: {
-    args.name: {
+    str(args.run_num): {
         'images': {},
         'weights': {}}}})
-LOG.setup(f'./{runs_dir}/{args.name}')
+LOG.setup(f'./{runs_dir}/{args.run_num}')
 
-save_path = os.path.join(runs_dir, args.name, 'weights')
+save_path = os.path.join(runs_dir, str(args.run_num), 'weights')
+with open('tb_name.txt', 'w') as f:
+    f.write(args.tb_name)
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
 buffer_size = 100000
