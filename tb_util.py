@@ -26,6 +26,12 @@ def make_tensorboard_string(regex=None):
     command = f'tensorboard --logdir={",".join(name_dir_pairs)}'
     print(command)
 
+def clean_name(name):
+    special_chars = '()[]:,'
+    for char in special_chars:
+        name = name.replace(char, f'\{char}')
+    return name
+
 def make_tensorboard_string2():
     base_dir = os.getcwd()
     directories = [x for x in os.listdir(base_dir) if x.isnumeric()]
@@ -34,7 +40,7 @@ def make_tensorboard_string2():
         with open(os.path.join(base_dir, d, 'tb_name.txt'), 'r') as f:
             name = f.read().strip()
         name_mapping[d] = name
-    name_dir_pairs = [f'{name}:{os.path.join(base_dir,d)}' for d, name in name_mapping.items()]
+    name_dir_pairs = [f'{clean_name(name)}:{os.path.join(base_dir,d)}' for d, name in name_mapping.items()]
     command = f'tensorboard --logdir={",".join(name_dir_pairs)}'
     print(command)
 
