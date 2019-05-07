@@ -36,6 +36,11 @@ parser.add_argument('--psr-num-rewards', type=int, default=2)
 parser.add_argument('--corners-world-size', type=int, default=5)
 parser.add_argument('--corners-world-task', type=str, default='1111')
 parser.add_argument('--corners-world-reset-mode', type=str, choices=['random', 'deterministic'], default='deterministic')
+parser.add_argument('--corners-world-ideal-repr-list', type=str, default=None)
+
+parser.add_argument('--nonvisual-num-hidden-layers', type=int, default=1)
+parser.add_argument('--dqn-learning-rate', type=float, default=10**-4)
+parser.add_argument('--dqn-target-update-frequency', type=int, default=1000)
 parser.add_argument('--visual', action='store_true')
 parser.add_argument('--gpu-num', type=int, required=True)
 parser.add_argument('--num-steps', type=int, default=10_000_000)
@@ -95,7 +100,7 @@ elif mode == 'SOKOBAN_NO_TOP':
 elif mode == 'CORNERS_WORLD':
     task = tuple([int(x) for x in args.corners_world_task])
     # extra consideration necessary for determining whether the base-environment is "visual."
-    visual = args.visual or (args.psr_paths is not None)
+    visual = args.visual or (args.psr_paths is not None) or (args.corners_world_ideal_repr_list is not None)
     base_env = CornersTaskWorld(world_size=args.corners_world_size, visual=visual, task=task,
                                 reset_mode=args.corners_world_reset_mode)
 else:
@@ -130,9 +135,18 @@ if args.meta:
         Q_networks = None
 
     env = MetaEnvironment(base_env, reward_net, None, args.stop_at_reward, args.meta_repeat, allow_base_actions=args.allow_base_actions, tf_icf_agent=tf_icf_agent, num_icf_policies=2*args.num_partitions)
+
+# cant have a psr path list and use an ideal repr.
+assert not ( (args.corners_world_ideal_repr_list is not None) and (args.psr_paths) is not None)
 if args.psr_paths is not None:
     psr_paths = args.psr_paths.split(',')
     env = StateRepresentationWrapper(base_env, args.psr_num_rewards, psr_paths, mode=args.psr_mode, gpu_num=args.gpu_num)
+
+if args.corners_world_ideal_repr_list is not None:
+    tasks = eval(args.corners_world_ideal_repr_list)
+    create_env = lambda task: CornersTaskWorld(world_size=args.corners_world_size, visual=visual, task=task, reset_mode=args.corners_world_reset_mode)
+    env = StateRepresentationWrapper(base_env, num_rewards=None, paths=None, mode='idealized',
+                                     gpu_num=args.gpu_num, idealized_task_list=tasks, create_env=create_env)
 
 
 elif args.augment_trajectories:
@@ -178,7 +192,10 @@ buffer = ReplayBuffer(buffer_size, num_frames, num_color_channels, visual=args.v
 with sess.as_default():
     # use the single layer dqn if we are in PSR mode.
     single_layer = (args.psr_paths is not None)
-    dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num, single_layer=single_layer, visual=args.visual)
+    dqn = make_dqn(env, scope='dqn', gpu_num=args.gpu_num, single_layer=single_layer, visual=args.visual,
+                   nonvisual_num_hidden_layers=args.nonvisual_num_hidden_layers,
+                   target_network_update_freq=args.dqn_target_update_frequency,
+                   learning_rate=args.dqn_learning_rate)
 
 
 #sess.run(tf.global_variables_initializer())

@@ -143,6 +143,13 @@ class ReparameterizedRewardNetwork(object):
                 return loss
 
 
+    def get_J_terms(self, s, a, r, sp, t):
+        with self.graph.as_default():
+            with self.sess.as_default():
+                [J_indep, J_nontriv] = self.sess.run([self.J_indep, self.J_nontriv], feed_dict={self.inp_s: s, self.inp_a: a, self.inp_r: r, self.inp_sp: sp})
+                return J_indep, J_nontriv
+
+
     def get_partitioned_reward(self, s, a, sp):
         with self.graph.as_default():
             with self.sess.as_default():
@@ -168,6 +175,13 @@ class ReparameterizedRewardNetwork(object):
                 return x
         #Qs = self.sess.run([self.Q_s[(i,i)] for i in range(self.num_rewards)], feed_dict={self.inp_s: s})
         #return [np.argmax(Q, axis=1) for Q in Qs]
+
+    def get_state_actions_original_dqns(self, s):
+        with self.graph.as_default():
+            with self.sess.as_default():
+                x = self.get_Qs([s])
+                x = np.argmax(x, axis=2) # [num_rewards, bs]
+                return x
 
     def get_Qs(self, s):
         with self.graph.as_default():

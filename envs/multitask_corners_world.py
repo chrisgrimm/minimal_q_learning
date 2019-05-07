@@ -20,13 +20,24 @@ class CornersTaskWorld(Env):
         self.specified_walls = set(self.corner_walls)
         self.corner_set = set(self.corners)
 
-        self.set_task(task)
-
         self.generated_wall_rules = [
-            #lambda p: ((np.abs(p[0]) > 2) and (np.abs(p[0]) == np.abs(p[1]))), # builds the diagonal walls.
-            #lambda p: ((np.abs(p[0]) > self.world_size + 2) or (np.abs(p[1]) > self.world_size + 2)), # builds the outer walls
+            # lambda p: ((np.abs(p[0]) > 2) and (np.abs(p[0]) == np.abs(p[1]))), # builds the diagonal walls.
+            # lambda p: ((np.abs(p[0]) > self.world_size + 2) or (np.abs(p[1]) > self.world_size + 2)), # builds the outer walls
             lambda p: (p[0] < 0 or p[1] < 0 or p[0] >= self.world_size or p[1] >= self.world_size),
         ]
+
+        self.set_task(task)
+        ### to visualize the computed state distances.
+        # grid = np.zeros([self.world_size, self.world_size], dtype=np.uint8)
+        # for x in range(self.world_size):
+        #     for y in range(self.world_size):
+        #         try:
+        #             grid[y,x] = self.state_distances[(x,y)]
+        #         except KeyError:
+        #             pass
+        # print(grid)
+
+
 
 
         self.action_mapping = {
@@ -53,6 +64,54 @@ class CornersTaskWorld(Env):
         self.step_num = 0
         self.cached_wall_image = None
         self.cached_collection_image = None
+
+    def get_pos_neighbors(self, pos):
+        x, y = pos
+        possible_neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
+        neighbors = [p for p in possible_neighbors if not self.is_wall(p)]
+        return neighbors
+
+    def compute_state_distances(self):
+        distance_map = dict()
+        fringe = []
+        for pos in self.rewarding_pos:
+            distance_map[pos] = 0
+            fringe.append(pos)
+        while fringe:
+            item = fringe.pop(0)
+            neighbors = self.get_pos_neighbors(item)
+            for pos in neighbors:
+                if pos not in distance_map:
+                    distance_map[pos] = distance_map[item] + 1
+                    fringe.append(pos)
+        return distance_map
+
+    def get_average_state_distance_on_reset(self):
+        if self.reset_mode == 'deterministic':
+            return self.state_distances[(self.world_size // 2, self.world_size // 2)]
+        else:
+            valid_starting_distances = []
+            for x in range(self.world_size):
+                for y in range(self.world_size):
+                    if not self.is_wall((x,y)) and (x, y) not in self.rewarding_pos:
+                        valid_starting_distances.append(self.state_distances[(x,y)])
+            return np.mean(valid_starting_distances)
+
+    def get_true_q_values(self, pos, a, gamma):
+        new_pos = self.get_action_update(pos, a)
+        # value of where we end up.
+        t = self.state_distances[new_pos]
+        value = gamma ** t
+        s = self.average_starting_distance
+        value += (gamma**(s+t))/(1 - gamma**s)
+        return value
+
+
+
+
+
+
+
 
 
     def is_wall(self, pos):
@@ -152,6 +211,9 @@ class CornersTaskWorld(Env):
         self.task = task
         self.rewarding_pos = set([pos for active, pos in zip(self.task, self.corners) if active == 1])
         self.cached_wall_image = None
+        self.state_distances = self.compute_state_distances()
+        self.average_starting_distance = self.get_average_state_distance_on_reset()
+
 
 
     def sample_random_position(self):
@@ -162,11 +224,16 @@ class CornersTaskWorld(Env):
             return pos
 
 
+
     def reset(self, update_internal=True):
         if self.reset_mode == 'deterministic':
             agent = (self.world_size // 2, self.world_size // 2)
         else:
-            agent = tuple(np.random.randint(0, self.world_size, size=2))
+            while True:
+                agent = tuple(np.random.randint(0, self.world_size, size=2))
+                if not self.is_wall(agent) and agent not in self.rewarding_pos:
+                    break
+
         if update_internal:
             self.agent = agent
             self.step_num = 0
@@ -243,7 +310,15 @@ if __name__ == '__main__':
     import os
     from state_representation_wrapper import StateRepresentationWrapper
     world_size = 15
-    env = CornersTaskWorld(visual=True, task=(1,1,1,1), world_size=world_size)
+
+    tasks = [(1,0,0,0), (0,1,0,0)]
+    create_env = lambda task: CornersTaskWorld(world_size=world_size, visual=True, task=task,
+                                               reset_mode='deterministic')
+
+    env = CornersTaskWorld(visual=True, task=(1,1,1,1), world_size=world_size, reset_mode='deterministic')
+
+    repr_wrapper = StateRepresentationWrapper(env, num_rewards=None, paths=None, mode='idealized',
+                                     gpu_num=-1, idealized_task_list=tasks, create_env=create_env)
 
     #path = '/Users/chris/projects/q_learning/reparam_runs/'
     #names = ['top_5', 'bottom_5']  # , 'left_5', 'right_5']
@@ -252,11 +327,10 @@ if __name__ == '__main__':
     #net = repr_wrapper.networks[0]
     #net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
 
-    use_network = True
+    use_network = False
     if use_network:
         net = ReparameterizedRewardNetwork(env, 2, 0.001, None, 4, 'reward_net', True, gpu_num=-1)
-
-        path = f'/Users/chris/projects/q_learning/reparam_runs/corners_right_{world_size}_2/weights'
+        path = f'/Users/chris/projects/q_learning/reparam_runs/corners_random_top_{world_size}/weights'
         net.restore(path, 'reward_net.ckpt')
         # restore state rep too.
         path = '/Users/chris/projects/q_learning/reparam_runs/'
@@ -267,31 +341,42 @@ if __name__ == '__main__':
 
     policy_num = 1
     s = env.reset()
+    value_estimate = 0
     for time in count():
         if not use_network:
-            try:
-                a = input('Action:')
-                if a == 'r':
-                    env.reset()
-                    continue
-                a = env.human_action_mapping[a]
-            except KeyError:
-                print('invalid action!')
-                continue
+            # try:
+            #     a = input('Action:')
+            #     if a == 'r':
+            #         env.reset()
+            #         continue
+            #     a = env.human_action_mapping[a]
+            # except KeyError:
+            #     print('invalid action!')
+            #     continue
+            if env.agent[0] > 0:
+                a = env.human_action_mapping['a']
+            else:
+                a = env.human_action_mapping['s']
+            input('...')
         else:
             input('...')
-            a = net.get_state_actions([s])[policy_num][0]
+            a = net.get_state_actions_original_dqns([s])[policy_num][0]
+        print(env.get_true_q_values(env.agent, a, 0.99))
+        s_old = s
         s, r, t, info = env.step(a)
-        print(repr_wrapper.get_state_repr([s])[0])
+        value_estimate += 0.99**time * r
+
+        if use_network:
+            print(net.get_partitioned_reward([s_old], [a], [s]))
+            print(net.get_J_terms([s_old], [a], [r], [s], [t]))
+        repr = repr_wrapper.get_state_repr([s], [info])[0]
+        print(np.reshape(repr, [2, 4]))
         print(r)
+        print('estimate', value_estimate)
+
 
         obs = env.get_observation()
         obs = cv2.resize(obs, (400, 400))
         #print(time, s)
         cv2.imshow('game', obs)
         cv2.waitKey(1)
-
-
-
-
-
