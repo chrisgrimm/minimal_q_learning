@@ -29,8 +29,9 @@ def make_tensorboard_string(regex=None):
 def clean_name(name):
     special_chars = '()[]:,'
     name = name.replace(':', '=')
+    name = name.replace(',', '--')
     for char in special_chars:
-        name = name.replace(char, f'\\\{char}')
+        name = name.replace(char, f'\{char}')
     return name
 
 def make_tensorboard_string2():
