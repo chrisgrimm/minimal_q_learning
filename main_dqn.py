@@ -179,7 +179,7 @@ build_directory_structure('.', {runs_dir: {
 LOG.setup(f'./{runs_dir}/{args.run_num}')
 
 save_path = os.path.join(runs_dir, str(args.run_num), 'weights')
-with open('tb_name.txt', 'w') as f:
+with open(os.path.join(runs_dir, str(args.run_num), 'tb_name.txt'), 'w') as f:
     f.write(args.tb_name)
 
 #agent = QLearnerAgent(env.observation_space.shape[0], env.action_space.n)
