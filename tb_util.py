@@ -31,7 +31,7 @@ def make_tensorboard_string2():
     directories = [x for x in os.listdir(base_dir) if x.isnumeric()]
     name_mapping = dict()
     for d in directories:
-        with open(os.path.join(base_dir, d), 'r') as f:
+        with open(os.path.join(base_dir, d, 'tb_name.txt'), 'r') as f:
             name = f.read().strip()
         name_mapping[d] = name
     name_dir_pairs = [f'{name}:{os.path.join(base_dir,d)}' for d, name in name_mapping.items()]
